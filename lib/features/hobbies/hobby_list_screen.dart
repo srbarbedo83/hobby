@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format/meta_formatter.dart';
+import '../timer/cronometro_tile.dart';
 import 'hobby_form_screen.dart';
 import 'hobby_providers.dart';
 
@@ -36,6 +37,7 @@ class HobbyListScreen extends ConsumerWidget {
                 ),
                 title: Text(hobby.nome),
                 subtitle: Text(formatarMeta(hobby.meta)),
+                trailing: CronometroTile(hobbyId: hobby.id, cor: Color(hobby.cor)),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => HobbyFormScreen(hobbyId: hobby.id),
