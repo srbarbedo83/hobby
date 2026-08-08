@@ -302,4 +302,46 @@ void main() {
     expect(find.text('1:00:00'), findsOneWidget); // sessão mais longa
     expect(find.text('2'), findsOneWidget); // nº de sessões
   });
+
+  testWidgets('ecrã de assiduidade mostra a percentagem cumprida da meta semanal', (tester) async {
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Piano'
+          ..icone = Icons.piano.codePoint
+          ..cor = 0xFF96691F
+          ..ativo = true
+          ..criadoEm = DateTime.now()
+          ..meta = (Meta()
+            ..tipo = TipoMeta.semanal
+            ..valorMinutos = 180),
+      );
+    final sessaoRepo = _FakeSessaoRepository()
+      ..guardadas.add(
+        SessaoRegistada()
+          ..hobbyId = 1
+          ..inicio = DateTime.now()
+          ..duracaoSegundos = const Duration(minutes: 90).inSeconds
+          ..origem = OrigemSessao.manual,
+      );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(sessaoRepo),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Assiduidade'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('50%'), findsOneWidget);
+    expect(find.text('1:30:00 de 3:00:00 — esta semana'), findsOneWidget);
+  });
 }
