@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:ritmo/app/app.dart';
 import 'package:ritmo/core/providers.dart';
@@ -102,9 +103,18 @@ class _FakeSessaoRepository implements SessaoRepository {
     guardadas.add(sessao);
     return guardadas.length;
   }
+
+  @override
+  Stream<List<SessaoRegistada>> watchPorHobby(int hobbyId) {
+    return Stream.value(guardadas.where((s) => s.hobbyId == hobbyId).toList());
+  }
 }
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('pt_PT');
+  });
+
   testWidgets('mostra o estado vazio quando não há hobbies', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -243,5 +253,53 @@ void main() {
     expect(sessaoRepo.guardadas, hasLength(1));
     expect(sessaoRepo.guardadas.single.duracaoSegundos, const Duration(hours: 1, minutes: 20).inSeconds);
     expect(sessaoRepo.guardadas.single.origem, OrigemSessao.manual);
+  });
+
+  testWidgets('ecrã de detalhe mostra o heatmap e as estatísticas do hobby', (tester) async {
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Piano'
+          ..icone = Icons.piano.codePoint
+          ..cor = 0xFF96691F
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+      );
+    final agora = DateTime.now();
+    final sessaoRepo = _FakeSessaoRepository()
+      ..guardadas.addAll([
+        SessaoRegistada()
+          ..hobbyId = 1
+          ..inicio = agora
+          ..duracaoSegundos = 1800
+          ..origem = OrigemSessao.manual,
+        SessaoRegistada()
+          ..hobbyId = 1
+          ..inicio = agora.subtract(const Duration(days: 10))
+          ..duracaoSegundos = 3600
+          ..origem = OrigemSessao.cronometro,
+      ]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(sessaoRepo),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Piano'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Estatísticas'), findsOneWidget);
+    expect(find.text('1:30:00'), findsOneWidget); // total acumulado
+    expect(find.text('45:00'), findsOneWidget); // média por semana
+    expect(find.text('1:00:00'), findsOneWidget); // sessão mais longa
+    expect(find.text('2'), findsOneWidget); // nº de sessões
   });
 }

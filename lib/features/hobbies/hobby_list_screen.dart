@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format/meta_formatter.dart';
+import '../hobby_detail/hobby_detail_screen.dart';
 import '../timer/cronometro_tile.dart';
 import 'hobby_form_screen.dart';
 import 'hobby_providers.dart';
@@ -44,7 +45,7 @@ class HobbyListScreen extends ConsumerWidget {
                 ),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => HobbyFormScreen(hobbyId: hobby.id),
+                    builder: (_) => HobbyDetailScreen(hobbyId: hobby.id),
                   ),
                 ),
               );
