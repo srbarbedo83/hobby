@@ -5,15 +5,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format/duration_formatter.dart';
 import '../../data/local/estado_cronometro.dart';
+import '../manual_entry/manual_entry_sheet.dart';
 import 'timer_providers.dart';
 
 /// Controlos de cronómetro de um hobby: iniciar quando parado, pausar/parar
 /// quando ativo. Cada instância só depende do seu próprio [hobbyId], por
 /// isso vários hobbies podem ter o cronómetro a correr ao mesmo tempo.
+///
+/// Enquanto parado, mostra também o atalho de registo manual — deixa de
+/// aparecer assim que há um cronómetro ativo, para não sobrecarregar a fila
+/// de ícones precisamente quando ela já tem mais controlos.
 class CronometroTile extends ConsumerWidget {
-  const CronometroTile({super.key, required this.hobbyId, required this.cor});
+  const CronometroTile({
+    super.key,
+    required this.hobbyId,
+    required this.hobbyNome,
+    required this.cor,
+  });
 
   final int hobbyId;
+  final String hobbyNome;
   final Color cor;
 
   @override
@@ -26,10 +37,25 @@ class CronometroTile extends ConsumerWidget {
       error: (_, _) => const Icon(Icons.error_outline),
       data: (estado) {
         if (estado == null) {
-          return IconButton(
-            icon: Icon(Icons.play_arrow, color: cor),
-            tooltip: 'Iniciar cronómetro',
-            onPressed: () => controller.iniciar(hobbyId),
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(Icons.more_time, color: cor),
+                tooltip: 'Registar tempo manualmente',
+                onPressed: () => ManualEntrySheet.mostrar(
+                  context,
+                  hobbyId: hobbyId,
+                  hobbyNome: hobbyNome,
+                  cor: cor,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.play_arrow, color: cor),
+                tooltip: 'Iniciar cronómetro',
+                onPressed: () => controller.iniciar(hobbyId),
+              ),
+            ],
           );
         }
 

@@ -37,7 +37,11 @@ class HobbyListScreen extends ConsumerWidget {
                 ),
                 title: Text(hobby.nome),
                 subtitle: Text(formatarMeta(hobby.meta)),
-                trailing: CronometroTile(hobbyId: hobby.id, cor: Color(hobby.cor)),
+                trailing: CronometroTile(
+                  hobbyId: hobby.id,
+                  hobbyNome: hobby.nome,
+                  cor: Color(hobby.cor),
+                ),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => HobbyFormScreen(hobbyId: hobby.id),

@@ -167,4 +167,81 @@ void main() {
     expect(find.byIcon(Icons.play_arrow), findsOneWidget);
     expect(find.byIcon(Icons.stop), findsNothing);
   });
+
+  testWidgets('regista um atalho manual de +15 min quando o cronómetro está parado', (tester) async {
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Leitura'
+          ..icone = Icons.menu_book.codePoint
+          ..cor = 0xFF2F6F5C
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+      );
+    final sessaoRepo = _FakeSessaoRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(sessaoRepo),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_time));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Registar tempo — Leitura'), findsOneWidget);
+
+    await tester.tap(find.text('+15 min'));
+    await tester.pumpAndSettle();
+
+    expect(sessaoRepo.guardadas, hasLength(1));
+    expect(sessaoRepo.guardadas.single.hobbyId, 1);
+    expect(sessaoRepo.guardadas.single.origem, OrigemSessao.manual);
+    expect(sessaoRepo.guardadas.single.duracaoSegundos, const Duration(minutes: 15).inSeconds);
+  });
+
+  testWidgets('regista uma duração exata introduzida manualmente', (tester) async {
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Guitarra'
+          ..icone = Icons.music_note.codePoint
+          ..cor = 0xFF96691F
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+      );
+    final sessaoRepo = _FakeSessaoRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(sessaoRepo),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_time));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Horas'), '1');
+    await tester.enterText(find.widgetWithText(TextField, 'Minutos'), '20');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(sessaoRepo.guardadas, hasLength(1));
+    expect(sessaoRepo.guardadas.single.duracaoSegundos, const Duration(hours: 1, minutes: 20).inSeconds);
+    expect(sessaoRepo.guardadas.single.origem, OrigemSessao.manual);
+  });
 }
