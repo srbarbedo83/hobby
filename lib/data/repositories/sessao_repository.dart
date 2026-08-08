@@ -6,4 +6,8 @@ abstract class SessaoRepository {
   /// Todas as sessões de um hobby, ordenadas por [SessaoRegistada.inicio] —
   /// base do heatmap e das estatísticas no ecrã de detalhe.
   Stream<List<SessaoRegistada>> watchPorHobby(int hobbyId);
+
+  /// Anexa uma nota a uma sessão já gravada — usado quando o cronómetro
+  /// pára e o utilizador só decide adicionar a nota depois, no snackbar.
+  Future<void> atualizarNota(int sessaoId, String nota);
 }

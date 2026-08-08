@@ -39,12 +39,14 @@ class ManualEntrySheet extends ConsumerStatefulWidget {
 class _ManualEntrySheetState extends ConsumerState<ManualEntrySheet> {
   final _horasController = TextEditingController();
   final _minutosController = TextEditingController();
+  final _notaController = TextEditingController();
   bool _aGuardar = false;
 
   @override
   void dispose() {
     _horasController.dispose();
     _minutosController.dispose();
+    _notaController.dispose();
     super.dispose();
   }
 
@@ -63,12 +65,14 @@ class _ManualEntrySheetState extends ConsumerState<ManualEntrySheet> {
 
   Future<void> _guardar(int segundos) async {
     setState(() => _aGuardar = true);
+    final nota = _notaController.text.trim();
     await ref.read(sessaoRepositoryProvider).guardar(
           SessaoRegistada()
             ..hobbyId = widget.hobbyId
             ..inicio = DateTime.now()
             ..duracaoSegundos = segundos
-            ..origem = OrigemSessao.manual,
+            ..origem = OrigemSessao.manual
+            ..nota = nota.isEmpty ? null : nota,
         );
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -92,6 +96,15 @@ class _ManualEntrySheetState extends ConsumerState<ManualEntrySheet> {
         children: [
           Text('Registar tempo — ${widget.hobbyNome}', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 16),
+          TextField(
+            controller: _notaController,
+            maxLength: 140,
+            decoration: const InputDecoration(
+              labelText: 'Nota (opcional)',
+              hintText: 'Ex.: praticei escalas hoje',
+            ),
+          ),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,

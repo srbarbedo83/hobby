@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format/duration_formatter.dart';
 import '../../data/local/estado_cronometro.dart';
+import '../../shared/widgets/nota_dialog.dart';
 import '../manual_entry/manual_entry_sheet.dart';
 import 'timer_providers.dart';
 
@@ -74,10 +75,16 @@ class CronometroTile extends ConsumerWidget {
               icon: const Icon(Icons.stop),
               tooltip: 'Terminar e guardar sessão',
               onPressed: () async {
-                final segundos = await controller.parar(hobbyId);
-                if (context.mounted && segundos != null) {
+                final resultado = await controller.parar(hobbyId);
+                if (context.mounted && resultado != null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Sessão guardada: ${formatarDuracao(segundos)}')),
+                    SnackBar(
+                      content: Text('Sessão guardada: ${formatarDuracao(resultado.duracaoSegundos)}'),
+                      action: SnackBarAction(
+                        label: 'Adicionar nota',
+                        onPressed: () => mostrarDialogoNota(context, ref, resultado.sessaoId),
+                      ),
+                    ),
                   );
                 }
               },

@@ -3,6 +3,13 @@ import '../../data/local/sessao_registada.dart';
 import '../../data/repositories/cronometro_repository.dart';
 import '../../data/repositories/sessao_repository.dart';
 
+class ResultadoParar {
+  const ResultadoParar({required this.sessaoId, required this.duracaoSegundos});
+
+  final int sessaoId;
+  final int duracaoSegundos;
+}
+
 /// Coordena as duas coleções envolvidas em parar um cronómetro: remove o
 /// [EstadoCronometro] e grava a [SessaoRegistada] correspondente.
 class TimerController {
@@ -17,22 +24,22 @@ class TimerController {
 
   Future<void> retomar(int hobbyId) => _cronometroRepo.retomar(hobbyId);
 
-  /// Termina o cronómetro e grava a sessão. Devolve a duração em segundos,
-  /// ou `null` se não havia cronómetro ativo (ou a duração era zero).
-  Future<int?> parar(int hobbyId) async {
+  /// Termina o cronómetro e grava a sessão. Devolve `null` se não havia
+  /// cronómetro ativo (ou a duração era zero).
+  Future<ResultadoParar?> parar(int hobbyId) async {
     final estado = await _cronometroRepo.remover(hobbyId);
     if (estado == null) return null;
 
     final duracao = estado.elapsedSegundos();
     if (duracao <= 0) return null;
 
-    await _sessaoRepo.guardar(
+    final sessaoId = await _sessaoRepo.guardar(
       SessaoRegistada()
         ..hobbyId = hobbyId
         ..inicio = estado.inicioSessao
         ..duracaoSegundos = duracao
         ..origem = OrigemSessao.cronometro,
     );
-    return duracao;
+    return ResultadoParar(sessaoId: sessaoId, duracaoSegundos: duracao);
   }
 }

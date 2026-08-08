@@ -21,4 +21,14 @@ class IsarSessaoRepository implements SessaoRepository {
         .sortByInicio()
         .watch(fireImmediately: true);
   }
+
+  @override
+  Future<void> atualizarNota(int sessaoId, String nota) async {
+    await _isar.writeTxn(() async {
+      final sessao = await _isar.sessaoRegistadas.get(sessaoId);
+      if (sessao == null) return;
+      sessao.nota = nota;
+      await _isar.sessaoRegistadas.put(sessao);
+    });
+  }
 }

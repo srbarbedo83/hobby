@@ -100,13 +100,20 @@ class _FakeSessaoRepository implements SessaoRepository {
 
   @override
   Future<int> guardar(SessaoRegistada sessao) async {
+    sessao.id = guardadas.length + 1;
     guardadas.add(sessao);
-    return guardadas.length;
+    return sessao.id;
   }
 
   @override
   Stream<List<SessaoRegistada>> watchPorHobby(int hobbyId) {
     return Stream.value(guardadas.where((s) => s.hobbyId == hobbyId).toList());
+  }
+
+  @override
+  Future<void> atualizarNota(int sessaoId, String nota) async {
+    final sessao = guardadas.where((s) => s.id == sessaoId).firstOrNull;
+    sessao?.nota = nota;
   }
 }
 
@@ -208,6 +215,7 @@ void main() {
 
     expect(find.text('Registar tempo — Leitura'), findsOneWidget);
 
+    await tester.enterText(find.widgetWithText(TextField, 'Nota (opcional)'), 'capítulo 3');
     await tester.tap(find.text('+15 min'));
     await tester.pumpAndSettle();
 
@@ -215,6 +223,7 @@ void main() {
     expect(sessaoRepo.guardadas.single.hobbyId, 1);
     expect(sessaoRepo.guardadas.single.origem, OrigemSessao.manual);
     expect(sessaoRepo.guardadas.single.duracaoSegundos, const Duration(minutes: 15).inSeconds);
+    expect(sessaoRepo.guardadas.single.nota, 'capítulo 3');
   });
 
   testWidgets('regista uma duração exata introduzida manualmente', (tester) async {
@@ -343,5 +352,49 @@ void main() {
 
     expect(find.text('50%'), findsOneWidget);
     expect(find.text('1:30:00 de 3:00:00 — esta semana'), findsOneWidget);
+  });
+
+  testWidgets('permite adicionar uma nota depois de parar o cronómetro', (tester) async {
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Piano'
+          ..icone = Icons.piano.codePoint
+          ..cor = 0xFF96691F
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+      );
+    final cronometroRepo = _FakeCronometroRepository()..backdate = const Duration(seconds: 65);
+    final sessaoRepo = _FakeSessaoRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(cronometroRepo),
+          sessaoRepositoryProvider.overrideWithValue(sessaoRepo),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.play_arrow));
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.stop));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Adicionar nota'), findsOneWidget);
+    await tester.tap(find.text('Adicionar nota'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).last, 'praticei escalas');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(sessaoRepo.guardadas, hasLength(1));
+    expect(sessaoRepo.guardadas.single.nota, 'praticei escalas');
   });
 }
