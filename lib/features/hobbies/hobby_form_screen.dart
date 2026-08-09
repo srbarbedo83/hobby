@@ -156,8 +156,11 @@ class _HobbyFormBodyState extends ConsumerState<_HobbyFormBody> {
             : null;
     }
 
-    final hobby = Hobby()
-      ..id = widget.inicial?.id ?? 0
+    // Reaproveita o objeto existente ao editar (mantém o id real atribuído
+    // pelo Isar); ao criar, o `id` fica no valor por omissão
+    // `Isar.autoIncrement`, para o Isar atribuir um id novo — nunca 0.
+    final hobby = widget.inicial ?? Hobby();
+    hobby
       ..nome = _nomeController.text.trim()
       ..icone = _icone
       ..cor = _cor.toARGB32()

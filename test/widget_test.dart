@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:isar_community/isar.dart' show Isar;
 
 import 'package:ritmo/app/app.dart';
 import 'package:ritmo/core/providers.dart';
@@ -14,11 +15,23 @@ import 'package:ritmo/data/repositories/cronometro_repository.dart';
 import 'package:ritmo/data/repositories/hobby_repository.dart';
 import 'package:ritmo/data/repositories/sessao_repository.dart';
 
+/// Reproduz o upsert-por-id do Isar real: um `id` novo (sentinel
+/// `Isar.autoIncrement`) recebe um id a sério; um `id` já existente
+/// substitui o registo em vez de duplicar — foi precisamente a ausência
+/// desta semântica na fake anterior que deixou passar um bug em que criar
+/// um segundo hobby sobrepunha sempre o primeiro.
 class _FakeHobbyRepository implements HobbyRepository {
   final List<Hobby> hobbies = [];
+  int _proximoId = 1;
+  final _controller = StreamController<List<Hobby>>.broadcast();
+
+  List<Hobby> get _ativos => hobbies.where((h) => h.ativo).toList();
 
   @override
-  Stream<List<Hobby>> watchAtivos() => Stream.value(hobbies);
+  Stream<List<Hobby>> watchAtivos() async* {
+    yield _ativos;
+    yield* _controller.stream;
+  }
 
   @override
   Future<Hobby?> obterPorId(int id) async =>
@@ -26,13 +39,23 @@ class _FakeHobbyRepository implements HobbyRepository {
 
   @override
   Future<int> guardar(Hobby hobby) async {
-    hobbies.add(hobby);
+    if (hobby.id == Isar.autoIncrement) {
+      hobby.id = _proximoId++;
+    }
+    final indice = hobbies.indexWhere((h) => h.id == hobby.id);
+    if (indice >= 0) {
+      hobbies[indice] = hobby;
+    } else {
+      hobbies.add(hobby);
+    }
+    _controller.add(_ativos);
     return hobby.id;
   }
 
   @override
   Future<void> arquivar(int id) async {
     hobbies.removeWhere((h) => h.id == id);
+    _controller.add(_ativos);
   }
 }
 
@@ -97,23 +120,27 @@ class _FakeCronometroRepository implements CronometroRepository {
 
 class _FakeSessaoRepository implements SessaoRepository {
   final List<SessaoRegistada> guardadas = [];
+  final _controller = StreamController<void>.broadcast();
 
   @override
   Future<int> guardar(SessaoRegistada sessao) async {
     sessao.id = guardadas.length + 1;
     guardadas.add(sessao);
+    _controller.add(null);
     return sessao.id;
   }
 
   @override
-  Stream<List<SessaoRegistada>> watchPorHobby(int hobbyId) {
-    return Stream.value(guardadas.where((s) => s.hobbyId == hobbyId).toList());
+  Stream<List<SessaoRegistada>> watchPorHobby(int hobbyId) async* {
+    yield guardadas.where((s) => s.hobbyId == hobbyId).toList();
+    yield* _controller.stream.map((_) => guardadas.where((s) => s.hobbyId == hobbyId).toList());
   }
 
   @override
   Future<void> atualizarNota(int sessaoId, String nota) async {
     final sessao = guardadas.where((s) => s.id == sessaoId).firstOrNull;
     sessao?.nota = nota;
+    _controller.add(null);
   }
 }
 
@@ -135,6 +162,34 @@ void main() {
 
     expect(find.text('Os teus hobbies'), findsOneWidget);
     expect(find.textContaining('Ainda não tens hobbies'), findsOneWidget);
+  });
+
+  testWidgets('criar um segundo hobby não sobrepõe o primeiro', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(_FakeHobbyRepository()),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(_FakeSessaoRepository()),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Future<void> criarHobby(String nome) async {
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextFormField, 'Nome'), nome);
+      await tester.tap(find.text('Guardar'));
+      await tester.pumpAndSettle();
+    }
+
+    await criarHobby('Piano');
+    await criarHobby('Guitarra');
+
+    expect(find.text('Piano'), findsOneWidget);
+    expect(find.text('Guitarra'), findsOneWidget);
   });
 
   testWidgets('inicia, pausa e termina um cronómetro, gravando a sessão', (tester) async {
