@@ -90,12 +90,31 @@ class _EstatisticasGrid extends StatelessWidget {
       childAspectRatio: 1.8,
       children: [
         _StatCard(rotulo: 'Total acumulado', valor: formatarDuracao(stats.totalSegundos), cor: cor),
+        _StatCard(rotulo: 'Esta semana', valor: formatarDuracao(stats.estaSemanaSegundos), cor: cor),
+        _StatCard(rotulo: 'Este mês', valor: formatarDuracao(stats.esteMesSegundos), cor: cor),
         _StatCard(rotulo: 'Média por semana', valor: formatarDuracao(stats.mediaSemanalSegundos), cor: cor),
+        _StatCard(rotulo: 'Média por sessão', valor: formatarDuracao(stats.mediaPorSessaoSegundos), cor: cor),
         _StatCard(rotulo: 'Sessão mais longa', valor: formatarDuracao(stats.sessaoMaisLongaSegundos), cor: cor),
+        _StatCard(rotulo: 'Sessão mais curta', valor: formatarDuracao(stats.sessaoMaisCurtaSegundos), cor: cor),
         _StatCard(rotulo: 'Nº de sessões', valor: '${stats.numeroSessoes}', cor: cor),
+        _StatCard(rotulo: 'Sessões por cronómetro', valor: '${stats.numeroSessoesCronometro}', cor: cor),
+        _StatCard(rotulo: 'Sessões manuais', valor: '${stats.numeroSessoesManual}', cor: cor),
+        _StatCard(rotulo: 'Dias com sessões', valor: '${stats.diasComSessoes}', cor: cor),
+        _StatCard(rotulo: 'Última sessão', valor: _formatarRelativo(stats.ultimaSessao), cor: cor),
       ],
     );
   }
+}
+
+String _formatarRelativo(DateTime? data) {
+  if (data == null) return '—';
+  final hoje = DateTime.now();
+  final dias = DateTime(hoje.year, hoje.month, hoje.day)
+      .difference(DateTime(data.year, data.month, data.day))
+      .inDays;
+  if (dias <= 0) return 'Hoje';
+  if (dias == 1) return 'Ontem';
+  return 'Há $dias dias';
 }
 
 class _StatCard extends StatelessWidget {
@@ -108,6 +127,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: ValueKey('stat_$rotulo'),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,

@@ -158,6 +158,16 @@ class _FakeSessaoRepository implements SessaoRepository {
   }
 }
 
+/// Encontra o texto [valor] dentro do cartão de estatística com [rotulo] —
+/// os cartões repetem valores entre si (ex. médias iguais), por isso uma
+/// pesquisa de texto solta pela tela ambígua.
+Finder _statValor(String rotulo, String valor) {
+  return find.descendant(
+    of: find.byKey(ValueKey('stat_$rotulo')),
+    matching: find.text(valor),
+  );
+}
+
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('pt_PT');
@@ -375,10 +385,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Estatísticas'), findsOneWidget);
-    expect(find.text('1:30:00'), findsOneWidget); // total acumulado
-    expect(find.text('45:00'), findsOneWidget); // média por semana
-    expect(find.text('1:00:00'), findsOneWidget); // sessão mais longa
-    expect(find.text('2'), findsOneWidget); // nº de sessões
+    // A sessão de há 10 dias nunca cai na semana ou no mês corrente com
+    // certeza absoluta perto da fronteira do mês, por isso "Este mês" fica
+    // de fora daqui — coberto de forma determinística em hobby_stats_test.dart.
+    expect(_statValor('Total acumulado', '1:30:00'), findsOneWidget);
+    expect(_statValor('Esta semana', '30:00'), findsOneWidget);
+    expect(_statValor('Média por semana', '45:00'), findsOneWidget);
+    expect(_statValor('Média por sessão', '45:00'), findsOneWidget);
+    expect(_statValor('Sessão mais longa', '1:00:00'), findsOneWidget);
+    expect(_statValor('Sessão mais curta', '30:00'), findsOneWidget);
+    expect(_statValor('Nº de sessões', '2'), findsOneWidget);
+    expect(_statValor('Sessões por cronómetro', '1'), findsOneWidget);
+    expect(_statValor('Sessões manuais', '1'), findsOneWidget);
+    expect(_statValor('Dias com sessões', '2'), findsOneWidget);
+    expect(_statValor('Última sessão', 'Hoje'), findsOneWidget);
   });
 
   testWidgets('ecrã de assiduidade mostra a percentagem cumprida da meta semanal', (tester) async {
