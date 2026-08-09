@@ -7,6 +7,8 @@ import '../hobbies/hobby_providers.dart';
 import 'heatmap_calendario.dart';
 import 'hobby_detail_providers.dart';
 import 'hobby_stats.dart';
+import 'livros_section.dart';
+import 'nivel_mestria_card.dart';
 import 'sessoes_recentes.dart';
 
 class HobbyDetailScreen extends ConsumerWidget {
@@ -56,6 +58,10 @@ class HobbyDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 8),
                   HeatmapCalendario(sessoes: sessoes, cor: cor),
                   const SizedBox(height: 28),
+                  Text('Nível', style: Theme.of(context).textTheme.labelLarge),
+                  const SizedBox(height: 8),
+                  NivelMestriaCard(totalSegundos: stats.totalSegundos, cor: cor),
+                  const SizedBox(height: 28),
                   Text('Estatísticas', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   _EstatisticasGrid(stats: stats, cor: cor),
@@ -63,6 +69,10 @@ class HobbyDetailScreen extends ConsumerWidget {
                   Text('Sessões recentes', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   SessoesRecentes(sessoes: sessoes, cor: cor),
+                  const SizedBox(height: 28),
+                  Text('Livros', style: Theme.of(context).textTheme.labelLarge),
+                  const SizedBox(height: 8),
+                  LivrosSection(hobbyId: hobbyId, cor: cor),
                 ],
               );
             },

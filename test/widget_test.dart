@@ -10,9 +10,11 @@ import 'package:ritmo/app/app.dart';
 import 'package:ritmo/core/providers.dart';
 import 'package:ritmo/data/local/estado_cronometro.dart';
 import 'package:ritmo/data/local/hobby.dart';
+import 'package:ritmo/data/local/livro.dart';
 import 'package:ritmo/data/local/sessao_registada.dart';
 import 'package:ritmo/data/repositories/cronometro_repository.dart';
 import 'package:ritmo/data/repositories/hobby_repository.dart';
+import 'package:ritmo/data/repositories/livro_repository.dart';
 import 'package:ritmo/data/repositories/sessao_repository.dart';
 
 /// Reproduz o upsert-por-id do Isar real: um `id` novo (sentinel
@@ -154,6 +156,39 @@ class _FakeSessaoRepository implements SessaoRepository {
   @override
   Future<void> apagar(int sessaoId) async {
     guardadas.removeWhere((s) => s.id == sessaoId);
+    _controller.add(null);
+  }
+}
+
+class _FakeLivroRepository implements LivroRepository {
+  final List<Livro> livros = [];
+  int _proximoId = 1;
+  final _controller = StreamController<void>.broadcast();
+
+  @override
+  Stream<List<Livro>> watchPorHobby(int hobbyId) async* {
+    yield livros.where((l) => l.hobbyId == hobbyId).toList();
+    yield* _controller.stream.map((_) => livros.where((l) => l.hobbyId == hobbyId).toList());
+  }
+
+  @override
+  Future<int> guardar(Livro livro) async {
+    if (livro.id == Isar.autoIncrement) {
+      livro.id = _proximoId++;
+    }
+    final indice = livros.indexWhere((l) => l.id == livro.id);
+    if (indice >= 0) {
+      livros[indice] = livro;
+    } else {
+      livros.add(livro);
+    }
+    _controller.add(null);
+    return livro.id;
+  }
+
+  @override
+  Future<void> apagar(int livroId) async {
+    livros.removeWhere((l) => l.id == livroId);
     _controller.add(null);
   }
 }
@@ -587,5 +622,62 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(sessaoRepo.guardadas, isEmpty);
+  });
+
+  testWidgets('permite adicionar, marcar como lido e apagar um livro', (tester) async {
+    tester.view.physicalSize = const Size(800, 3200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Leitura'
+          ..icone = Icons.menu_book.codePoint
+          ..cor = 0xFF2F6F5C
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+      );
+    final livroRepo = _FakeLivroRepository();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(_FakeSessaoRepository()),
+          livroRepositoryProvider.overrideWithValue(livroRepo),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Leitura'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Adicionar livro'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Título'), 'Duna');
+    await tester.enterText(find.widgetWithText(TextField, 'Autor (opcional)'), 'Frank Herbert');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(livroRepo.livros, hasLength(1));
+    expect(livroRepo.livros.single.titulo, 'Duna');
+    expect(livroRepo.livros.single.dataConclusao, isNull);
+    expect(find.text('Duna'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.radio_button_unchecked));
+    await tester.pumpAndSettle();
+
+    expect(livroRepo.livros.single.dataConclusao, isNotNull);
+
+    await tester.tap(find.byIcon(Icons.delete_outline).last);
+    await tester.pumpAndSettle();
+
+    expect(livroRepo.livros, isEmpty);
   });
 }

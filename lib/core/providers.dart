@@ -5,7 +5,9 @@ import '../data/repositories/cronometro_repository.dart';
 import '../data/repositories/hobby_repository.dart';
 import '../data/repositories/isar_cronometro_repository.dart';
 import '../data/repositories/isar_hobby_repository.dart';
+import '../data/repositories/isar_livro_repository.dart';
 import '../data/repositories/isar_sessao_repository.dart';
+import '../data/repositories/livro_repository.dart';
 import '../data/repositories/sessao_repository.dart';
 
 /// Sobreposto em `main()` com a instância já aberta — abrir o Isar é
@@ -26,4 +28,8 @@ final cronometroRepositoryProvider = Provider<CronometroRepository>((ref) {
 
 final sessaoRepositoryProvider = Provider<SessaoRepository>((ref) {
   return IsarSessaoRepository(ref.watch(isarProvider));
+});
+
+final livroRepositoryProvider = Provider<LivroRepository>((ref) {
+  return IsarLivroRepository(ref.watch(isarProvider));
 });
