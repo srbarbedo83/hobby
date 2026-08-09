@@ -31,4 +31,9 @@ class IsarSessaoRepository implements SessaoRepository {
       await _isar.sessaoRegistadas.put(sessao);
     });
   }
+
+  @override
+  Future<void> apagar(int sessaoId) async {
+    await _isar.writeTxn(() => _isar.sessaoRegistadas.delete(sessaoId));
+  }
 }

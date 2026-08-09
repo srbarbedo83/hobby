@@ -10,4 +10,6 @@ abstract class SessaoRepository {
   /// Anexa uma nota a uma sessão já gravada — usado quando o cronómetro
   /// pára e o utilizador só decide adicionar a nota depois, no snackbar.
   Future<void> atualizarNota(int sessaoId, String nota);
+
+  Future<void> apagar(int sessaoId);
 }

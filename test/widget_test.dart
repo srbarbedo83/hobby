@@ -120,12 +120,20 @@ class _FakeCronometroRepository implements CronometroRepository {
 
 class _FakeSessaoRepository implements SessaoRepository {
   final List<SessaoRegistada> guardadas = [];
+  int _proximoId = 1;
   final _controller = StreamController<void>.broadcast();
 
   @override
   Future<int> guardar(SessaoRegistada sessao) async {
-    sessao.id = guardadas.length + 1;
-    guardadas.add(sessao);
+    if (sessao.id == Isar.autoIncrement) {
+      sessao.id = _proximoId++;
+    }
+    final indice = guardadas.indexWhere((s) => s.id == sessao.id);
+    if (indice >= 0) {
+      guardadas[indice] = sessao;
+    } else {
+      guardadas.add(sessao);
+    }
     _controller.add(null);
     return sessao.id;
   }
@@ -140,6 +148,12 @@ class _FakeSessaoRepository implements SessaoRepository {
   Future<void> atualizarNota(int sessaoId, String nota) async {
     final sessao = guardadas.where((s) => s.id == sessaoId).firstOrNull;
     sessao?.nota = nota;
+    _controller.add(null);
+  }
+
+  @override
+  Future<void> apagar(int sessaoId) async {
+    guardadas.removeWhere((s) => s.id == sessaoId);
     _controller.add(null);
   }
 }
@@ -451,5 +465,107 @@ void main() {
 
     expect(sessaoRepo.guardadas, hasLength(1));
     expect(sessaoRepo.guardadas.single.nota, 'praticei escalas');
+  });
+
+  testWidgets('permite editar a duração de uma sessão já registada, seja cronómetro ou manual', (tester) async {
+    tester.view.physicalSize = const Size(800, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Piano'
+          ..icone = Icons.piano.codePoint
+          ..cor = 0xFF96691F
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+      );
+    final sessaoRepo = _FakeSessaoRepository()
+      ..guardadas.add(
+        SessaoRegistada()
+          ..id = 1
+          ..hobbyId = 1
+          ..inicio = DateTime.now()
+          ..duracaoSegundos = const Duration(minutes: 30).inSeconds
+          ..origem = OrigemSessao.cronometro,
+      );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(sessaoRepo),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Piano'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('sessao_1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar sessão'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Minutos'), '45');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(sessaoRepo.guardadas.single.duracaoSegundos, const Duration(minutes: 45).inSeconds);
+  });
+
+  testWidgets('permite apagar uma sessão a partir do editor', (tester) async {
+    tester.view.physicalSize = const Size(800, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Piano'
+          ..icone = Icons.piano.codePoint
+          ..cor = 0xFF96691F
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+      );
+    final sessaoRepo = _FakeSessaoRepository()
+      ..guardadas.add(
+        SessaoRegistada()
+          ..id = 1
+          ..hobbyId = 1
+          ..inicio = DateTime.now()
+          ..duracaoSegundos = const Duration(minutes: 30).inSeconds
+          ..origem = OrigemSessao.manual,
+      );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(sessaoRepo),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Piano'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('sessao_1')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apagar'));
+    await tester.pumpAndSettle();
+
+    expect(sessaoRepo.guardadas, isEmpty);
   });
 }
