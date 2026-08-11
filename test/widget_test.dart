@@ -379,6 +379,10 @@ void main() {
   });
 
   testWidgets('ecrã de detalhe mostra o heatmap e as estatísticas do hobby', (tester) async {
+    tester.view.physicalSize = const Size(800, 3600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     final hobbyRepo = _FakeHobbyRepository()
       ..hobbies.add(
         Hobby()

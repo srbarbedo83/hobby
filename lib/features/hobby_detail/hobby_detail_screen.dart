@@ -10,6 +10,8 @@ import 'hobby_stats.dart';
 import 'livros_section.dart';
 import 'nivel_mestria_card.dart';
 import 'sessoes_recentes.dart';
+import 'tendencia_chart.dart';
+import 'tendencia_semanal.dart';
 
 class HobbyDetailScreen extends ConsumerWidget {
   const HobbyDetailScreen({super.key, required this.hobbyId});
@@ -48,6 +50,7 @@ class HobbyDetailScreen extends ConsumerWidget {
             error: (err, _) => Center(child: Text('Erro a carregar sessões: $err')),
             data: (sessoes) {
               final stats = HobbyStats.calcular(sessoes);
+              final pontosTendencia = calcularTendenciaSemanal(sessoes);
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
@@ -57,6 +60,17 @@ class HobbyDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   HeatmapCalendario(sessoes: sessoes, cor: cor),
+                  const SizedBox(height: 28),
+                  Text('Tendência semanal', style: Theme.of(context).textTheme.labelLarge),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Linha tracejada = projeção pelo ritmo recente, não uma previsão a sério.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  TendenciaChart(pontos: pontosTendencia, cor: cor),
                   const SizedBox(height: 28),
                   Text('Nível', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
