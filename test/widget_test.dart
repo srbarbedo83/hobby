@@ -684,4 +684,166 @@ void main() {
 
     expect(livroRepo.livros, isEmpty);
   });
+
+  testWidgets('tocar num hobby na Assiduidade abre o ecrã de detalhe', (tester) async {
+    tester.view.physicalSize = const Size(800, 3600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Piano'
+          ..icone = Icons.piano.codePoint
+          ..cor = 0xFF96691F
+          ..ativo = true
+          ..criadoEm = DateTime.now()
+          ..meta = (Meta()
+            ..tipo = TipoMeta.semanal
+            ..valorMinutos = 180),
+      );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(_FakeSessaoRepository()),
+          livroRepositoryProvider.overrideWithValue(_FakeLivroRepository()),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Assiduidade'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Piano'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Estatísticas'), findsOneWidget);
+    expect(find.text('Nível'), findsOneWidget);
+  });
+
+  testWidgets('ecrã de Resumo mostra a evolução semanal de todos os hobbies', (tester) async {
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.addAll([
+        Hobby()
+          ..id = 1
+          ..nome = 'Piano'
+          ..icone = Icons.piano.codePoint
+          ..cor = 0xFF96691F
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+        Hobby()
+          ..id = 2
+          ..nome = 'Leitura'
+          ..icone = Icons.menu_book.codePoint
+          ..cor = 0xFF2F6F5C
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+      ]);
+    final sessaoRepo = _FakeSessaoRepository()
+      ..guardadas.addAll([
+        SessaoRegistada()
+          ..id = 1
+          ..hobbyId = 1
+          ..inicio = DateTime.now()
+          ..duracaoSegundos = 1800
+          ..origem = OrigemSessao.manual,
+        SessaoRegistada()
+          ..id = 2
+          ..hobbyId = 2
+          ..inicio = DateTime.now()
+          ..duracaoSegundos = 3600
+          ..origem = OrigemSessao.manual,
+      ]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(sessaoRepo),
+          livroRepositoryProvider.overrideWithValue(_FakeLivroRepository()),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Resumo'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Evolução semanal'), findsOneWidget);
+    expect(find.text('Piano'), findsOneWidget);
+    expect(find.text('Leitura'), findsOneWidget);
+  });
+
+  testWidgets('permite editar o dia em que uma sessão foi feita', (tester) async {
+    tester.view.physicalSize = const Size(800, 3600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final hobbyRepo = _FakeHobbyRepository()
+      ..hobbies.add(
+        Hobby()
+          ..id = 1
+          ..nome = 'Piano'
+          ..icone = Icons.piano.codePoint
+          ..cor = 0xFF96691F
+          ..ativo = true
+          ..criadoEm = DateTime.now(),
+      );
+    final sessaoRepo = _FakeSessaoRepository()
+      ..guardadas.add(
+        SessaoRegistada()
+          ..id = 1
+          ..hobbyId = 1
+          ..inicio = DateTime(2024, 1, 10, 18, 30)
+          ..duracaoSegundos = const Duration(minutes: 30).inSeconds
+          ..origem = OrigemSessao.manual,
+      );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          hobbyRepositoryProvider.overrideWithValue(hobbyRepo),
+          cronometroRepositoryProvider.overrideWithValue(_FakeCronometroRepository()),
+          sessaoRepositoryProvider.overrideWithValue(sessaoRepo),
+          livroRepositoryProvider.overrideWithValue(_FakeLivroRepository()),
+        ],
+        child: const RitmoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Piano'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('sessao_1')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.calendar_today_outlined));
+    await tester.pumpAndSettle();
+
+    // O seletor abre em janeiro de 2024 (mês da sessão) — escolhe o dia 15.
+    await tester.tap(find.text('15'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    final inicio = sessaoRepo.guardadas.single.inicio;
+    expect(inicio.year, 2024);
+    expect(inicio.month, 1);
+    expect(inicio.day, 15);
+    // A hora original mantém-se — só o dia é que muda.
+    expect(inicio.hour, 18);
+    expect(inicio.minute, 30);
+  });
 }

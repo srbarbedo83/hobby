@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/providers.dart';
 import '../../data/local/sessao_registada.dart';
@@ -32,6 +33,7 @@ class _EditarSessaoSheetState extends ConsumerState<EditarSessaoSheet> {
   late final TextEditingController _horasController;
   late final TextEditingController _minutosController;
   late final TextEditingController _notaController;
+  late DateTime _dia;
   bool _aProcessar = false;
 
   @override
@@ -41,6 +43,28 @@ class _EditarSessaoSheetState extends ConsumerState<EditarSessaoSheet> {
     _horasController = TextEditingController(text: '${duracao.inHours}');
     _minutosController = TextEditingController(text: '${duracao.inMinutes.remainder(60)}');
     _notaController = TextEditingController(text: widget.sessao.nota ?? '');
+    _dia = widget.sessao.inicio;
+  }
+
+  Future<void> _escolherDia() async {
+    final escolhido = await showDatePicker(
+      context: context,
+      initialDate: _dia,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (escolhido == null) return;
+    setState(() {
+      // Mantém a hora original, só corrige o dia.
+      _dia = DateTime(
+        escolhido.year,
+        escolhido.month,
+        escolhido.day,
+        _dia.hour,
+        _dia.minute,
+        _dia.second,
+      );
+    });
   }
 
   @override
@@ -66,6 +90,7 @@ class _EditarSessaoSheetState extends ConsumerState<EditarSessaoSheet> {
     final nota = _notaController.text.trim();
     widget.sessao
       ..duracaoSegundos = segundos
+      ..inicio = _dia
       ..nota = nota.isEmpty ? null : nota;
     await ref.read(sessaoRepositoryProvider).guardar(widget.sessao);
     if (mounted) Navigator.of(context).pop();
@@ -122,6 +147,12 @@ class _EditarSessaoSheetState extends ConsumerState<EditarSessaoSheet> {
             ],
           ),
           const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _aProcessar ? null : _escolherDia,
+            icon: const Icon(Icons.calendar_today_outlined, size: 18),
+            label: Text(DateFormat('EEEE, d MMM yyyy', 'pt_PT').format(_dia)),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(

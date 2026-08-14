@@ -5,6 +5,7 @@ import '../../core/format/duration_formatter.dart';
 import '../../data/local/hobby.dart';
 import '../hobbies/hobby_providers.dart';
 import '../hobby_detail/hobby_detail_providers.dart';
+import '../hobby_detail/hobby_detail_screen.dart';
 import 'assiduidade_calculator.dart';
 
 class AdherenceScreen extends ConsumerWidget {
@@ -81,57 +82,70 @@ class _AdherenceTile extends ConsumerWidget {
         final excedente =
             assiduidade.percentagem > 100 ? assiduidade.percentagem.round() - 100 : null;
 
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        return Material(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
+          child: InkWell(
             borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => HobbyDetailScreen(hobbyId: hobby.id)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: Text(hobby.nome, style: Theme.of(context).textTheme.titleMedium)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(hobby.nome, style: Theme.of(context).textTheme.titleMedium),
+                      ),
+                      Text(
+                        '${assiduidade.percentagem.round()}%',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: cor,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                      ),
+                      if (excedente != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration:
+                              BoxDecoration(color: cor, borderRadius: BorderRadius.circular(4)),
+                          child: Text(
+                            '+$excedente%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progresso,
+                      minHeight: 8,
+                      backgroundColor: cor.withValues(alpha: 0.15),
+                      color: cor,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   Text(
-                    '${assiduidade.percentagem.round()}%',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: cor,
-                          fontWeight: FontWeight.w700,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                    '${_formatarRealizadoAlvo(assiduidade)} — ${_rotuloPeriodo(assiduidade.periodo)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
-                  if (excedente != null) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: cor, borderRadius: BorderRadius.circular(4)),
-                      child: Text(
-                        '+$excedente%',
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
                 ],
               ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progresso,
-                  minHeight: 8,
-                  backgroundColor: cor.withValues(alpha: 0.15),
-                  color: cor,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${_formatarRealizadoAlvo(assiduidade)} — ${_rotuloPeriodo(assiduidade.periodo)}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            ],
+            ),
           ),
         );
       },
