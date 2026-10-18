@@ -202,13 +202,23 @@ class SettingsScreen extends ConsumerWidget {
                 TextFormField(
                   initialValue: settings.rpcUrl,
                   decoration: const InputDecoration(
-                    labelText: 'RPC URL (Alchemy / Infura / QuickNode)',
+                    labelText:
+                        'RPC URL (Alchemy / Infura / QuickNode) — optional',
                   ),
                   onChanged: (v) => ref
                       .read(appSettingsProvider.notifier)
                       .update((s) => s.copyWith(rpcUrl: v)),
                 ),
                 const SizedBox(height: 6),
+                const Text(
+                  'Optional — only used to show the real gas cost (and gas break-even) '
+                  'on the detail screen, by reading the receipts of your position\'s '
+                  'transactions. Must point to the same chain as one of your selected '
+                  'chains above; leave empty to skip. Not used for anything else — '
+                  'positions always come from the subgraph.',
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                ),
+                const SizedBox(height: 4),
                 const Text(
                   'Stored only on this device. Never your seed phrase or private key — '
                   'this app is read-only.',

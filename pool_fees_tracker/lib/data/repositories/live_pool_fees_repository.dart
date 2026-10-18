@@ -7,6 +7,7 @@ import '../local/chain.dart';
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
 import '../local/position_event.dart';
+import '../remote/eth_rpc_client.dart';
 import '../remote/uniswap_subgraph_client.dart';
 import 'pool_fees_repository.dart';
 import 'wallet_repository.dart';
@@ -33,10 +34,16 @@ import 'wallet_repository.dart';
 ///   sqrt-price, nem o preço histórico no momento de cada depósito/saque).
 ///   As fees — o número em destaque na app — não são afetadas por esta
 ///   aproximação.
-/// - `gasCostUsd` fica a 0: o subgraph não guarda o custo de gás pago pelo
-///   dono; isso exigiria ler o histórico de transações da wallet (ex.
-///   API de um explorador). O break-even de gás no ecrã de detalhe não é
-///   fiável em modo live até isto ser implementado.
+/// - `gasCostUsd` fica a 0 no modelo persistido (o subgraph não guarda
+///   custo de gás). Quando há um RPC URL configurado nas Definições, e
+///   esse RPC responde pela MESMA chain da posição (confirmado via
+///   `eth_chainId` — um endpoint só serve uma chain, mas o utilizador pode
+///   ter várias selecionadas), [getGasCostUsd] lê os recibos das
+///   transações da posição (mint/collects/burn, cujos hashes já vêm de
+///   [getEvents]) e soma `gasUsed × effectiveGasPrice` a sério — ver
+///   `EthRpcClient`. Sem RPC configurado, ou em Polygon (gás pago em
+///   MATIC, sem fonte de preço de MATIC ligada), devolve `null` e o ecrã
+///   de detalhe cai para o valor persistido (0).
 /// - `closedAt` fica `null`: o subgraph não dá diretamente o timestamp em
 ///   que uma posição fechou (seria preciso o evento `Burn` mais recente
 ///   dessa posição). O ecrã de Pools mostra "Closed" sem data nesse caso.
@@ -60,22 +67,27 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   final WalletRepository _walletRepository;
   final Isar _isar;
   final Map<Chain, UniswapSubgraphClient> _clients;
+  final EthRpcClient? _rpcClient;
 
   List<PoolPosition> _positions = [];
   final Map<String, String> _poolIdByPositionKey = {};
   final Map<String, Chain> _chainByPositionKey = {};
+  final Map<Chain, double> _ethPriceUsdByChain = {};
   final StreamController<List<PoolPosition>> _controller =
       StreamController.broadcast();
   DateTime? _lastUpdatedAt;
   Timer? _autoRefreshTimer;
   bool _refreshing = false;
+  Future<Chain?>? _rpcChainFuture;
 
   LivePoolFeesRepository({
     required List<Chain> chains,
     required String apiKey,
     required WalletRepository walletRepository,
     required Isar isar,
+    String rpcUrl = '',
     Map<Chain, UniswapSubgraphClient>? clients,
+    EthRpcClient? rpcClient,
   }) : _walletRepository = walletRepository,
        _isar = isar,
        _clients =
@@ -83,7 +95,9 @@ class LivePoolFeesRepository implements PoolFeesRepository {
            {
              for (final chain in chains)
                chain: UniswapSubgraphClient(chain: chain, apiKey: apiKey),
-           } {
+           },
+       _rpcClient =
+           rpcClient ?? (rpcUrl.isEmpty ? null : EthRpcClient(rpcUrl: rpcUrl)) {
     _loadCachedThenRefresh();
   }
 
@@ -149,6 +163,34 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         .toList();
   }
 
+  /// Custo real de gás de uma posição, em USD — `null` quando não há como
+  /// calculá-lo (sem RPC configurado, RPC de outra chain, ou Polygon). Ver
+  /// a nota sobre `gasCostUsd` no topo do ficheiro.
+  @override
+  Future<double?> getGasCostUsd(String positionKey) async {
+    final rpcClient = _rpcClient;
+    final positionChain = _chainByPositionKey[positionKey];
+    if (rpcClient == null || positionChain == null) return null;
+    // O gás é pago em MATIC em Polygon, não em ETH — não temos uma fonte
+    // de preço de MATIC ligada, por isso não arriscamos um número errado.
+    if (positionChain == Chain.polygon) return null;
+
+    final rpcChain = await (_rpcChainFuture ??= rpcClient.detectChain());
+    if (rpcChain != positionChain) return null;
+
+    final events = await getEvents(positionKey);
+    final txHashes = events
+        .map((e) => e.txHash)
+        .whereType<String>()
+        .toSet()
+        .toList();
+    if (txHashes.isEmpty) return 0;
+
+    final gasWei = await rpcClient.fetchGasCostWei(txHashes);
+    final ethPriceUsd = _ethPriceUsdByChain[positionChain] ?? 0;
+    return tokenAmountToDouble(gasWei, 18) * ethPriceUsd;
+  }
+
   @override
   Future<void> refreshNow() async {
     if (_refreshing) return;
@@ -169,6 +211,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         final chain = entry.key;
         final client = entry.value;
         final result = await client.fetchPositions(owners);
+        _ethPriceUsdByChain[chain] = result.ethPriceUsd;
 
         for (final raw in result.positions) {
           final position = _mapPosition(chain, raw, result.ethPriceUsd);
@@ -219,6 +262,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     for (final client in _clients.values) {
       client.dispose();
     }
+    _rpcClient?.dispose();
   }
 
   PoolPosition _mapPosition(Chain chain, RawPosition raw, double ethPriceUsd) {

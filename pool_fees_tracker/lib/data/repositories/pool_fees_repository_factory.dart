@@ -21,6 +21,7 @@ PoolFeesRepository createPoolFeesRepository({
       apiKey: settings.subgraphApiKey,
       walletRepository: walletRepository,
       isar: isar,
+      rpcUrl: settings.rpcUrl,
     );
   }
   return DemoPoolFeesRepository();

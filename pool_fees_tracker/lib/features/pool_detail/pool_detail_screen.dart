@@ -78,9 +78,11 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
 
     final snapshots = snapshotsAsync.value?[widget.positionKey] ?? const [];
     final formatter = CurrencyFormatter(settings.currencyCode);
+    final gasCostUsd = ref.watch(gasCostUsdProvider(widget.positionKey)).value;
     final metrics = computePoolMetrics(
       position: position,
       snapshots: snapshots,
+      gasCostUsdOverride: gasCostUsd,
     );
     final bars = aggregateFeeSnapshots(
       snapshots: snapshots,
@@ -253,11 +255,14 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     valueColor: metrics.gasBreakEven.reached
                         ? AppColors.positive
                         : AppColors.textPrimary,
-                    caption: metrics.gasBreakEven.reached
-                        ? 'fees > gas cost'
-                        : metrics.gasBreakEven.estimatedDaysRemaining != null
-                        ? '~${metrics.gasBreakEven.estimatedDaysRemaining}d left at current rate'
-                        : 'left to cover gas',
+                    caption:
+                        (metrics.gasBreakEven.reached
+                            ? 'fees > gas cost'
+                            : metrics.gasBreakEven.estimatedDaysRemaining !=
+                                  null
+                            ? '~${metrics.gasBreakEven.estimatedDaysRemaining}d left at current rate'
+                            : 'left to cover gas') +
+                        (gasCostUsd != null ? ' · on-chain' : ''),
                   ),
                 ),
                 const SizedBox(width: 10),

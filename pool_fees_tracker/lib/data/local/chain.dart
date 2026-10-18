@@ -47,4 +47,22 @@ extension ChainInfo on Chain {
     Chain.optimism => 'Cghf4LfVqPiFw6fp6Y5X5Ubc8UpmUhSfJL82zwiBFLaj',
     Chain.polygon => '3hCPRGf4z88VC5rsBKU5AA9FBBq5nF3jbKJG7VZCbhjm',
   };
+
+  /// EVM chain id (EIP-155) — usado para confirmar a que chain um RPC URL
+  /// responde de facto (`eth_chainId`), já que o utilizador só configura
+  /// um URL e pode ter várias chains selecionadas.
+  int get evmChainId => switch (this) {
+    Chain.ethereum => 1,
+    Chain.arbitrum => 42161,
+    Chain.base => 8453,
+    Chain.optimism => 10,
+    Chain.polygon => 137,
+  };
+}
+
+Chain? chainFromEvmChainId(int id) {
+  for (final chain in Chain.values) {
+    if (chain.evmChainId == id) return chain;
+  }
+  return null;
 }

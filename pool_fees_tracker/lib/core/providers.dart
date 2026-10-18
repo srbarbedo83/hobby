@@ -102,3 +102,13 @@ final alertLogProvider = FutureProvider((ref) {
       .sortByFiredAtDesc()
       .findAll();
 });
+
+/// Custo real de gás de uma posição, quando disponível (ver
+/// `LivePoolFeesRepository.getGasCostUsd`) — `null` em Demo, sem RPC
+/// configurado, ou se o RPC configurado não for desta chain.
+final gasCostUsdProvider = FutureProvider.family<double?, String>((
+  ref,
+  positionKey,
+) {
+  return ref.watch(poolFeesRepositoryProvider).getGasCostUsd(positionKey);
+});

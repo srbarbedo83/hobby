@@ -20,6 +20,12 @@ abstract class PoolFeesRepository {
   /// uma posição, mais recente primeiro.
   Future<List<PositionEvent>> getEvents(String positionKey);
 
+  /// Custo real de gás da posição, em USD, quando há forma de calculá-lo
+  /// (só [LivePoolFeesRepository], com RPC configurado — ver a nota em
+  /// `live_pool_fees_repository.dart`). `null` quando não há — o chamador
+  /// usa então o valor persistido em [PoolPosition.gasCostUsd].
+  Future<double?> getGasCostUsd(String positionKey);
+
   /// Força uma atualização imediata (pull-to-refresh).
   Future<void> refreshNow();
 

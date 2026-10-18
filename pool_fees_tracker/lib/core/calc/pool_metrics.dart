@@ -37,8 +37,14 @@ PoolMetrics computePoolMetrics({
   required PoolPosition position,
   required List<FeeSnapshot> snapshots,
   DateTime? now,
+
+  /// Substitui `position.gasCostUsd` quando um valor real está disponível
+  /// (RPC configurado, em modo Live — ver `LivePoolFeesRepository.
+  /// getGasCostUsd`). `null` usa o valor persistido na posição.
+  double? gasCostUsdOverride,
 }) {
   final effectiveNow = now ?? DateTime.now();
+  final effectiveGasCostUsd = gasCostUsdOverride ?? position.gasCostUsd;
 
   final last7dCutoff = effectiveNow.subtract(const Duration(days: 7));
   final sumLast7d = snapshots
@@ -75,7 +81,7 @@ PoolMetrics computePoolMetrics({
     ),
     gasBreakEven: computeGasBreakEven(
       feesTotalUsd: position.feesTotalUsd,
-      gasCostUsd: position.gasCostUsd,
+      gasCostUsd: effectiveGasCostUsd,
       avgDailyFeeUsd: avgDailyFeeUsd,
     ),
     projection: projectFromDailyRate(

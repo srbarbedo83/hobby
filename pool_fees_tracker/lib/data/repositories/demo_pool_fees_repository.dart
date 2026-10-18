@@ -48,6 +48,13 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
   }
 
   @override
+  Future<double?> getGasCostUsd(String positionKey) async {
+    // Em Demo não há RPC nem transações reais — o valor sintético já
+    // definido em PoolPosition.gasCostUsd é a única fonte.
+    return null;
+  }
+
+  @override
   Future<void> refreshNow() async => _tickLive();
 
   @override
