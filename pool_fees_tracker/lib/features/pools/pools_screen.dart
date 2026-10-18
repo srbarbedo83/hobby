@@ -10,6 +10,7 @@ import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
 import '../../shared/widgets/pool_row_tile.dart';
 import '../../shared/widgets/segmented_pill_control.dart';
+import '../../shared/widgets/token_pair_icon.dart';
 import '../pool_detail/pool_detail_screen.dart';
 
 enum _SortBy { fees, apr, age }
@@ -38,7 +39,13 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
     final positionsAsync = ref.watch(positionsStreamProvider);
     final snapshotsAsync = ref.watch(allFeeSnapshotsProvider);
 
-    final positions = [...positionsAsync.value ?? const <PoolPosition>[]];
+    final allPositions = positionsAsync.value ?? const <PoolPosition>[];
+    final positions = allPositions.where((p) => !p.isClosed).toList();
+    final closedPositions = allPositions.where((p) => p.isClosed).toList()
+      ..sort(
+        (a, b) =>
+            (b.closedAt ?? b.createdAt).compareTo(a.closedAt ?? a.createdAt),
+      );
     final snapshots =
         snapshotsAsync.value ?? const <String, List<FeeSnapshot>>{};
     final formatter = CurrencyFormatter(settings.currencyCode);
@@ -86,41 +93,69 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
             ),
             const SizedBox(height: 14),
             Expanded(
-              child: positions.isEmpty
+              child: positions.isEmpty && closedPositions.isEmpty
                   ? const Center(
                       child: Text(
                         'No pools yet',
                         style: TextStyle(color: AppColors.textSecondary),
                       ),
                     )
-                  : ListView.separated(
-                      itemCount: positions.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final position = positions[index];
-                        return PoolRowTile(
-                          position: position,
-                          rangeHealth: computeRangeHealth(
-                            tickLower: position.tickLower,
-                            tickUpper: position.tickUpper,
-                            currentTick: position.currentTick,
-                          ),
-                          sparklineValues: aggregateFeeSnapshots(
-                            snapshots:
-                                snapshots[position.positionKey] ?? const [],
-                            range: ChartRange.last7d,
-                            groupBy: ChartGroupBy.day,
-                          ).map((b) => b.valueUsd).toList(),
-                          formatter: formatter,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => PoolDetailScreen(
-                                positionKey: position.positionKey,
+                  : ListView(
+                      children: [
+                        for (final position in positions) ...[
+                          PoolRowTile(
+                            position: position,
+                            rangeHealth: computeRangeHealth(
+                              tickLower: position.tickLower,
+                              tickUpper: position.tickUpper,
+                              currentTick: position.currentTick,
+                            ),
+                            sparklineValues: aggregateFeeSnapshots(
+                              snapshots:
+                                  snapshots[position.positionKey] ?? const [],
+                              range: ChartRange.last7d,
+                              groupBy: ChartGroupBy.day,
+                            ).map((b) => b.valueUsd).toList(),
+                            formatter: formatter,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => PoolDetailScreen(
+                                  positionKey: position.positionKey,
+                                ),
                               ),
                             ),
                           ),
-                        );
-                      },
+                          const SizedBox(height: 10),
+                        ],
+                        if (closedPositions.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'CLOSED (still counted in lifetime total)'
+                                .toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.6,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          for (final position in closedPositions) ...[
+                            _ClosedPositionRow(
+                              position: position,
+                              formatter: formatter,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => PoolDetailScreen(
+                                    positionKey: position.positionKey,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ],
+                      ],
                     ),
             ),
           ],
@@ -140,5 +175,85 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
     return position.liquidityUsd > 0
         ? (feesLast7d / position.liquidityUsd) * (365 / 7) * 100
         : 0;
+  }
+}
+
+/// Linha simplificada para uma posição fechada — sem range/sparkline
+/// (deixaram de fazer sentido), só o par, há quanto tempo fechou, e o total
+/// vitalício de fees que ainda conta para o dashboard.
+class _ClosedPositionRow extends StatelessWidget {
+  final PoolPosition position;
+  final CurrencyFormatter formatter;
+  final VoidCallback? onTap;
+
+  const _ClosedPositionRow({
+    required this.position,
+    required this.formatter,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final closedAt = position.closedAt;
+    final daysAgo = closedAt == null
+        ? null
+        : DateTime.now().difference(closedAt).inDays;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Opacity(
+              opacity: 0.55,
+              child: TokenPairIcon(
+                token0: position.token0Symbol,
+                token1: position.token1Symbol,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${position.token0Symbol} / ${position.token1Symbol}',
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    daysAgo != null ? 'Closed ${daysAgo}d ago' : 'Closed',
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              formatter.format(position.feesTotalUsd),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

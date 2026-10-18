@@ -32,10 +32,14 @@ class DashboardScreen extends ConsumerWidget {
     final snapshots =
         snapshotsAsync.value ?? const <String, List<FeeSnapshot>>{};
     final formatter = CurrencyFormatter(settings.currencyCode);
+    // O total de fees conta TODAS as posições, incluindo as já fechadas —
+    // só a lista "Your Pools" abaixo mostra apenas as abertas.
     final metrics = computeDashboardMetrics(
       positions: positions,
       snapshotsByKey: snapshots,
     );
+    final openPositions = positions.where((p) => !p.isClosed).toList();
+    final closedCount = positions.length - openPositions.length;
     final walletLabel = walletsAsync.value?.isNotEmpty == true
         ? walletsAsync.value!.first.label
         : '0x7a3f…9c21 (demo)';
@@ -95,7 +99,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '${positions.length} pools',
+                  '${openPositions.length} pools',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -104,7 +108,7 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 10),
-            for (final position in positions) ...[
+            for (final position in openPositions) ...[
               PoolRowTile(
                 position: position,
                 rangeHealth: computeRangeHealth(
@@ -125,6 +129,18 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
             ],
+            if (closedCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '+ $closedCount closed position${closedCount > 1 ? 's' : ''} — '
+                  'still counted in the total above. See Pools tab.',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

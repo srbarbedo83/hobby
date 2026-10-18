@@ -14,20 +14,31 @@ import 'wallet_repository.dart';
 /// calcula fees não reclamadas com a mesma fórmula do contrato
 /// (`univ3_fee_math.dart`), sem precisar de uma chamada RPC.
 ///
-/// Duas aproximações conhecidas, por não serem o foco do pedido original
+/// Inclui posições já FECHADAS (liquidez removida): continuam a contar
+/// para o total vitalício de fees do dashboard, só deixam de aparecer na
+/// lista "Your Pools" — ver `PoolPosition.isClosed` e o ecrã de Pools.
+///
+/// Aproximações conhecidas, por não serem o foco do pedido original
 /// (acompanhar fees) e por implicarem bastante mais superfície:
-/// - `liquidityUsd`/`initialLiquidityUsd` usam os montantes depositados a
-///   preço ATUAL (não o valor exato da posição agora, que precisaria da
-///   fórmula `getAmountsForLiquidity` com sqrt-price). As fees — o número
-///   em destaque na app — não são afetadas por esta aproximação.
+/// - `liquidityUsd`/`initialLiquidityUsd` usam os montantes depositados
+///   menos os retirados, a preço ATUAL (não o valor exato da posição
+///   agora, que precisaria da fórmula `getAmountsForLiquidity` com
+///   sqrt-price, nem o preço histórico no momento de cada depósito/saque).
+///   As fees — o número em destaque na app — não são afetadas por esta
+///   aproximação.
 /// - `gasCostUsd` fica a 0: o subgraph não guarda o custo de gás pago pelo
 ///   dono; isso exigiria ler o histórico de transações da wallet (ex.
 ///   API de um explorador). O break-even de gás no ecrã de detalhe não é
 ///   fiável em modo live até isto ser implementado.
+/// - `closedAt` fica `null`: o subgraph não dá diretamente o timestamp em
+///   que uma posição fechou (seria preciso o evento `Burn` mais recente
+///   dessa posição). O ecrã de Pools mostra "Closed" sem data nesse caso.
 /// - O histórico por posição (para o gráfico de barras) é alocado a partir
 ///   do histórico da POOL (`poolHourData`/`poolDayData`), repartido pela
 ///   quota de liquidez da posição — o subgraph não guarda uma série
-///   temporal por posição.
+///   temporal por posição. Para uma posição fechada isto já não é possível
+///   (a quota atual seria 0), por isso o histórico fica congelado no que já
+///   estava em cache a partir do momento em que fechou.
 ///
 /// Nunca testado contra um endpoint real nesta sessão (sem API key
 /// disponível) — valide com uma Subgraph API key antes de confiar nos
@@ -93,7 +104,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         return;
       }
 
-      final result = await _client.fetchOpenPositions(
+      final result = await _client.fetchPositions(
         wallets.map((w) => w.address).toList(),
       );
       final now = DateTime.now();
@@ -101,11 +112,16 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       for (final raw in result.positions) {
         final position = _mapPosition(raw, result.ethPriceUsd);
         mapped.add(position);
-        await _refreshHistoryForPosition(
-          raw: raw,
-          position: position,
-          now: now,
-        );
+        // Uma posição fechada já não tem quota da pool (liquidity == 0) —
+        // não há como alocar-lhe fees novas, por isso o seu histórico fica
+        // congelado no que já estava guardado em Isar.
+        if (!position.isClosed) {
+          await _refreshHistoryForPosition(
+            raw: raw,
+            position: position,
+            now: now,
+          );
+        }
       }
 
       await _isar.writeTxn(() async {
@@ -161,8 +177,16 @@ class LivePoolFeesRepository implements PoolFeesRepository {
             price0 +
         tokenAmountToDouble(unclaimed.owed1, raw.pool.token1.decimals) * price1;
 
-    final depositedUsd =
+    final initialUsd =
         raw.depositedToken0 * price0 + raw.depositedToken1 * price1;
+    // Líquido = depositado - retirado. Nunca negativo: arredondamentos do
+    // subgraph podem passar ligeiramente de 0 numa posição já fechada.
+    final netToken0 = raw.depositedToken0 - raw.withdrawnToken0;
+    final netToken1 = raw.depositedToken1 - raw.withdrawnToken1;
+    final currentUsd = (netToken0 * price0 + netToken1 * price1).clamp(
+      0.0,
+      double.infinity,
+    );
     final claimedUsd =
         raw.collectedFeesToken0 * price0 + raw.collectedFeesToken1 * price1;
 
@@ -178,11 +202,13 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       ..tickLower = raw.tickLower.tickIdx
       ..tickUpper = raw.tickUpper.tickIdx
       ..currentTick = raw.pool.tick
-      ..liquidityUsd = depositedUsd
-      ..initialLiquidityUsd = depositedUsd
+      ..liquidityUsd = raw.isClosed ? 0 : currentUsd
+      ..initialLiquidityUsd = initialUsd
       ..feesClaimedUsd = claimedUsd
       ..feesUnclaimedUsd = unclaimedUsd
-      ..gasCostUsd = 0;
+      ..gasCostUsd = 0
+      ..isClosed = raw.isClosed
+      ..closedAt = null;
   }
 
   Future<void> _refreshHistoryForPosition({

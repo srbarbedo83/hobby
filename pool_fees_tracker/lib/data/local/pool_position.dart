@@ -52,6 +52,18 @@ class PoolPosition {
   /// Custo total de gás gasto nesta posição (mint + adds + collects), em USD.
   late double gasCostUsd;
 
+  /// Verdadeiro quando toda a liquidez foi removida (posição fechada/NFT
+  /// com `liquidity == 0`). Uma posição fechada deixa de aparecer na lista
+  /// de "Your Pools" (não faz sentido mostrar range/APR dela), mas as suas
+  /// fees continuam a contar para o total vitalício — ver nota em
+  /// [dashboard_metrics.dart].
+  bool isClosed = false;
+
+  /// Quando a posição foi fechada, se conhecido. Em modo Live fica `null`
+  /// (o subgraph não guarda isso de forma simples — ver nota em
+  /// `live_pool_fees_repository.dart`); em modo Demo é preenchido.
+  DateTime? closedAt;
+
   double get feesTotalUsd => feesClaimedUsd + feesUnclaimedUsd;
 
   double get feeTierPct => feeTierBps / 10000;

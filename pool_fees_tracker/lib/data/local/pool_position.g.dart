@@ -23,88 +23,94 @@ const PoolPositionSchema = CollectionSchema(
       type: IsarType.string,
       enumMap: _PoolPositionchainEnumValueMap,
     ),
-    r'createdAt': PropertySchema(
+    r'closedAt': PropertySchema(
       id: 1,
+      name: r'closedAt',
+      type: IsarType.dateTime,
+    ),
+    r'createdAt': PropertySchema(
+      id: 2,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'currentTick': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'currentTick',
       type: IsarType.long,
     ),
     r'feeTierBps': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'feeTierBps',
       type: IsarType.long,
     ),
     r'feeTierPct': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'feeTierPct',
       type: IsarType.double,
     ),
     r'feesClaimedUsd': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'feesClaimedUsd',
       type: IsarType.double,
     ),
     r'feesTotalUsd': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'feesTotalUsd',
       type: IsarType.double,
     ),
     r'feesUnclaimedUsd': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'feesUnclaimedUsd',
       type: IsarType.double,
     ),
     r'gasCostUsd': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'gasCostUsd',
       type: IsarType.double,
     ),
     r'initialLiquidityUsd': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'initialLiquidityUsd',
       type: IsarType.double,
     ),
+    r'isClosed': PropertySchema(id: 11, name: r'isClosed', type: IsarType.bool),
     r'liquidityUsd': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'liquidityUsd',
       type: IsarType.double,
     ),
     r'positionKey': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'positionKey',
       type: IsarType.string,
     ),
     r'tickLower': PropertySchema(
-      id: 12,
+      id: 14,
       name: r'tickLower',
       type: IsarType.long,
     ),
     r'tickUpper': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'tickUpper',
       type: IsarType.long,
     ),
     r'token0Symbol': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'token0Symbol',
       type: IsarType.string,
     ),
     r'token1Symbol': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'token1Symbol',
       type: IsarType.string,
     ),
     r'tokenIdOnChain': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'tokenIdOnChain',
       type: IsarType.string,
     ),
     r'walletAddress': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'walletAddress',
       type: IsarType.string,
     ),
@@ -174,23 +180,25 @@ void _poolPositionSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeString(offsets[0], object.chain.name);
-  writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeLong(offsets[2], object.currentTick);
-  writer.writeLong(offsets[3], object.feeTierBps);
-  writer.writeDouble(offsets[4], object.feeTierPct);
-  writer.writeDouble(offsets[5], object.feesClaimedUsd);
-  writer.writeDouble(offsets[6], object.feesTotalUsd);
-  writer.writeDouble(offsets[7], object.feesUnclaimedUsd);
-  writer.writeDouble(offsets[8], object.gasCostUsd);
-  writer.writeDouble(offsets[9], object.initialLiquidityUsd);
-  writer.writeDouble(offsets[10], object.liquidityUsd);
-  writer.writeString(offsets[11], object.positionKey);
-  writer.writeLong(offsets[12], object.tickLower);
-  writer.writeLong(offsets[13], object.tickUpper);
-  writer.writeString(offsets[14], object.token0Symbol);
-  writer.writeString(offsets[15], object.token1Symbol);
-  writer.writeString(offsets[16], object.tokenIdOnChain);
-  writer.writeString(offsets[17], object.walletAddress);
+  writer.writeDateTime(offsets[1], object.closedAt);
+  writer.writeDateTime(offsets[2], object.createdAt);
+  writer.writeLong(offsets[3], object.currentTick);
+  writer.writeLong(offsets[4], object.feeTierBps);
+  writer.writeDouble(offsets[5], object.feeTierPct);
+  writer.writeDouble(offsets[6], object.feesClaimedUsd);
+  writer.writeDouble(offsets[7], object.feesTotalUsd);
+  writer.writeDouble(offsets[8], object.feesUnclaimedUsd);
+  writer.writeDouble(offsets[9], object.gasCostUsd);
+  writer.writeDouble(offsets[10], object.initialLiquidityUsd);
+  writer.writeBool(offsets[11], object.isClosed);
+  writer.writeDouble(offsets[12], object.liquidityUsd);
+  writer.writeString(offsets[13], object.positionKey);
+  writer.writeLong(offsets[14], object.tickLower);
+  writer.writeLong(offsets[15], object.tickUpper);
+  writer.writeString(offsets[16], object.token0Symbol);
+  writer.writeString(offsets[17], object.token1Symbol);
+  writer.writeString(offsets[18], object.tokenIdOnChain);
+  writer.writeString(offsets[19], object.walletAddress);
 }
 
 PoolPosition _poolPositionDeserialize(
@@ -203,22 +211,24 @@ PoolPosition _poolPositionDeserialize(
   object.chain =
       _PoolPositionchainValueEnumMap[reader.readStringOrNull(offsets[0])] ??
       Chain.ethereum;
-  object.createdAt = reader.readDateTime(offsets[1]);
-  object.currentTick = reader.readLong(offsets[2]);
-  object.feeTierBps = reader.readLong(offsets[3]);
-  object.feesClaimedUsd = reader.readDouble(offsets[5]);
-  object.feesUnclaimedUsd = reader.readDouble(offsets[7]);
-  object.gasCostUsd = reader.readDouble(offsets[8]);
+  object.closedAt = reader.readDateTimeOrNull(offsets[1]);
+  object.createdAt = reader.readDateTime(offsets[2]);
+  object.currentTick = reader.readLong(offsets[3]);
+  object.feeTierBps = reader.readLong(offsets[4]);
+  object.feesClaimedUsd = reader.readDouble(offsets[6]);
+  object.feesUnclaimedUsd = reader.readDouble(offsets[8]);
+  object.gasCostUsd = reader.readDouble(offsets[9]);
   object.id = id;
-  object.initialLiquidityUsd = reader.readDouble(offsets[9]);
-  object.liquidityUsd = reader.readDouble(offsets[10]);
-  object.positionKey = reader.readString(offsets[11]);
-  object.tickLower = reader.readLong(offsets[12]);
-  object.tickUpper = reader.readLong(offsets[13]);
-  object.token0Symbol = reader.readString(offsets[14]);
-  object.token1Symbol = reader.readString(offsets[15]);
-  object.tokenIdOnChain = reader.readString(offsets[16]);
-  object.walletAddress = reader.readString(offsets[17]);
+  object.initialLiquidityUsd = reader.readDouble(offsets[10]);
+  object.isClosed = reader.readBool(offsets[11]);
+  object.liquidityUsd = reader.readDouble(offsets[12]);
+  object.positionKey = reader.readString(offsets[13]);
+  object.tickLower = reader.readLong(offsets[14]);
+  object.tickUpper = reader.readLong(offsets[15]);
+  object.token0Symbol = reader.readString(offsets[16]);
+  object.token1Symbol = reader.readString(offsets[17]);
+  object.tokenIdOnChain = reader.readString(offsets[18]);
+  object.walletAddress = reader.readString(offsets[19]);
   return object;
 }
 
@@ -234,13 +244,13 @@ P _poolPositionDeserializeProp<P>(
               Chain.ethereum)
           as P;
     case 1:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 2:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 3:
       return (reader.readLong(offset)) as P;
     case 4:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 5:
       return (reader.readDouble(offset)) as P;
     case 6:
@@ -254,18 +264,22 @@ P _poolPositionDeserializeProp<P>(
     case 10:
       return (reader.readDouble(offset)) as P;
     case 11:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 12:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 13:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 14:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 15:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 16:
       return (reader.readString(offset)) as P;
     case 17:
+      return (reader.readString(offset)) as P;
+    case 18:
+      return (reader.readString(offset)) as P;
+    case 19:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -699,6 +713,79 @@ extension PoolPositionQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(property: r'chain', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  closedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'closedAt'),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  closedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'closedAt'),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  closedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'closedAt', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  closedAtGreaterThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'closedAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  closedAtLessThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'closedAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  closedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'closedAt',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
@@ -1373,6 +1460,15 @@ extension PoolPositionQueryFilter
 
           epsilon: epsilon,
         ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  isClosedEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isClosed', value: value),
       );
     });
   }
@@ -2288,6 +2384,18 @@ extension PoolPositionQuerySortBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByClosedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'closedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByClosedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'closedAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -2407,6 +2515,18 @@ extension PoolPositionQuerySortBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByIsClosed() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isClosed', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByIsClosedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isClosed', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByLiquidityUsd() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'liquidityUsd', Sort.asc);
@@ -2522,6 +2642,18 @@ extension PoolPositionQuerySortThenBy
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByChainDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'chain', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByClosedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'closedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByClosedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'closedAt', Sort.desc);
     });
   }
 
@@ -2656,6 +2788,18 @@ extension PoolPositionQuerySortThenBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByIsClosed() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isClosed', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByIsClosedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isClosed', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByLiquidityUsd() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'liquidityUsd', Sort.asc);
@@ -2770,6 +2914,12 @@ extension PoolPositionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QDistinct> distinctByClosedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'closedAt');
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -2824,6 +2974,12 @@ extension PoolPositionQueryWhereDistinct
   distinctByInitialLiquidityUsd() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'initialLiquidityUsd');
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QDistinct> distinctByIsClosed() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isClosed');
     });
   }
 
@@ -2906,6 +3062,12 @@ extension PoolPositionQueryProperty
     });
   }
 
+  QueryBuilder<PoolPosition, DateTime?, QQueryOperations> closedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'closedAt');
+    });
+  }
+
   QueryBuilder<PoolPosition, DateTime, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
@@ -2960,6 +3122,12 @@ extension PoolPositionQueryProperty
   initialLiquidityUsdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'initialLiquidityUsd');
+    });
+  }
+
+  QueryBuilder<PoolPosition, bool, QQueryOperations> isClosedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isClosed');
     });
   }
 

@@ -64,6 +64,9 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
   void _tickLive() {
     final now = DateTime.now();
     for (final p in _positions) {
+      // Uma posição fechada não gera mais fees — só as que ainda têm
+      // liquidez acumulam em direto.
+      if (p.isClosed) continue;
       final bump = 0.01 + _rng.nextDouble() * 0.12;
       p.feesUnclaimedUsd += bump;
       _snapshotsByKey[p.positionKey]!.add(
@@ -142,10 +145,34 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         tickUpper: 10,
         currentTick: 9,
       ),
+      // Posição FECHADA: toda a liquidez foi removida (ex.: para a
+      // redeployar numa pool nova). As fees ficam congeladas no valor final
+      // — isto existe para mostrar que o total vitalício do dashboard
+      // continua a contá-las mesmo depois de a posição desaparecer da
+      // lista "Your Pools".
+      _PositionSpec(
+        tokenId: '417102',
+        token0: 'DAI',
+        token1: 'ETH',
+        feeTierBps: 3000,
+        daysAgo: 60,
+        closedDaysAgo: 5,
+        liquidityUsd: 0,
+        initialLiquidityUsd: 3000,
+        feesClaimedUsd: 145.30,
+        feesUnclaimedUsd: 0,
+        gasCostUsd: 55,
+        tickLower: -150,
+        tickUpper: 150,
+        currentTick: 0,
+      ),
     ];
 
     for (var i = 0; i < specs.length; i++) {
       final spec = specs[i];
+      final closedAt = spec.closedDaysAgo != null
+          ? now.subtract(Duration(days: spec.closedDaysAgo!))
+          : null;
       final position = PoolPosition()
         ..positionKey = '${Chain.ethereum.name}:${spec.tokenId}'
         ..chain = Chain.ethereum
@@ -162,13 +189,15 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         ..initialLiquidityUsd = spec.initialLiquidityUsd
         ..feesClaimedUsd = spec.feesClaimedUsd
         ..feesUnclaimedUsd = spec.feesUnclaimedUsd
-        ..gasCostUsd = spec.gasCostUsd;
+        ..gasCostUsd = spec.gasCostUsd
+        ..isClosed = closedAt != null
+        ..closedAt = closedAt;
 
       _positions.add(position);
       _snapshotsByKey[position.positionKey] = _buildHistory(
         positionKey: position.positionKey,
         createdAt: position.createdAt,
-        now: now,
+        until: closedAt ?? now,
         totalFeesUsd: position.feesTotalUsd,
         seed: i + 1,
       );
@@ -177,19 +206,20 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
     _lastUpdatedAt = now;
   }
 
-  /// Reparte [totalFeesUsd] por snapshots horários entre [createdAt] e [now],
-  /// com um padrão pseudo-aleatório (mais atividade em "horas de dia") cuja
-  /// soma bate certo com o total — assim o gráfico e o "desde a abertura"
-  /// nunca se contradizem.
+  /// Reparte [totalFeesUsd] por snapshots horários entre [createdAt] e
+  /// [until] (agora, ou o momento em que a posição foi fechada), com um
+  /// padrão pseudo-aleatório (mais atividade em "horas de dia") cuja soma
+  /// bate certo com o total — assim o gráfico e o "desde a abertura" nunca
+  /// se contradizem.
   List<FeeSnapshot> _buildHistory({
     required String positionKey,
     required DateTime createdAt,
-    required DateTime now,
+    required DateTime until,
     required double totalFeesUsd,
     required int seed,
   }) {
     final rng = Random(seed * 1000 + 13);
-    final totalHours = now.difference(createdAt).inHours;
+    final totalHours = until.difference(createdAt).inHours;
     if (totalHours <= 0) return [];
 
     final weights = <double>[];
@@ -232,6 +262,10 @@ class _PositionSpec {
   final int tickUpper;
   final int currentTick;
 
+  /// `null` = posição ainda aberta; caso contrário, há quantos dias foi
+  /// fechada (toda a liquidez removida).
+  final int? closedDaysAgo;
+
   const _PositionSpec({
     required this.tokenId,
     required this.token0,
@@ -246,5 +280,6 @@ class _PositionSpec {
     required this.tickLower,
     required this.tickUpper,
     required this.currentTick,
+    this.closedDaysAgo,
   });
 }

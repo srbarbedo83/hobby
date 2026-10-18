@@ -108,6 +108,8 @@ class RawPosition {
   final BigInt liquidity;
   final double depositedToken0;
   final double depositedToken1;
+  final double withdrawnToken0;
+  final double withdrawnToken1;
   final double collectedFeesToken0;
   final double collectedFeesToken1;
   final BigInt feeGrowthInside0LastX128;
@@ -117,12 +119,18 @@ class RawPosition {
   final DateTime createdAt;
   final RawPool pool;
 
+  /// `liquidity == 0` quer dizer que toda a liquidez foi removida — a
+  /// posição está fechada, mas as suas fees continuam válidas/históricas.
+  bool get isClosed => liquidity == BigInt.zero;
+
   RawPosition({
     required this.id,
     required this.owner,
     required this.liquidity,
     required this.depositedToken0,
     required this.depositedToken1,
+    required this.withdrawnToken0,
+    required this.withdrawnToken1,
     required this.collectedFeesToken0,
     required this.collectedFeesToken1,
     required this.feeGrowthInside0LastX128,
@@ -140,6 +148,8 @@ class RawPosition {
       liquidity: BigInt.parse(json['liquidity'] as String),
       depositedToken0: double.parse(json['depositedToken0'] as String),
       depositedToken1: double.parse(json['depositedToken1'] as String),
+      withdrawnToken0: double.parse(json['withdrawnToken0'] as String),
+      withdrawnToken1: double.parse(json['withdrawnToken1'] as String),
       collectedFeesToken0: double.parse(json['collectedFeesToken0'] as String),
       collectedFeesToken1: double.parse(json['collectedFeesToken1'] as String),
       feeGrowthInside0LastX128: BigInt.parse(
@@ -228,19 +238,25 @@ class UniswapSubgraphClient {
     return decoded['data'] as Map<String, dynamic>;
   }
 
-  /// Posições com liquidez > 0 de um conjunto de endereços (owner do NFT),
-  /// e o preço de ETH em USD do mesmo bloco (para converter os tokens).
-  Future<({List<RawPosition> positions, double ethPriceUsd})>
-  fetchOpenPositions(List<String> owners) async {
+  /// Todas as posições (abertas e fechadas) de um conjunto de endereços
+  /// (owner do NFT), e o preço de ETH em USD do mesmo bloco (para converter
+  /// os tokens). Inclui as fechadas (`liquidity == 0`) de propósito — as
+  /// suas fees continuam a contar para o total vitalício; ver
+  /// `RawPosition.isClosed` e a nota em `LivePoolFeesRepository`.
+  Future<({List<RawPosition> positions, double ethPriceUsd})> fetchPositions(
+    List<String> owners,
+  ) async {
     if (owners.isEmpty) return (positions: <RawPosition>[], ethPriceUsd: 0.0);
     const query = r'''
       query Positions($owners: [String!]!) {
-        positions(where: { owner_in: $owners, liquidity_gt: "0" }, first: 200) {
+        positions(where: { owner_in: $owners }, first: 500) {
           id
           owner
           liquidity
           depositedToken0
           depositedToken1
+          withdrawnToken0
+          withdrawnToken1
           collectedFeesToken0
           collectedFeesToken1
           feeGrowthInside0LastX128

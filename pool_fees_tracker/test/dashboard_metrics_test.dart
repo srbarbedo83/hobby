@@ -9,6 +9,7 @@ PoolPosition _position({
   double liquidityUsd = 1000,
   double feesClaimedUsd = 10,
   double feesUnclaimedUsd = 5,
+  bool isClosed = false,
 }) {
   return PoolPosition()
     ..positionKey = key
@@ -26,7 +27,8 @@ PoolPosition _position({
     ..initialLiquidityUsd = liquidityUsd
     ..feesClaimedUsd = feesClaimedUsd
     ..feesUnclaimedUsd = feesUnclaimedUsd
-    ..gasCostUsd = 0;
+    ..gasCostUsd = 0
+    ..isClosed = isClosed;
 }
 
 FeeSnapshot _snap(String key, DateTime t, double delta) {
@@ -109,6 +111,44 @@ void main() {
         now: now,
       );
       expect(metrics.pctChangeVsPrevWeek, closeTo(50.0, 0.001));
+    });
+
+    test('posições fechadas continuam a contar para o total vitalício '
+        '(coleta/fecho não faz o número descer, ao contrário do que a Krystal parece fazer)', () {
+      final positions = [
+        _position(key: 'open', feesClaimedUsd: 100, feesUnclaimedUsd: 20),
+        _position(
+          key: 'closed',
+          liquidityUsd: 0,
+          feesClaimedUsd: 145.30,
+          feesUnclaimedUsd: 0,
+          isClosed: true,
+        ),
+      ];
+      final metrics = computeDashboardMetrics(
+        positions: positions,
+        snapshotsByKey: {},
+        now: now,
+      );
+      expect(metrics.totalFeesUsd, closeTo(265.30, 0.001));
+    });
+
+    test('posições fechadas (liquidez 0) não distorcem a média de APR', () {
+      final positions = [
+        _position(key: 'open', liquidityUsd: 10000),
+        _position(key: 'closed', liquidityUsd: 0, isClosed: true),
+      ];
+      final snapshotsByKey = {
+        'open': [_snap('open', now.subtract(const Duration(days: 2)), 70)],
+      };
+      final metrics = computeDashboardMetrics(
+        positions: positions,
+        snapshotsByKey: snapshotsByKey,
+        now: now,
+      );
+      // Só a posição aberta entra no cálculo (a fechada tem liquidityUsd
+      // 0 e seria uma divisão por zero/infinito se contasse).
+      expect(metrics.avgAprPct, closeTo(36.5, 0.01));
     });
 
     test('lista de posições vazia não rebenta nada', () {
