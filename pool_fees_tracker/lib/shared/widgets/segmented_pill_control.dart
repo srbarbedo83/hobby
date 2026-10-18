@@ -20,10 +20,11 @@ class SegmentedPillControl<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: palette.surfaceAlt,
         borderRadius: BorderRadius.circular(11),
       ),
       child: Row(
@@ -37,7 +38,7 @@ class SegmentedPillControl<T> extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 7),
                   decoration: BoxDecoration(
                     color: option == selected
-                        ? AppColors.accent
+                        ? palette.accent
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -48,8 +49,8 @@ class SegmentedPillControl<T> extends StatelessWidget {
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       color: option == selected
-                          ? AppColors.background
-                          : AppColors.textSecondary,
+                          ? palette.background
+                          : palette.textSecondary,
                     ),
                   ),
                 ),

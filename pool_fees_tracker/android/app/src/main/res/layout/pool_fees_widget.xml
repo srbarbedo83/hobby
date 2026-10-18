@@ -10,13 +10,14 @@
     android:padding="16dp">
 
     <TextView
+        android:id="@+id/widget_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="TOTAL FEES EARNED"
         android:textColor="#8A8F98"
         android:textSize="10sp"
         android:letterSpacing="0.08"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="TOTAL FEES EARNED" />
 
     <TextView
         android:id="@+id/widget_total_fees"

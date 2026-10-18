@@ -308,6 +308,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       ..tokenIdOnChain = raw.id
       ..token0Symbol = raw.pool.token0.symbol
       ..token1Symbol = raw.pool.token1.symbol
+      ..token0Decimals = raw.pool.token0.decimals
+      ..token1Decimals = raw.pool.token1.decimals
       ..feeTierBps = raw.pool.feeTierBps
       ..createdAt = raw.createdAt
       ..tickLower = raw.tickLower.tickIdx

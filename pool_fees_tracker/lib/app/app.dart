@@ -1,25 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/calc/dashboard_metrics.dart';
 import '../core/format/currency_formatter.dart';
 import '../core/providers.dart';
 import '../core/theme/app_theme.dart';
+import '../data/local/settings_service.dart';
 import '../data/services/home_widget_service.dart';
 import '../features/alerts/alerts_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/pools/pools_screen.dart';
 import '../features/settings/settings_screen.dart';
 
-class PoolFeesTrackerApp extends StatelessWidget {
+extension on AppThemeMode {
+  ThemeMode get flutterThemeMode => switch (this) {
+    AppThemeMode.system => ThemeMode.system,
+    AppThemeMode.light => ThemeMode.light,
+    AppThemeMode.dark => ThemeMode.dark,
+  };
+}
+
+class PoolFeesTrackerApp extends ConsumerWidget {
   const PoolFeesTrackerApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(appSettingsProvider).themeMode;
     return MaterialApp(
       title: 'Pool Fees Tracker',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
-      themeMode: ThemeMode.dark,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: themeMode.flutterThemeMode,
       home: const _RootNavigation(),
     );
   }
@@ -42,24 +54,33 @@ class _RootNavigationState extends ConsumerState<_RootNavigation> {
     SettingsScreen(),
   ];
 
+  void _updateWidget() {
+    final positions = ref.read(positionsStreamProvider).value;
+    if (positions == null) return;
+    final snapshots = ref.read(allFeeSnapshotsProvider).value ?? const {};
+    final metrics = computeDashboardMetrics(
+      positions: positions,
+      snapshotsByKey: snapshots,
+    );
+    final settings = ref.read(appSettingsProvider);
+    final value = widgetMetricValueUsd(settings.widgetMetric, metrics);
+    HomeWidgetService.update(
+      titleLabel: settings.widgetMetric.widgetTitle,
+      valueFormatted: CurrencyFormatter(settings.currencyCode).format(value),
+      updatedAtLabel: 'Updated just now',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Mantém o widget de ecrã inicial atualizado enquanto a app está
     // aberta (em background, só a sincronização periódica do Workmanager
-    // o faz — ver background_sync_worker.dart).
-    ref.listen(positionsStreamProvider, (previous, next) {
-      final positions = next.value;
-      if (positions == null) return;
-      final total = positions.fold<double>(
-        0,
-        (sum, position) => sum + position.feesTotalUsd,
-      );
-      final currencyCode = ref.read(appSettingsProvider).currencyCode;
-      HomeWidgetService.update(
-        totalFeesFormatted: CurrencyFormatter(currencyCode).format(total),
-        updatedAtLabel: 'Updated just now',
-      );
-    });
+    // o faz — ver background_sync_worker.dart). Ouve as duas fontes: a
+    // lista de posições (muda a cada tick live) e o histórico de
+    // snapshots (resolve de forma assíncrona, pode chegar depois) —
+    // "24h fees" só fica certo quando ambas já carregaram.
+    ref.listen(positionsStreamProvider, (previous, next) => _updateWidget());
+    ref.listen(allFeeSnapshotsProvider, (previous, next) => _updateWidget());
 
     return Scaffold(
       body: IndexedStack(index: _index, children: _screens),

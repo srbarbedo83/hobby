@@ -19,6 +19,18 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
       StreamController.broadcast();
   final Random _rng = Random(7);
 
+  /// Decimais reais dos tokens usados nos dados de demo — para que o preço
+  /// derivado dos ticks (ver `priceAtTick`) saia num valor plausível, não
+  /// só uma fração 0..1.
+  static const _decimalsBySymbol = {
+    'ETH': 18,
+    'WBTC': 8,
+    'ARB': 18,
+    'USDC': 6,
+    'USDT': 6,
+    'DAI': 18,
+  };
+
   Timer? _liveTimer;
   Timer? _autoRefreshTimer;
   DateTime? _lastUpdatedAt;
@@ -110,10 +122,14 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         feesClaimedUsd: 300,
         feesUnclaimedUsd: 182.10,
         gasCostUsd: 45,
-        tickLower: -100,
-        tickUpper: 100,
-        currentTick: 20,
-        entryTick: -40,
+        // Deslocados de um "base tick" realista para ETH/USDC (~$1,850 —
+        // ver priceAtTick) em vez de ticks pequenos arbitrários; a largura
+        // do range e os deltas para o entryTick ficam exatamente iguais
+        // aos valores originais (-100/100/20/-40), só a magnitude muda.
+        tickLower: -201180,
+        tickUpper: -200980,
+        currentTick: -201060,
+        entryTick: -201120,
       ),
       _PositionSpec(
         tokenId: '418355',
@@ -126,10 +142,12 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         feesClaimedUsd: 200,
         feesUnclaimedUsd: 110.55,
         gasCostUsd: 60,
-        tickLower: -200,
-        tickUpper: 200,
-        currentTick: -30,
-        entryTick: 50,
+        // Base realista para WBTC/ETH (~32 ETH por WBTC); mesma largura e
+        // deltas que os ticks pequenos originais (-200/200/-30/50).
+        tickLower: 264860,
+        tickUpper: 265260,
+        currentTick: 265030,
+        entryTick: 265110,
       ),
       _PositionSpec(
         tokenId: '419042',
@@ -142,10 +160,13 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         feesClaimedUsd: 60,
         feesUnclaimedUsd: 36.20,
         gasCostUsd: 35,
-        tickLower: -50,
-        tickUpper: 50,
-        currentTick: 80,
-        entryTick: -20,
+        // Base realista para ARB/ETH (~0.00043, i.e. ARB ≈ $0.80 a
+        // ETH=$1,850); mesma largura e deltas que os ticks originais
+        // (-50/50/80/-20) — inclui "fora do range" acima do máximo.
+        tickLower: -77510,
+        tickUpper: -77410,
+        currentTick: -77380,
+        entryTick: -77480,
       ),
       _PositionSpec(
         tokenId: '419501',
@@ -180,10 +201,13 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         feesClaimedUsd: 145.30,
         feesUnclaimedUsd: 0,
         gasCostUsd: 55,
-        tickLower: -150,
-        tickUpper: 150,
-        currentTick: 0,
-        entryTick: -100,
+        // Base realista para DAI/ETH (~0.00054, i.e. 1 ETH ≈ $1,850 em
+        // DAI); mesma largura e deltas que os ticks originais
+        // (-150/150/0/-100).
+        tickLower: -75390,
+        tickUpper: -75090,
+        currentTick: -75240,
+        entryTick: -75340,
       ),
       // Numa chain diferente (Arbitrum) — mostra que a app agrega fees de
       // várias chains no mesmo total, não só da chain "principal".
@@ -199,10 +223,12 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         feesClaimedUsd: 40,
         feesUnclaimedUsd: 22.50,
         gasCostUsd: 2,
-        tickLower: -80,
-        tickUpper: 80,
-        currentTick: 10,
-        entryTick: -5,
+        // Mesma base de ETH/USDC do primeiro exemplo; mesma largura e
+        // deltas que os ticks originais (-80/80/10/-5).
+        tickLower: -201160,
+        tickUpper: -201000,
+        currentTick: -201070,
+        entryTick: -201085,
       ),
     ];
 
@@ -218,6 +244,8 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         ..tokenIdOnChain = spec.tokenId
         ..token0Symbol = spec.token0
         ..token1Symbol = spec.token1
+        ..token0Decimals = _decimalsBySymbol[spec.token0] ?? 18
+        ..token1Decimals = _decimalsBySymbol[spec.token1] ?? 18
         ..feeTierBps = spec.feeTierBps
         ..createdAt = now.subtract(Duration(days: spec.daysAgo))
         ..tickLower = spec.tickLower

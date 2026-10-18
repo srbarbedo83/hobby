@@ -42,6 +42,7 @@ class _AnimatedUsdNumberState extends State<AnimatedUsdNumber> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: _previousValue, end: widget.value),
       duration: const Duration(milliseconds: 700),
@@ -55,7 +56,7 @@ class _AnimatedUsdNumberState extends State<AnimatedUsdNumber> {
             height: 1,
             letterSpacing: -1,
             fontFeatures: const [FontFeature.tabularFigures()],
-            color: _flashing ? AppColors.positive : AppColors.textPrimary,
+            color: _flashing ? palette.positive : palette.textPrimary,
           ),
           child: Text(widget.formatter.format(animatedValue)),
         );

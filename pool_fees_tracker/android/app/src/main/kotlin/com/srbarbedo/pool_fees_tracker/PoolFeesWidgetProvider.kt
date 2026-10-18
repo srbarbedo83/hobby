@@ -30,8 +30,12 @@ class PoolFeesWidgetProvider : HomeWidgetProvider() {
             setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
             setTextViewText(
+                R.id.widget_title,
+                widgetData.getString("widget_title", null) ?: "TOTAL FEES EARNED",
+            )
+            setTextViewText(
                 R.id.widget_total_fees,
-                widgetData.getString("total_fees_formatted", null) ?: "—",
+                widgetData.getString("value_formatted", null) ?: "—",
             )
             setTextViewText(
                 R.id.widget_updated_at,

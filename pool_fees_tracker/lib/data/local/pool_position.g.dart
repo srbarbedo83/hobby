@@ -99,23 +99,33 @@ const PoolPositionSchema = CollectionSchema(
       name: r'tickUpper',
       type: IsarType.long,
     ),
-    r'token0Symbol': PropertySchema(
+    r'token0Decimals': PropertySchema(
       id: 17,
+      name: r'token0Decimals',
+      type: IsarType.long,
+    ),
+    r'token0Symbol': PropertySchema(
+      id: 18,
       name: r'token0Symbol',
       type: IsarType.string,
     ),
+    r'token1Decimals': PropertySchema(
+      id: 19,
+      name: r'token1Decimals',
+      type: IsarType.long,
+    ),
     r'token1Symbol': PropertySchema(
-      id: 18,
+      id: 20,
       name: r'token1Symbol',
       type: IsarType.string,
     ),
     r'tokenIdOnChain': PropertySchema(
-      id: 19,
+      id: 21,
       name: r'tokenIdOnChain',
       type: IsarType.string,
     ),
     r'walletAddress': PropertySchema(
-      id: 20,
+      id: 22,
       name: r'walletAddress',
       type: IsarType.string,
     ),
@@ -201,10 +211,12 @@ void _poolPositionSerialize(
   writer.writeString(offsets[14], object.positionKey);
   writer.writeLong(offsets[15], object.tickLower);
   writer.writeLong(offsets[16], object.tickUpper);
-  writer.writeString(offsets[17], object.token0Symbol);
-  writer.writeString(offsets[18], object.token1Symbol);
-  writer.writeString(offsets[19], object.tokenIdOnChain);
-  writer.writeString(offsets[20], object.walletAddress);
+  writer.writeLong(offsets[17], object.token0Decimals);
+  writer.writeString(offsets[18], object.token0Symbol);
+  writer.writeLong(offsets[19], object.token1Decimals);
+  writer.writeString(offsets[20], object.token1Symbol);
+  writer.writeString(offsets[21], object.tokenIdOnChain);
+  writer.writeString(offsets[22], object.walletAddress);
 }
 
 PoolPosition _poolPositionDeserialize(
@@ -232,10 +244,12 @@ PoolPosition _poolPositionDeserialize(
   object.positionKey = reader.readString(offsets[14]);
   object.tickLower = reader.readLong(offsets[15]);
   object.tickUpper = reader.readLong(offsets[16]);
-  object.token0Symbol = reader.readString(offsets[17]);
-  object.token1Symbol = reader.readString(offsets[18]);
-  object.tokenIdOnChain = reader.readString(offsets[19]);
-  object.walletAddress = reader.readString(offsets[20]);
+  object.token0Decimals = reader.readLong(offsets[17]);
+  object.token0Symbol = reader.readString(offsets[18]);
+  object.token1Decimals = reader.readLong(offsets[19]);
+  object.token1Symbol = reader.readString(offsets[20]);
+  object.tokenIdOnChain = reader.readString(offsets[21]);
+  object.walletAddress = reader.readString(offsets[22]);
   return object;
 }
 
@@ -283,12 +297,16 @@ P _poolPositionDeserializeProp<P>(
     case 16:
       return (reader.readLong(offset)) as P;
     case 17:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 18:
       return (reader.readString(offset)) as P;
     case 19:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 20:
+      return (reader.readString(offset)) as P;
+    case 21:
+      return (reader.readString(offset)) as P;
+    case 22:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1864,6 +1882,61 @@ extension PoolPositionQueryFilter
   }
 
   QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  token0DecimalsEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'token0Decimals', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  token0DecimalsGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'token0Decimals',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  token0DecimalsLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'token0Decimals',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  token0DecimalsBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'token0Decimals',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
   token0SymbolEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -2000,6 +2073,61 @@ extension PoolPositionQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(property: r'token0Symbol', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  token1DecimalsEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'token1Decimals', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  token1DecimalsGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'token1Decimals',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  token1DecimalsLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'token1Decimals',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  token1DecimalsBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'token1Decimals',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
@@ -2653,6 +2781,20 @@ extension PoolPositionQuerySortBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  sortByToken0Decimals() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'token0Decimals', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  sortByToken0DecimalsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'token0Decimals', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByToken0Symbol() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'token0Symbol', Sort.asc);
@@ -2663,6 +2805,20 @@ extension PoolPositionQuerySortBy
   sortByToken0SymbolDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'token0Symbol', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  sortByToken1Decimals() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'token1Decimals', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  sortByToken1DecimalsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'token1Decimals', Sort.desc);
     });
   }
 
@@ -2938,6 +3094,20 @@ extension PoolPositionQuerySortThenBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  thenByToken0Decimals() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'token0Decimals', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  thenByToken0DecimalsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'token0Decimals', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByToken0Symbol() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'token0Symbol', Sort.asc);
@@ -2948,6 +3118,20 @@ extension PoolPositionQuerySortThenBy
   thenByToken0SymbolDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'token0Symbol', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  thenByToken1Decimals() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'token1Decimals', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  thenByToken1DecimalsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'token1Decimals', Sort.desc);
     });
   }
 
@@ -3103,11 +3287,25 @@ extension PoolPositionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QDistinct>
+  distinctByToken0Decimals() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'token0Decimals');
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QDistinct> distinctByToken0Symbol({
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'token0Symbol', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QDistinct>
+  distinctByToken1Decimals() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'token1Decimals');
     });
   }
 
@@ -3255,9 +3453,21 @@ extension PoolPositionQueryProperty
     });
   }
 
+  QueryBuilder<PoolPosition, int, QQueryOperations> token0DecimalsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'token0Decimals');
+    });
+  }
+
   QueryBuilder<PoolPosition, String, QQueryOperations> token0SymbolProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'token0Symbol');
+    });
+  }
+
+  QueryBuilder<PoolPosition, int, QQueryOperations> token1DecimalsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'token1Decimals');
     });
   }
 

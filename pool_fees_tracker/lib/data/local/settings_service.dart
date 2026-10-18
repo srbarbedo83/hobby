@@ -4,12 +4,46 @@ import 'chain.dart';
 
 enum DataSourceMode { demo, live }
 
+/// Tema da app — `system` segue o tema do telemóvel (via
+/// `MediaQuery.platformBrightness`), `light`/`dark` fixam-no.
+enum AppThemeMode { system, light, dark }
+
+extension AppThemeModeLabel on AppThemeMode {
+  String get label => switch (this) {
+    AppThemeMode.system => 'System',
+    AppThemeMode.light => 'Light',
+    AppThemeMode.dark => 'Dark',
+  };
+}
+
+/// Qual estatística o widget de ecrã inicial Android mostra em destaque —
+/// ver `HomeWidgetService`.
+enum WidgetMetric { totalFees, fees24h, unclaimed }
+
+extension WidgetMetricLabel on WidgetMetric {
+  String get label => switch (this) {
+    WidgetMetric.totalFees => 'Total fees earned',
+    WidgetMetric.fees24h => '24h fees',
+    WidgetMetric.unclaimed => 'Unclaimed fees',
+  };
+
+  /// Título mostrado no widget acima do número (maiúsculas, como no
+  /// layout atual).
+  String get widgetTitle => switch (this) {
+    WidgetMetric.totalFees => 'TOTAL FEES EARNED',
+    WidgetMetric.fees24h => '24H FEES',
+    WidgetMetric.unclaimed => 'UNCLAIMED FEES',
+  };
+}
+
 /// Preferências simples da app (não precisam da estrutura de uma coleção
 /// Isar): fonte de dados, credenciais de API, intervalo de refresh, moeda,
 /// e configuração de alertas (lidas também pelo isolate em background do
 /// Workmanager — ver `alert_check_worker.dart`).
 class AppSettings {
   final DataSourceMode dataSourceMode;
+  final AppThemeMode themeMode;
+  final WidgetMetric widgetMetric;
 
   /// Chains ativas em modo Live — as posições de todas são agregadas no
   /// mesmo dashboard (ver `LivePoolFeesRepository`). Nunca vazio: o setter
@@ -27,6 +61,8 @@ class AppSettings {
 
   const AppSettings({
     this.dataSourceMode = DataSourceMode.demo,
+    this.themeMode = AppThemeMode.system,
+    this.widgetMetric = WidgetMetric.totalFees,
     this.selectedChains = const {Chain.ethereum},
     this.subgraphApiKey = '',
     this.rpcUrl = '',
@@ -40,6 +76,8 @@ class AppSettings {
 
   AppSettings copyWith({
     DataSourceMode? dataSourceMode,
+    AppThemeMode? themeMode,
+    WidgetMetric? widgetMetric,
     Set<Chain>? selectedChains,
     String? subgraphApiKey,
     String? rpcUrl,
@@ -52,6 +90,8 @@ class AppSettings {
   }) {
     return AppSettings(
       dataSourceMode: dataSourceMode ?? this.dataSourceMode,
+      themeMode: themeMode ?? this.themeMode,
+      widgetMetric: widgetMetric ?? this.widgetMetric,
       selectedChains: selectedChains ?? this.selectedChains,
       subgraphApiKey: subgraphApiKey ?? this.subgraphApiKey,
       rpcUrl: rpcUrl ?? this.rpcUrl,
@@ -76,6 +116,8 @@ class AppSettings {
 
 class SettingsService {
   static const _keyDataSource = 'data_source_mode';
+  static const _keyThemeMode = 'theme_mode';
+  static const _keyWidgetMetric = 'widget_metric';
   static const _keySelectedChains = 'selected_chains';
   static const _keySubgraphApiKey = 'subgraph_api_key';
   static const _keyRpcUrl = 'rpc_url';
@@ -109,6 +151,14 @@ class SettingsService {
         (e) => e.name == sourceName,
         orElse: () => DataSourceMode.demo,
       ),
+      themeMode: AppThemeMode.values.firstWhere(
+        (e) => e.name == _prefs.getString(_keyThemeMode),
+        orElse: () => AppThemeMode.system,
+      ),
+      widgetMetric: WidgetMetric.values.firstWhere(
+        (e) => e.name == _prefs.getString(_keyWidgetMetric),
+        orElse: () => WidgetMetric.totalFees,
+      ),
       selectedChains: selectedChains.isEmpty
           ? const {Chain.ethereum}
           : selectedChains,
@@ -126,6 +176,8 @@ class SettingsService {
 
   Future<void> save(AppSettings settings) async {
     await _prefs.setString(_keyDataSource, settings.dataSourceMode.name);
+    await _prefs.setString(_keyThemeMode, settings.themeMode.name);
+    await _prefs.setString(_keyWidgetMetric, settings.widgetMetric.name);
     await _prefs.setStringList(
       _keySelectedChains,
       settings.selectedChains.map((c) => c.name).toList(),

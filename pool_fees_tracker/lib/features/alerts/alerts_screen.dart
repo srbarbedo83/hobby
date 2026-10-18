@@ -28,6 +28,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final settings = ref.watch(appSettingsProvider);
     final logAsync = ref.watch(alertLogProvider);
 
@@ -38,12 +39,12 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Alerts',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: palette.textPrimary,
                 ),
               ),
               TextButton(
@@ -79,12 +80,12 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
           const SizedBox(height: 18),
           logAsync.when(
             data: (entries) => entries.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 32),
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 32),
                     child: Center(
                       child: Text(
                         'No alerts yet',
-                        style: TextStyle(color: AppColors.textSecondary),
+                        style: TextStyle(color: palette.textSecondary),
                       ),
                     ),
                   )
@@ -100,12 +101,12 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
               padding: EdgeInsets.symmetric(vertical: 32),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, st) => const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
+            error: (e, st) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
               child: Center(
                 child: Text(
                   'Could not load alerts',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(color: palette.textSecondary),
                 ),
               ),
             ),
@@ -124,24 +125,25 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppColors.textSecondary),
+          Icon(icon, size: 18, color: palette.textSecondary),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12.5,
-                color: AppColors.textSecondary,
+                color: palette.textSecondary,
                 height: 1.4,
               ),
             ),
@@ -159,14 +161,15 @@ class _AlertLogTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final isOutOfRange = entry.kind == AlertLogKind.outOfRange;
-    final color = isOutOfRange ? AppColors.warning : AppColors.positive;
+    final color = isOutOfRange ? palette.warning : palette.positive;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,27 +197,21 @@ class _AlertLogTile extends StatelessWidget {
               children: [
                 Text(
                   entry.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   entry.body,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 12, color: palette.textSecondary),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   _relativeTime(entry.firedAt),
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: AppColors.textTertiary,
-                  ),
+                  style: TextStyle(fontSize: 10.5, color: palette.textTertiary),
                 ),
               ],
             ),

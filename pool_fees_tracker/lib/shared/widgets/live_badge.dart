@@ -32,10 +32,11 @@ class _LiveBadgeState extends State<LiveBadge>
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
       decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.12),
+        color: palette.accent.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -46,20 +47,20 @@ class _LiveBadgeState extends State<LiveBadge>
             child: Container(
               width: 6,
               height: 6,
-              decoration: const BoxDecoration(
-                color: AppColors.accent,
+              decoration: BoxDecoration(
+                color: palette.accent,
                 shape: BoxShape.circle,
               ),
             ),
           ),
           const SizedBox(width: 5),
-          const Text(
+          Text(
             'LIVE',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
-              color: AppColors.accent,
+              color: palette.accent,
             ),
           ),
         ],

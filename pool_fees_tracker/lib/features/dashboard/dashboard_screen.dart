@@ -19,6 +19,7 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = AppPalette.of(context);
     final settings = ref.watch(appSettingsProvider);
     final positionsAsync = ref.watch(positionsStreamProvider);
     final snapshotsAsync = ref.watch(allFeeSnapshotsProvider);
@@ -74,7 +75,7 @@ class DashboardScreen extends ConsumerWidget {
                   child: StatTile(
                     label: 'Avg APR',
                     value: '${metrics.avgAprPct.toStringAsFixed(1)}%',
-                    valueColor: AppColors.positive,
+                    valueColor: palette.positive,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -114,20 +115,17 @@ class DashboardScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Your Pools',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
                 Text(
                   '${openPositions.length} pools',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 12, color: palette.textSecondary),
                 ),
               ],
             ),
@@ -159,10 +157,7 @@ class DashboardScreen extends ConsumerWidget {
                 child: Text(
                   '+ $closedCount closed position${closedCount > 1 ? 's' : ''} — '
                   'still counted in the total above. See Pools tab.',
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.textTertiary,
-                  ),
+                  style: TextStyle(fontSize: 11.5, color: palette.textTertiary),
                 ),
               ),
           ],
@@ -188,23 +183,24 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
+        Text(
           'Pool Fees Tracker',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: palette.textPrimary,
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: palette.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: palette.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -212,9 +208,9 @@ class _TopBar extends StatelessWidget {
               Container(
                 width: 14,
                 height: 14,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [AppColors.accent, Color(0xFF7B61FF)],
+                    colors: [palette.accent, const Color(0xFF7B61FF)],
                   ),
                   shape: BoxShape.circle,
                 ),
@@ -222,10 +218,7 @@ class _TopBar extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 walletLabel,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 12, color: palette.textPrimary),
               ),
             ],
           ),
@@ -252,12 +245,13 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,13 +259,13 @@ class _HeroCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'TOTAL FEES EARNED',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1,
-                  color: AppColors.textSecondary,
+                  color: palette.textSecondary,
                 ),
               ),
               const LiveBadge(),
@@ -298,10 +292,7 @@ class _HeroCard extends StatelessWidget {
               if (updatedAt != null)
                 Text(
                   formatRelativeUpdatedAt(updatedAt!),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textTertiary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: palette.textTertiary),
                 ),
             ],
           ),
@@ -319,7 +310,8 @@ class _DeltaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = positive ? AppColors.positive : AppColors.negative;
+    final palette = AppPalette.of(context);
+    final color = positive ? palette.positive : palette.negative;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(

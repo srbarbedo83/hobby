@@ -18,12 +18,13 @@ class StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,7 +36,7 @@ class StatTile extends StatelessWidget {
               fontSize: 9.5,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.6,
-              color: AppColors.textSecondary,
+              color: palette.textSecondary,
             ),
           ),
           const SizedBox(height: 6),
@@ -44,17 +45,14 @@ class StatTile extends StatelessWidget {
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
-              color: valueColor ?? AppColors.textPrimary,
+              color: valueColor ?? palette.textPrimary,
             ),
           ),
           if (caption != null) ...[
             const SizedBox(height: 2),
             Text(
               caption!,
-              style: const TextStyle(
-                fontSize: 10.5,
-                color: AppColors.textTertiary,
-              ),
+              style: TextStyle(fontSize: 10.5, color: palette.textTertiary),
             ),
           ],
         ],

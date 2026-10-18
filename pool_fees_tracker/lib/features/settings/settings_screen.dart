@@ -12,6 +12,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = AppPalette.of(context);
     final settings = ref.watch(appSettingsProvider);
     final walletsAsync = ref.watch(walletsProvider);
 
@@ -19,15 +20,43 @@ class SettingsScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
         children: [
-          const Text(
+          Text(
             'Settings',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: palette.textPrimary,
             ),
           ),
           const SizedBox(height: 20),
+          const _SectionLabel('Appearance'),
+          const SizedBox(height: 8),
+          _SettingsCard(
+            child: RadioGroup<AppThemeMode>(
+              groupValue: settings.themeMode,
+              onChanged: (mode) {
+                if (mode != null) {
+                  ref
+                      .read(appSettingsProvider.notifier)
+                      .update((s) => s.copyWith(themeMode: mode));
+                }
+              },
+              child: Column(
+                children: [
+                  for (final mode in AppThemeMode.values)
+                    RadioListTile<AppThemeMode>(
+                      contentPadding: EdgeInsets.zero,
+                      value: mode,
+                      title: Text(
+                        mode.label,
+                        style: TextStyle(color: palette.textPrimary),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           _SectionLabel('Wallets'),
           const SizedBox(height: 8),
           ...walletsAsync.when(
@@ -38,19 +67,19 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     title: Text(
                       wallet.label,
-                      style: const TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: palette.textPrimary),
                     ),
                     subtitle: Text(
                       wallet.address,
-                      style: const TextStyle(
-                        color: AppColors.textTertiary,
+                      style: TextStyle(
+                        color: palette.textTertiary,
                         fontSize: 11,
                       ),
                     ),
                     trailing: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline,
-                        color: AppColors.textSecondary,
+                        color: palette.textSecondary,
                       ),
                       onPressed: () async {
                         await ref
@@ -62,11 +91,11 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               if (wallets.isEmpty)
-                const _SettingsCard(
+                _SettingsCard(
                   child: Text(
                     'No wallets added — the Demo data source works without one.',
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: palette.textSecondary,
                       fontSize: 12.5,
                     ),
                   ),
@@ -101,19 +130,19 @@ class SettingsScreen extends ConsumerWidget {
                       .update((s) => s.copyWith(dataSourceMode: mode));
                 }
               },
-              child: const Column(
+              child: Column(
                 children: [
                   RadioListTile<DataSourceMode>(
                     contentPadding: EdgeInsets.zero,
                     value: DataSourceMode.demo,
                     title: Text(
                       'Demo',
-                      style: TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: palette.textPrimary),
                     ),
                     subtitle: Text(
                       'Synthetic positions and fee history — no wallet or API key needed.',
                       style: TextStyle(
-                        color: AppColors.textTertiary,
+                        color: palette.textTertiary,
                         fontSize: 11.5,
                       ),
                     ),
@@ -123,13 +152,13 @@ class SettingsScreen extends ConsumerWidget {
                     value: DataSourceMode.live,
                     title: Text(
                       'Live (experimental)',
-                      style: TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: palette.textPrimary),
                     ),
                     subtitle: Text(
                       'Reads real positions from the Uniswap v3 subgraph + an RPC endpoint. '
                       'Needs a subgraph API key below.',
                       style: TextStyle(
-                        color: AppColors.textTertiary,
+                        color: palette.textTertiary,
                         fontSize: 11.5,
                       ),
                     ),
@@ -141,12 +170,12 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           _SectionLabel('Chains'),
           const SizedBox(height: 4),
-          const Padding(
-            padding: EdgeInsets.only(bottom: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
             child: Text(
               'Pick every chain to watch — positions from all of them are summed '
               'into one dashboard.',
-              style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+              style: TextStyle(color: palette.textTertiary, fontSize: 11),
             ),
           ),
           _SettingsCard(
@@ -155,11 +184,11 @@ class SettingsScreen extends ConsumerWidget {
                 for (final chain in Chain.values)
                   CheckboxListTile(
                     contentPadding: EdgeInsets.zero,
-                    activeColor: AppColors.accent,
+                    activeColor: palette.accent,
                     title: Text(
                       chain.displayName,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
+                      style: TextStyle(
+                        color: palette.textPrimary,
                         fontSize: 13.5,
                       ),
                     ),
@@ -210,19 +239,19 @@ class SettingsScreen extends ConsumerWidget {
                       .update((s) => s.copyWith(rpcUrl: v)),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Optional — only used to show the real gas cost (and gas break-even) '
                   'on the detail screen, by reading the receipts of your position\'s '
                   'transactions. Must point to the same chain as one of your selected '
                   'chains above; leave empty to skip. Not used for anything else — '
                   'positions always come from the subgraph.',
-                  style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                  style: TextStyle(color: palette.textTertiary, fontSize: 11),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Stored only on this device. Never your seed phrase or private key — '
                   'this app is read-only.',
-                  style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                  style: TextStyle(color: palette.textTertiary, fontSize: 11),
                 ),
               ],
             ),
@@ -236,8 +265,8 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 Text(
                   'Every ${settings.refreshIntervalSeconds}s',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: palette.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -246,7 +275,7 @@ class SettingsScreen extends ConsumerWidget {
                   min: 10,
                   max: 120,
                   divisions: 11,
-                  activeColor: AppColors.accent,
+                  activeColor: palette.accent,
                   onChanged: (v) => ref
                       .read(appSettingsProvider.notifier)
                       .update(
@@ -264,17 +293,14 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  activeThumbColor: AppColors.accent,
-                  title: const Text(
+                  activeThumbColor: palette.accent,
+                  title: Text(
                     'Enable alerts',
-                    style: TextStyle(color: AppColors.textPrimary),
+                    style: TextStyle(color: palette.textPrimary),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'Background check roughly every 15 minutes (Android WorkManager).',
-                    style: TextStyle(
-                      color: AppColors.textTertiary,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: palette.textTertiary, fontSize: 11),
                   ),
                   value: settings.alertsEnabled,
                   onChanged: (value) => ref
@@ -282,14 +308,14 @@ class SettingsScreen extends ConsumerWidget {
                       .update((s) => s.copyWith(alertsEnabled: value)),
                 ),
                 if (settings.alertsEnabled) ...[
-                  const Divider(color: AppColors.border, height: 1),
+                  Divider(color: palette.border, height: 1),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    activeThumbColor: AppColors.accent,
-                    title: const Text(
+                    activeThumbColor: palette.accent,
+                    title: Text(
                       'Out-of-range alerts',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: palette.textPrimary,
                         fontSize: 13.5,
                       ),
                     ),
@@ -302,11 +328,11 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    activeThumbColor: AppColors.accent,
-                    title: const Text(
+                    activeThumbColor: palette.accent,
+                    title: Text(
                       'Fee milestone alerts',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: palette.textPrimary,
                         fontSize: 13.5,
                       ),
                     ),
@@ -325,8 +351,8 @@ class SettingsScreen extends ConsumerWidget {
                         children: [
                           Text(
                             'Every \$${settings.feeMilestoneThresholdUsd.toStringAsFixed(0)} per position',
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
+                            style: TextStyle(
+                              color: palette.textPrimary,
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                             ),
@@ -336,7 +362,7 @@ class SettingsScreen extends ConsumerWidget {
                             min: 5,
                             max: 500,
                             divisions: 99,
-                            activeColor: AppColors.accent,
+                            activeColor: palette.accent,
                             onChanged: (v) => ref
                                 .read(appSettingsProvider.notifier)
                                 .update(
@@ -349,6 +375,37 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                 ],
               ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _SectionLabel('Home screen widget'),
+          const SizedBox(height: 8),
+          _SettingsCard(
+            child: RadioGroup<WidgetMetric>(
+              groupValue: settings.widgetMetric,
+              onChanged: (metric) {
+                if (metric != null) {
+                  ref
+                      .read(appSettingsProvider.notifier)
+                      .update((s) => s.copyWith(widgetMetric: metric));
+                }
+              },
+              child: Column(
+                children: [
+                  for (final metric in WidgetMetric.values)
+                    RadioListTile<WidgetMetric>(
+                      contentPadding: EdgeInsets.zero,
+                      value: metric,
+                      title: Text(
+                        metric.label,
+                        style: TextStyle(
+                          color: palette.textPrimary,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -379,13 +436,14 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Text(
       text.toUpperCase(),
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w600,
         letterSpacing: 1,
-        color: AppColors.textSecondary,
+        color: palette.textSecondary,
       ),
     );
   }
@@ -398,13 +456,14 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: child,
     );

@@ -26,6 +26,12 @@ class PoolPosition {
   late String token0Symbol;
   late String token1Symbol;
 
+  /// Decimais on-chain de cada token — necessários para converter ticks em
+  /// preços legíveis (ver `priceAtTick` em `univ3_fee_math.dart`). Default
+  /// 18 (o mais comum em ERC-20) para registos antigos sem este campo.
+  int token0Decimals = 18;
+  int token1Decimals = 18;
+
   /// Fee tier em basis points (500 = 0.05%, 3000 = 0.3%, 10000 = 1%).
   late int feeTierBps;
 

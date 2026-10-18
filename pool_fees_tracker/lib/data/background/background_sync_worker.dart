@@ -2,6 +2,7 @@ import 'package:isar_community/isar.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../core/calc/alert_detector.dart';
+import '../../core/calc/dashboard_metrics.dart';
 import '../../core/calc/range_health.dart';
 import '../../core/format/currency_formatter.dart';
 import '../local/alert_log_entry.dart';
@@ -59,13 +60,19 @@ Future<int> runBackgroundSync() async {
       const Duration(seconds: 30),
     );
 
-    final totalFeesUsd = positions.fold<double>(
-      0,
-      (sum, position) => sum + position.feesTotalUsd,
+    final snapshotsByKey = {
+      for (final position in positions)
+        position.positionKey: await repo.getFeeSnapshots(position.positionKey),
+    };
+    final metrics = computeDashboardMetrics(
+      positions: positions,
+      snapshotsByKey: snapshotsByKey,
     );
+    final widgetValue = widgetMetricValueUsd(settings.widgetMetric, metrics);
     await HomeWidgetService.update(
-      totalFeesFormatted: CurrencyFormatter(settings.currencyCode)
-          .format(totalFeesUsd),
+      titleLabel: settings.widgetMetric.widgetTitle,
+      valueFormatted: CurrencyFormatter(settings.currencyCode)
+          .format(widgetValue),
       updatedAtLabel: 'Updated just now',
     );
 

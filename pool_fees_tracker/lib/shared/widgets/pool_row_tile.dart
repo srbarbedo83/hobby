@@ -27,15 +27,16 @@ class PoolRowTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: palette.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: palette.border),
         ),
         child: Row(
           children: [
@@ -51,10 +52,10 @@ class PoolRowTile extends StatelessWidget {
                 children: [
                   Text(
                     '${position.token0Symbol} / ${position.token1Symbol}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: palette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -69,14 +70,14 @@ class PoolRowTile extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceAlt,
+                          color: palette.surfaceAlt,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '${position.feeTierPct.toStringAsFixed(2)}%',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
-                            color: AppColors.textSecondary,
+                            color: palette.textSecondary,
                           ),
                         ),
                       ),
@@ -94,9 +95,9 @@ class PoolRowTile extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             position.chain.shortLabel,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: AppColors.textTertiary,
+                              color: palette.textTertiary,
                             ),
                           ),
                         ],
@@ -113,17 +114,17 @@ class PoolRowTile extends StatelessWidget {
               children: [
                 Text(
                   formatter.format(position.feesTotalUsd),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                    color: AppColors.textPrimary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: palette.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Sparkline(
                   values: sparklineValues,
-                  color: rangeHealth.status.color,
+                  color: rangeHealth.status.colorFor(palette),
                 ),
               ],
             ),

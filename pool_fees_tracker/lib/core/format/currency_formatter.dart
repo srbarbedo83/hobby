@@ -30,6 +30,24 @@ class CurrencyFormatter {
   }
 }
 
+/// Formata um preço de token (ex.: USDC por ETH, ver `priceAtTick`) com
+/// casas decimais adaptadas à magnitude — um par de stablecoins perto de
+/// 1.0 precisa de mais precisão que um preço de milhares.
+String formatTokenPrice(double value) {
+  final abs = value.abs();
+  if (abs == 0) return '0';
+  if (abs >= 1000) {
+    return NumberFormat('#,##0', 'en_US').format(value);
+  }
+  if (abs >= 1) {
+    return NumberFormat('#,##0.00', 'en_US').format(value);
+  }
+  if (abs >= 0.0001) {
+    return value.toStringAsFixed(4);
+  }
+  return value.toStringAsExponential(2);
+}
+
 String formatRelativeUpdatedAt(DateTime updatedAt, {DateTime? now}) {
   final diff = (now ?? DateTime.now()).difference(updatedAt);
   if (diff.inSeconds < 5) return 'Updated just now';

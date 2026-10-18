@@ -23,13 +23,14 @@ class FeeBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     if (bars.isEmpty) {
-      return const SizedBox(
+      return SizedBox(
         height: 150,
         child: Center(
           child: Text(
             'No fee history yet',
-            style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
+            style: TextStyle(color: palette.textTertiary, fontSize: 12),
           ),
         ),
       );
@@ -85,9 +86,9 @@ class FeeBarChart extends StatelessWidget {
                     space: 6,
                     child: Text(
                       bars[idx].label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 9.5,
-                        color: AppColors.textTertiary,
+                        color: palette.textTertiary,
                       ),
                     ),
                   );
@@ -105,7 +106,7 @@ class FeeBarChart extends StatelessWidget {
                     width: 18,
                     color: i == selectedIndex
                         ? accentColor
-                        : Colors.white.withValues(alpha: 0.14),
+                        : palette.textSecondary.withValues(alpha: 0.25),
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(5),
                       bottom: Radius.circular(2),

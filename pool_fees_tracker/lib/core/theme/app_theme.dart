@@ -1,56 +1,160 @@
 import 'package:flutter/material.dart';
 
-/// Paleta "trading app": fundo quase preto, acento rosa (nod à marca
-/// Uniswap), verde/âmbar para variações positivas/estado de atenção.
-class AppColors {
-  static const background = Color(0xFF0A0B0D);
-  static const surface = Color(0xFF15171B);
-  static const surfaceAlt = Color(0xFF1C1F24);
-  static const border = Color(0xFF1F2227);
-  static const textPrimary = Color(0xFFF2F3F5);
-  static const textSecondary = Color(0xFF8A8F98);
-  static const textTertiary = Color(0xFF5B6168);
-  static const accent = Color(0xFFFF4FA3);
-  static const positive = Color(0xFF33D17A);
-  static const negative = Color(0xFFFF5C5C);
-  static const warning = Color(0xFFFFB020);
+/// Paleta de cores da app, dependente do tema (dark/light) — lida via
+/// `AppPalette.of(context)`. Nasceu como uma classe `AppColors` de
+/// constantes fixas (só dark); passou a `ThemeExtension` para suportar
+/// tema claro sem duplicar toda a árvore de widgets.
+class AppPalette extends ThemeExtension<AppPalette> {
+  final Color background;
+  final Color surface;
+  final Color surfaceAlt;
+  final Color border;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textTertiary;
+  final Color accent;
+  final Color positive;
+  final Color negative;
+  final Color warning;
+
+  const AppPalette({
+    required this.background,
+    required this.surface,
+    required this.surfaceAlt,
+    required this.border,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textTertiary,
+    required this.accent,
+    required this.positive,
+    required this.negative,
+    required this.warning,
+  });
+
+  /// Fundo quase preto, acento rosa (nod à marca Uniswap), verde/âmbar
+  /// para variações positivas/estado de atenção — o visual "trading app"
+  /// original da app.
+  factory AppPalette.dark() => const AppPalette(
+    background: Color(0xFF0A0B0D),
+    surface: Color(0xFF15171B),
+    surfaceAlt: Color(0xFF1C1F24),
+    border: Color(0xFF1F2227),
+    textPrimary: Color(0xFFF2F3F5),
+    textSecondary: Color(0xFF8A8F98),
+    textTertiary: Color(0xFF5B6168),
+    accent: Color(0xFFFF4FA3),
+    positive: Color(0xFF33D17A),
+    negative: Color(0xFFFF5C5C),
+    warning: Color(0xFFFFB020),
+  );
+
+  /// Mesma identidade (acento rosa, verde/âmbar/vermelho com o mesmo
+  /// significado), fundo claro — contraste de texto verificado para
+  /// WCAG AA (4.5:1) sobre `surface`/`background`.
+  factory AppPalette.light() => const AppPalette(
+    background: Color(0xFFFAFAFB),
+    surface: Color(0xFFFFFFFF),
+    surfaceAlt: Color(0xFFF0F1F3),
+    border: Color(0xFFE2E4E8),
+    textPrimary: Color(0xFF14151A),
+    textSecondary: Color(0xFF5B6168),
+    textTertiary: Color(0xFF80858C),
+    accent: Color(0xFFD6267F),
+    positive: Color(0xFF1C9A5B),
+    negative: Color(0xFFD63B3B),
+    warning: Color(0xFFB8740A),
+  );
+
+  static AppPalette of(BuildContext context) =>
+      Theme.of(context).extension<AppPalette>() ?? AppPalette.dark();
+
+  @override
+  AppPalette copyWith({
+    Color? background,
+    Color? surface,
+    Color? surfaceAlt,
+    Color? border,
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? textTertiary,
+    Color? accent,
+    Color? positive,
+    Color? negative,
+    Color? warning,
+  }) {
+    return AppPalette(
+      background: background ?? this.background,
+      surface: surface ?? this.surface,
+      surfaceAlt: surfaceAlt ?? this.surfaceAlt,
+      border: border ?? this.border,
+      textPrimary: textPrimary ?? this.textPrimary,
+      textSecondary: textSecondary ?? this.textSecondary,
+      textTertiary: textTertiary ?? this.textTertiary,
+      accent: accent ?? this.accent,
+      positive: positive ?? this.positive,
+      negative: negative ?? this.negative,
+      warning: warning ?? this.warning,
+    );
+  }
+
+  @override
+  AppPalette lerp(ThemeExtension<AppPalette>? other, double t) {
+    if (other is! AppPalette) return this;
+    return AppPalette(
+      background: Color.lerp(background, other.background, t)!,
+      surface: Color.lerp(surface, other.surface, t)!,
+      surfaceAlt: Color.lerp(surfaceAlt, other.surfaceAlt, t)!,
+      border: Color.lerp(border, other.border, t)!,
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
+      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textTertiary: Color.lerp(textTertiary, other.textTertiary, t)!,
+      accent: Color.lerp(accent, other.accent, t)!,
+      positive: Color.lerp(positive, other.positive, t)!,
+      negative: Color.lerp(negative, other.negative, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
+    );
+  }
 }
 
 class AppTheme {
-  static ThemeData dark() {
+  static ThemeData dark() => _build(AppPalette.dark(), Brightness.dark);
+
+  static ThemeData light() => _build(AppPalette.light(), Brightness.light);
+
+  static ThemeData _build(AppPalette palette, Brightness brightness) {
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.accent,
-      brightness: Brightness.dark,
-    ).copyWith(surface: AppColors.surface, primary: AppColors.accent);
+      seedColor: palette.accent,
+      brightness: brightness,
+    ).copyWith(surface: palette.surface, primary: palette.accent);
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: palette.background,
       fontFamily: 'Roboto',
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
+      extensions: [palette],
+      appBarTheme: AppBarTheme(
+        backgroundColor: palette.background,
+        foregroundColor: palette.textPrimary,
         elevation: 0,
       ),
       cardTheme: CardThemeData(
-        color: AppColors.surface,
+        color: palette.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: palette.border),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.surface,
-        indicatorColor: AppColors.accent.withValues(alpha: 0.16),
+        backgroundColor: palette.surface,
+        indicatorColor: palette.accent.withValues(alpha: 0.16),
       ),
-      textTheme:
-          const TextTheme(bodyMedium: TextStyle(color: AppColors.textPrimary))
-              .apply(
-                bodyColor: AppColors.textPrimary,
-                displayColor: AppColors.textPrimary,
-              ),
+      textTheme: TextTheme(bodyMedium: TextStyle(color: palette.textPrimary))
+          .apply(
+            bodyColor: palette.textPrimary,
+            displayColor: palette.textPrimary,
+          ),
     );
   }
 }

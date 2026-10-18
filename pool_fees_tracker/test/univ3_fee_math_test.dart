@@ -123,4 +123,53 @@ void main() {
       expect(tokenAmountToDouble(BigInt.from(42), 0), 42.0);
     });
   });
+
+  group('priceAtTick', () {
+    test('tick 0 com os mesmos decimais nos dois tokens dá preço 1.0', () {
+      expect(
+        priceAtTick(tick: 0, token0Decimals: 18, token1Decimals: 18),
+        closeTo(1.0, 1e-9),
+      );
+    });
+
+    test('ajusta pela diferença de decimais entre token0 e token1', () {
+      // token0 com 18 decimais, token1 com 6 (ex.: ETH/USDC): o mesmo tick
+      // vale 10^12 vezes mais em unidades humanas.
+      final price18v18 = priceAtTick(
+        tick: 1000,
+        token0Decimals: 18,
+        token1Decimals: 18,
+      );
+      final price18v6 = priceAtTick(
+        tick: 1000,
+        token0Decimals: 18,
+        token1Decimals: 6,
+      );
+      expect(price18v6 / price18v18, closeTo(1e12, 1));
+    });
+
+    test('é monótono crescente em tick (preço sobe com o tick)', () {
+      final lower = priceAtTick(
+        tick: -201180,
+        token0Decimals: 18,
+        token1Decimals: 6,
+      );
+      final upper = priceAtTick(
+        tick: -200980,
+        token0Decimals: 18,
+        token1Decimals: 6,
+      );
+      expect(upper, greaterThan(lower));
+    });
+
+    test('ETH/USDC perto de -201080 dá um preço plausível (~1800-1900)', () {
+      final price = priceAtTick(
+        tick: -201060,
+        token0Decimals: 18,
+        token1Decimals: 6,
+      );
+      expect(price, greaterThan(1800));
+      expect(price, lessThan(1900));
+    });
+  });
 }

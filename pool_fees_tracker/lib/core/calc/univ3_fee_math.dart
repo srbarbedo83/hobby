@@ -5,6 +5,8 @@
 /// é `valor / 2^128`.
 library;
 
+import 'dart:math' show pow;
+
 final BigInt _q128 = BigInt.one << 128;
 final BigInt _mask256 = (BigInt.one << 256) - BigInt.one;
 
@@ -92,6 +94,21 @@ BigInt tokensOwed({
       liquidity: liquidity,
     ),
   );
+}
+
+/// Preço no tick [tick], como quantidade de token1 por 1 token0 — a mesma
+/// convenção da Uniswap v3 (`price = 1.0001^tick`, ajustado pela diferença
+/// de decimais entre os dois tokens). Usado para mostrar o range mínimo/
+/// máximo real de uma posição (tickLower/tickUpper são imutáveis desde o
+/// mint, só a liquidez muda com adds/removes) em vez de só a fração 0..1
+/// que [computeRangeHealth] já dava.
+double priceAtTick({
+  required int tick,
+  required int token0Decimals,
+  required int token1Decimals,
+}) {
+  return pow(1.0001, tick) *
+      pow(10, token0Decimals - token1Decimals).toDouble();
 }
 
 /// Converte uma quantidade inteira de token (unidades mínimas) para um

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/calc/bar_aggregator.dart';
 import '../../core/calc/pool_metrics.dart';
+import '../../core/calc/univ3_fee_math.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -51,6 +52,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final settings = ref.watch(appSettingsProvider);
     final positionsAsync = ref.watch(positionsStreamProvider);
     final snapshotsAsync = ref.watch(allFeeSnapshotsProvider);
@@ -65,12 +67,12 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
 
     if (position == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: palette.background,
         appBar: AppBar(),
-        body: const Center(
+        body: Center(
           child: Text(
             'Position not found',
-            style: TextStyle(color: AppColors.textSecondary),
+            style: TextStyle(color: palette.textSecondary),
           ),
         ),
       );
@@ -95,7 +97,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         : (bars.isNotEmpty ? bars.last : null);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: palette.background,
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -125,14 +127,14 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
+                    color: palette.surfaceAlt,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     '${position.feeTierPct.toStringAsFixed(2)}% fee tier',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.textSecondary,
+                      color: palette.textSecondary,
                     ),
                   ),
                 ),
@@ -150,19 +152,16 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     const SizedBox(width: 5),
                     Text(
                       position.chain.displayName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textSecondary,
+                        color: palette.textSecondary,
                       ),
                     ),
                   ],
                 ),
                 Text(
                   'Opened ${DateFormat.yMMMd().format(position.createdAt)}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textTertiary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: palette.textTertiary),
                 ),
               ],
             ),
@@ -170,9 +169,9 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: palette.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: palette.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,13 +179,13 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'FEES EARNED',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 1,
-                          color: AppColors.textSecondary,
+                          color: palette.textSecondary,
                         ),
                       ),
                       const LiveBadge(),
@@ -202,9 +201,9 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   Text(
                     '${formatter.format(metrics.sinceOpen.feesEarnedUsd)} since open '
                     '(+${metrics.sinceOpen.feesEarnedPct.toStringAsFixed(1)}%) · ${metrics.sinceOpen.daysOpen}d open',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.positive,
+                      color: palette.positive,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -215,11 +214,29 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: palette.surface,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: palette.border),
               ),
-              child: RangeHealthBar(health: metrics.rangeHealth),
+              child: RangeHealthBar(
+                health: metrics.rangeHealth,
+                minPriceLabel: formatTokenPrice(
+                  priceAtTick(
+                    tick: position.tickLower,
+                    token0Decimals: position.token0Decimals,
+                    token1Decimals: position.token1Decimals,
+                  ),
+                ),
+                maxPriceLabel: formatTokenPrice(
+                  priceAtTick(
+                    tick: position.tickUpper,
+                    token0Decimals: position.token0Decimals,
+                    token1Decimals: position.token1Decimals,
+                  ),
+                ),
+                priceUnitLabel:
+                    '${position.token1Symbol} per ${position.token0Symbol}',
+              ),
             ),
             const SizedBox(height: 14),
             Row(
@@ -229,8 +246,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     label: 'APR (7d)',
                     value: '${metrics.realizedAprPct.toStringAsFixed(1)}%',
                     valueColor: metrics.realizedAprPct >= 0
-                        ? AppColors.positive
-                        : AppColors.negative,
+                        ? palette.positive
+                        : palette.negative,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -253,8 +270,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                         ? 'Paid off'
                         : formatter.format(metrics.gasBreakEven.remainingUsd),
                     valueColor: metrics.gasBreakEven.reached
-                        ? AppColors.positive
-                        : AppColors.textPrimary,
+                        ? palette.positive
+                        : palette.textPrimary,
                     caption:
                         (metrics.gasBreakEven.reached
                             ? 'fees > gas cost'
@@ -293,8 +310,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                         ? '~0%'
                         : '${metrics.impermanentLoss.lossPct.toStringAsFixed(2)}%',
                     valueColor: metrics.impermanentLoss.lossPct < -0.01
-                        ? AppColors.negative
-                        : AppColors.textPrimary,
+                        ? palette.negative
+                        : palette.textPrimary,
                     caption: 'vs. just holding the tokens — est.',
                   ),
                 ),
@@ -304,8 +321,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     label: 'Net vs. HODL',
                     value: formatter.format(metrics.netVsHoldUsd),
                     valueColor: metrics.netVsHoldUsd >= 0
-                        ? AppColors.positive
-                        : AppColors.negative,
+                        ? palette.positive
+                        : palette.negative,
                     caption: 'fees earned minus IL',
                   ),
                 ),
@@ -315,19 +332,19 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: palette.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: palette.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Fees over time',
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: palette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -351,17 +368,17 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                       children: [
                         Text(
                           formatter.format(selectedBar.valueUsd),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: palette.textPrimary,
                           ),
                         ),
                         Text(
                           '${selectedBar.label} · ${_range.label}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11.5,
-                            color: AppColors.textSecondary,
+                            color: palette.textSecondary,
                           ),
                         ),
                       ],
@@ -372,7 +389,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     selectedIndex:
                         _selectedBarIndex ??
                         (bars.isEmpty ? null : bars.length - 1),
-                    accentColor: AppColors.accent,
+                    accentColor: palette.accent,
                     onBarSelected: (index) =>
                         setState(() => _selectedBarIndex = index),
                   ),
@@ -406,11 +423,11 @@ extension on PositionEventType {
     PositionEventType.collect => Icons.redeem_outlined,
   };
 
-  Color get color => switch (this) {
-    PositionEventType.mint => AppColors.accent,
-    PositionEventType.increaseLiquidity => AppColors.positive,
-    PositionEventType.decreaseLiquidity => AppColors.warning,
-    PositionEventType.collect => AppColors.positive,
+  Color colorFor(AppPalette palette) => switch (this) {
+    PositionEventType.mint => palette.accent,
+    PositionEventType.increaseLiquidity => palette.positive,
+    PositionEventType.decreaseLiquidity => palette.warning,
+    PositionEventType.collect => palette.positive,
   };
 }
 
@@ -422,35 +439,33 @@ class _ActivitySection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final palette = AppPalette.of(context);
     final eventsAsync = ref.watch(positionEventsProvider(positionKey));
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Activity',
             style: TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: palette.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
           eventsAsync.when(
             data: (events) => events.isEmpty
-                ? const Text(
+                ? Text(
                     'No events yet',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textTertiary,
-                    ),
+                    style: TextStyle(fontSize: 12, color: palette.textTertiary),
                   )
                 : Column(
                     children: [
@@ -472,10 +487,7 @@ class _ActivitySection extends ConsumerWidget {
             ),
             error: (e, st) => Text(
               'Could not load activity',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textTertiary,
-              ),
+              style: TextStyle(fontSize: 12, color: palette.textTertiary),
             ),
           ),
         ],
@@ -492,17 +504,19 @@ class _EventRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final color = event.type.colorFor(palette);
     return Row(
       children: [
         Container(
           width: 30,
           height: 30,
           decoration: BoxDecoration(
-            color: event.type.color.withValues(alpha: 0.12),
+            color: color.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
-          child: Icon(event.type.icon, size: 15, color: event.type.color),
+          child: Icon(event.type.icon, size: 15, color: color),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -512,27 +526,21 @@ class _EventRow extends StatelessWidget {
             children: [
               Text(
                 event.type.label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 13, color: palette.textPrimary),
               ),
               Text(
                 DateFormat.yMMMd().add_Hm().format(event.timestamp),
-                style: const TextStyle(
-                  fontSize: 10.5,
-                  color: AppColors.textTertiary,
-                ),
+                style: TextStyle(fontSize: 10.5, color: palette.textTertiary),
               ),
             ],
           ),
         ),
         Text(
           formatter.format(event.amountUsd),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: palette.textPrimary,
           ),
         ),
       ],

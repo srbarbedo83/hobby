@@ -35,6 +35,7 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final settings = ref.watch(appSettingsProvider);
     final positionsAsync = ref.watch(positionsStreamProvider);
     final snapshotsAsync = ref.watch(allFeeSnapshotsProvider);
@@ -72,12 +73,12 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Pools',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: palette.textPrimary,
                   ),
                 ),
                 SizedBox(
@@ -94,10 +95,10 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
             const SizedBox(height: 14),
             Expanded(
               child: positions.isEmpty && closedPositions.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text(
                         'No pools yet',
-                        style: TextStyle(color: AppColors.textSecondary),
+                        style: TextStyle(color: palette.textSecondary),
                       ),
                     )
                   : ListView(
@@ -132,11 +133,11 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                           Text(
                             'CLOSED (still counted in lifetime total)'
                                 .toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.6,
-                              color: AppColors.textTertiary,
+                              color: palette.textTertiary,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -194,6 +195,7 @@ class _ClosedPositionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     final closedAt = position.closedAt;
     final daysAgo = closedAt == null
         ? null
@@ -205,9 +207,9 @@ class _ClosedPositionRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.surface.withValues(alpha: 0.55),
+          color: palette.surface.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: palette.border),
         ),
         child: Row(
           children: [
@@ -226,18 +228,18 @@ class _ClosedPositionRow extends StatelessWidget {
                 children: [
                   Text(
                     '${position.token0Symbol} / ${position.token1Symbol}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: palette.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     daysAgo != null ? 'Closed ${daysAgo}d ago' : 'Closed',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 10.5,
-                      color: AppColors.textTertiary,
+                      color: palette.textTertiary,
                     ),
                   ),
                 ],
@@ -245,10 +247,10 @@ class _ClosedPositionRow extends StatelessWidget {
             ),
             Text(
               formatter.format(position.feesTotalUsd),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+                color: palette.textSecondary,
               ),
             ),
           ],
