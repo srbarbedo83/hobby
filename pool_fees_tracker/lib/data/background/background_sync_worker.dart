@@ -8,6 +8,7 @@ import '../../core/format/currency_formatter.dart';
 import '../local/alert_log_entry.dart';
 import '../local/alert_state.dart';
 import '../local/isar_service.dart';
+import '../local/price_alert_rule.dart';
 import '../local/settings_service.dart';
 import '../repositories/isar_wallet_repository.dart';
 import '../repositories/pool_fees_repository_factory.dart';
@@ -85,6 +86,13 @@ Future<int> runBackgroundSync() async {
     final lastNotifiedFeesByKey = {
       for (final s in previousStates) s.positionKey: s.lastNotifiedFeesTotal,
     };
+    final previousSlowdownByKey = {
+      for (final s in previousStates) s.positionKey: s.lastFeeSlowdownNotified,
+    };
+    final priceAlertRules = await isar.priceAlertRules.where().findAll();
+    final ruleByPositionKey = {
+      for (final rule in priceAlertRules) rule.positionKey: rule,
+    };
 
     final rangeAlerts = settings.outOfRangeAlertsEnabled
         ? detectRangeTransitions(
@@ -99,7 +107,23 @@ Future<int> runBackgroundSync() async {
             thresholdUsd: settings.feeMilestoneThresholdUsd,
           )
         : <AlertEvent>[];
-    final allAlerts = [...rangeAlerts, ...milestoneAlerts];
+    final slowdownAlerts = settings.feeSlowdownAlertsEnabled
+        ? detectFeeSlowdowns(
+            positions: positions,
+            snapshotsByKey: snapshotsByKey,
+            previousSlowdownByKey: previousSlowdownByKey,
+          )
+        : <AlertEvent>[];
+    final priceThresholdAlerts = detectPriceThresholdCrossings(
+      positions: positions,
+      ruleByPositionKey: ruleByPositionKey,
+    );
+    final allAlerts = [
+      ...rangeAlerts,
+      ...milestoneAlerts,
+      ...slowdownAlerts,
+      ...priceThresholdAlerts,
+    ];
 
     for (final alert in allAlerts) {
       await NotificationService.instance.show(
@@ -124,22 +148,36 @@ Future<int> runBackgroundSync() async {
                 milestone.newNotifiedFeesTotal ?? notifiedFeesTotal;
           }
         }
+        final slowdownNow = isFeeSlowdown(
+          snapshots: snapshotsByKey[position.positionKey] ?? const [],
+        );
 
         await isar.alertStates.put(
           AlertState()
             ..positionKey = position.positionKey
             ..lastRangeStatus = health.status
-            ..lastNotifiedFeesTotal = notifiedFeesTotal,
+            ..lastNotifiedFeesTotal = notifiedFeesTotal
+            ..lastFeeSlowdownNotified = slowdownNow,
         );
+
+        final rule = ruleByPositionKey[position.positionKey];
+        if (rule != null) {
+          await isar.priceAlertRules.put(
+            rule..lastTriggered = priceThresholdMet(rule, position.currentTick),
+          );
+        }
       }
 
       for (final alert in allAlerts) {
         await isar.alertLogEntrys.put(
           AlertLogEntry()
             ..positionKey = alert.positionKey
-            ..kind = alert.kind == AlertKind.outOfRange
-                ? AlertLogKind.outOfRange
-                : AlertLogKind.feeMilestone
+            ..kind = switch (alert.kind) {
+              AlertKind.outOfRange => AlertLogKind.outOfRange,
+              AlertKind.feeMilestone => AlertLogKind.feeMilestone,
+              AlertKind.feeSlowdown => AlertLogKind.feeSlowdown,
+              AlertKind.priceThreshold => AlertLogKind.priceThreshold,
+            }
             ..title = alert.title
             ..body = alert.body
             ..firedAt = DateTime.now(),

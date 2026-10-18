@@ -7,6 +7,7 @@ import '../local/chain.dart';
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
 import '../local/position_event.dart';
+import '../local/price_point.dart';
 import '../remote/eth_rpc_client.dart';
 import '../remote/uniswap_subgraph_client.dart';
 import 'pool_fees_repository.dart';
@@ -53,6 +54,10 @@ import 'wallet_repository.dart';
 /// - `getEvents` identifica os eventos (mint/collect/burn) desta posição
 ///   por `pool + owner + tickLower + tickUpper`, pela mesma razão — ver
 ///   `UniswapSubgraphClient.fetchPositionEvents`.
+/// - `getPricePoints` só regista um ponto por refresh a partir do momento
+///   em que a app liga — o subgraph não é interrogado pelo histórico de
+///   tick antigo, por isso gráficos/streaks que dependem disto ficam
+///   curtos logo após ativar modo Live (crescem com o uso).
 /// - O histórico por posição (para o gráfico de barras) é alocado a partir
 ///   do histórico da POOL (`poolHourData`/`poolDayData`), repartido pela
 ///   quota de liquidez da posição — o subgraph não guarda uma série
@@ -119,6 +124,15 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   @override
   Future<List<FeeSnapshot>> getFeeSnapshots(String positionKey) {
     return _isar.feeSnapshots
+        .filter()
+        .positionKeyEqualTo(positionKey)
+        .sortByTimestamp()
+        .findAll();
+  }
+
+  @override
+  Future<List<PricePoint>> getPricePoints(String positionKey) {
+    return _isar.pricePoints
         .filter()
         .positionKeyEqualTo(positionKey)
         .sortByTimestamp()
@@ -206,6 +220,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
 
       final now = DateTime.now();
       final mapped = <PoolPosition>[];
+      final pricePoints = <PricePoint>[];
 
       for (final entry in _clients.entries) {
         final chain = entry.key;
@@ -228,12 +243,22 @@ class LivePoolFeesRepository implements PoolFeesRepository {
               position: position,
               now: now,
             );
+            // Um ponto de preço por refresh — só prospetivo (ver nota no
+            // topo do ficheiro): o subgraph não dá o histórico de tick
+            // antigo, por isso o histórico só começa a partir de agora.
+            pricePoints.add(
+              PricePoint()
+                ..positionKey = position.positionKey
+                ..timestamp = now
+                ..tick = position.currentTick,
+            );
           }
         }
       }
 
       await _isar.writeTxn(() async {
         await _isar.poolPositions.putAll(mapped);
+        await _isar.pricePoints.putAll(pricePoints);
       });
 
       _positions = mapped;

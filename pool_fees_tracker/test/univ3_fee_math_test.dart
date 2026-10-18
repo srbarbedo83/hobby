@@ -172,4 +172,28 @@ void main() {
       expect(price, lessThan(1900));
     });
   });
+
+  group('tickAtPrice', () {
+    test('é o inverso de priceAtTick (ida e volta dá o tick original)', () {
+      const originalTick = -201060;
+      final price = priceAtTick(
+        tick: originalTick,
+        token0Decimals: 18,
+        token1Decimals: 6,
+      );
+      final roundTrippedTick = tickAtPrice(
+        price: price,
+        token0Decimals: 18,
+        token1Decimals: 6,
+      );
+      expect(roundTrippedTick, closeTo(originalTick, 0.01));
+    });
+
+    test('preço 1.0 com os mesmos decimais dá tick 0', () {
+      expect(
+        tickAtPrice(price: 1.0, token0Decimals: 18, token1Decimals: 18),
+        closeTo(0, 1e-6),
+      );
+    });
+  });
 }

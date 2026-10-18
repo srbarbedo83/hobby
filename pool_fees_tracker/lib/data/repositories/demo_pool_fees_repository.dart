@@ -5,6 +5,7 @@ import '../local/chain.dart';
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
 import '../local/position_event.dart';
+import '../local/price_point.dart';
 import 'pool_fees_repository.dart';
 
 /// Repositório de demonstração: gera posições e histórico de fees
@@ -15,6 +16,7 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
   final List<PoolPosition> _positions = [];
   final Map<String, List<FeeSnapshot>> _snapshotsByKey = {};
   final Map<String, List<PositionEvent>> _eventsByKey = {};
+  final Map<String, List<PricePoint>> _pricePointsByKey = {};
   final StreamController<List<PoolPosition>> _controller =
       StreamController.broadcast();
   final Random _rng = Random(7);
@@ -57,6 +59,11 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
   @override
   Future<List<PositionEvent>> getEvents(String positionKey) async {
     return List.unmodifiable(_eventsByKey[positionKey] ?? const []);
+  }
+
+  @override
+  Future<List<PricePoint>> getPricePoints(String positionKey) async {
+    return List.unmodifiable(_pricePointsByKey[positionKey] ?? const []);
   }
 
   @override
@@ -269,9 +276,57 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         seed: i + 1,
       );
       _eventsByKey[position.positionKey] = _buildEvents(position);
+      _pricePointsByKey[position.positionKey] = _buildPricePoints(
+        positionKey: position.positionKey,
+        createdAt: position.createdAt,
+        until: closedAt ?? now,
+        entryTick: position.entryTick,
+        currentTick: position.currentTick,
+        tickLower: position.tickLower,
+        tickUpper: position.tickUpper,
+        seed: i + 1,
+      );
     }
 
     _lastUpdatedAt = now;
+  }
+
+  /// Caminho sintético do tick ao longo do tempo: interpolação linear de
+  /// `entryTick` até `currentTick` com ruído limitado a uma fração da
+  /// largura do range — dá um histórico plausível (com cruzamentos
+  /// dentro/fora do range) que termina exatamente no tick "oficial" da
+  /// posição, sem contradizer os outros campos sintéticos.
+  List<PricePoint> _buildPricePoints({
+    required String positionKey,
+    required DateTime createdAt,
+    required DateTime until,
+    required int entryTick,
+    required int currentTick,
+    required int tickLower,
+    required int tickUpper,
+    required int seed,
+  }) {
+    final rng = Random(seed * 2000 + 7);
+    final totalHours = until.difference(createdAt).inHours;
+    if (totalHours <= 0) return [];
+
+    final amplitude = max(1, ((tickUpper - tickLower) * 0.08).round());
+    final points = <PricePoint>[];
+    for (var h = 0; h < totalHours; h++) {
+      final t = h / totalHours;
+      final trend = entryTick + (currentTick - entryTick) * t;
+      final noise = (rng.nextDouble() - 0.5) * 2 * amplitude;
+      points.add(
+        PricePoint()
+          ..positionKey = positionKey
+          ..timestamp = createdAt.add(Duration(hours: h + 1))
+          ..tick = (trend + noise).round(),
+      );
+    }
+    // O último ponto bate certo com o tick atual "oficial" da posição —
+    // o ruído não deve fazer o histórico contradizer o estado persistido.
+    points.last.tick = currentTick;
+    return points;
   }
 
   /// Linha do tempo sintética: mint na abertura, dois collects a meio da

@@ -1,6 +1,7 @@
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
 import '../local/position_event.dart';
+import '../local/price_point.dart';
 
 /// Fonte das posições de liquidez e do seu histórico de fees. Tem duas
 /// implementações: [DemoPoolFeesRepository] (dados sintéticos, sem rede) e
@@ -19,6 +20,11 @@ abstract class PoolFeesRepository {
   /// Histórico de eventos (mint, adds/removes de liquidez, collects) de
   /// uma posição, mais recente primeiro.
   Future<List<PositionEvent>> getEvents(String positionKey);
+
+  /// Histórico de preço/tick de uma posição, ordenado por tempo — ver a
+  /// nota em `PricePoint` sobre a limitação em modo Live (só regista a
+  /// partir de agora, não faz backfill do histórico antigo).
+  Future<List<PricePoint>> getPricePoints(String positionKey);
 
   /// Custo real de gás da posição, em USD, quando há forma de calculá-lo
   /// (só [LivePoolFeesRepository], com RPC configurado — ver a nota em

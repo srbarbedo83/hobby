@@ -58,6 +58,7 @@ class AppSettings {
   final bool outOfRangeAlertsEnabled;
   final bool feeMilestoneAlertsEnabled;
   final double feeMilestoneThresholdUsd;
+  final bool feeSlowdownAlertsEnabled;
 
   const AppSettings({
     this.dataSourceMode = DataSourceMode.demo,
@@ -72,6 +73,7 @@ class AppSettings {
     this.outOfRangeAlertsEnabled = true,
     this.feeMilestoneAlertsEnabled = true,
     this.feeMilestoneThresholdUsd = 50,
+    this.feeSlowdownAlertsEnabled = true,
   });
 
   AppSettings copyWith({
@@ -87,6 +89,7 @@ class AppSettings {
     bool? outOfRangeAlertsEnabled,
     bool? feeMilestoneAlertsEnabled,
     double? feeMilestoneThresholdUsd,
+    bool? feeSlowdownAlertsEnabled,
   }) {
     return AppSettings(
       dataSourceMode: dataSourceMode ?? this.dataSourceMode,
@@ -105,6 +108,8 @@ class AppSettings {
           feeMilestoneAlertsEnabled ?? this.feeMilestoneAlertsEnabled,
       feeMilestoneThresholdUsd:
           feeMilestoneThresholdUsd ?? this.feeMilestoneThresholdUsd,
+      feeSlowdownAlertsEnabled:
+          feeSlowdownAlertsEnabled ?? this.feeSlowdownAlertsEnabled,
     );
   }
 
@@ -127,6 +132,7 @@ class SettingsService {
   static const _keyOutOfRangeAlerts = 'out_of_range_alerts_enabled';
   static const _keyFeeMilestoneAlerts = 'fee_milestone_alerts_enabled';
   static const _keyFeeMilestoneThreshold = 'fee_milestone_threshold_usd';
+  static const _keyFeeSlowdownAlerts = 'fee_slowdown_alerts_enabled';
 
   final SharedPreferences _prefs;
 
@@ -171,6 +177,7 @@ class SettingsService {
       feeMilestoneAlertsEnabled: _prefs.getBool(_keyFeeMilestoneAlerts) ?? true,
       feeMilestoneThresholdUsd:
           _prefs.getDouble(_keyFeeMilestoneThreshold) ?? 50,
+      feeSlowdownAlertsEnabled: _prefs.getBool(_keyFeeSlowdownAlerts) ?? true,
     );
   }
 
@@ -198,6 +205,10 @@ class SettingsService {
     await _prefs.setDouble(
       _keyFeeMilestoneThreshold,
       settings.feeMilestoneThresholdUsd,
+    );
+    await _prefs.setBool(
+      _keyFeeSlowdownAlerts,
+      settings.feeSlowdownAlertsEnabled,
     );
   }
 }

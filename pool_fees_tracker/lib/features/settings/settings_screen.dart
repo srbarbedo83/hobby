@@ -373,6 +373,31 @@ class SettingsScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: palette.accent,
+                    title: Text(
+                      'Fee slowdown alerts',
+                      style: TextStyle(
+                        color: palette.textPrimary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '24h fees well below the 7-day average — may mean the pool is '
+                      'seeing less volume.',
+                      style: TextStyle(
+                        color: palette.textTertiary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    value: settings.feeSlowdownAlertsEnabled,
+                    onChanged: (value) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update(
+                          (s) => s.copyWith(feeSlowdownAlertsEnabled: value),
+                        ),
+                  ),
                 ],
               ],
             ),

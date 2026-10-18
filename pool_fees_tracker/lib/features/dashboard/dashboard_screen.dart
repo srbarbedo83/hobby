@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/calc/bar_aggregator.dart';
 import '../../core/calc/dashboard_metrics.dart';
+import '../../core/calc/portfolio_composition.dart';
 import '../../core/calc/range_health.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/providers.dart';
@@ -13,6 +14,7 @@ import '../../shared/widgets/live_badge.dart';
 import '../../shared/widgets/pool_row_tile.dart';
 import '../../shared/widgets/stat_tile.dart';
 import '../pool_detail/pool_detail_screen.dart';
+import 'portfolio_composition_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -110,6 +112,12 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+            PortfolioCompositionCard(
+              byChain: compositionByChain(positions),
+              byPair: compositionByPair(positions),
+              formatter: formatter,
             ),
             const SizedBox(height: 18),
             Row(

@@ -4,10 +4,13 @@ import 'package:isar_community/isar.dart';
 import '../data/local/alert_log_entry.dart';
 import '../data/local/fee_snapshot.dart';
 import '../data/local/position_event.dart';
+import '../data/local/price_alert_rule.dart';
+import '../data/local/price_point.dart';
 import '../data/local/settings_service.dart';
 import '../data/repositories/isar_wallet_repository.dart';
 import '../data/repositories/pool_fees_repository.dart';
 import '../data/repositories/pool_fees_repository_factory.dart';
+import '../data/repositories/price_alert_rule_service.dart';
 import '../data/repositories/wallet_repository.dart';
 
 /// Sobreposto em `main()` com a instância já aberta.
@@ -39,6 +42,20 @@ final appSettingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
 
 final walletRepositoryProvider = Provider<WalletRepository>((ref) {
   return IsarWalletRepository(ref.watch(isarProvider));
+});
+
+final priceAlertRuleServiceProvider = Provider<PriceAlertRuleService>((ref) {
+  return PriceAlertRuleService(ref.watch(isarProvider));
+});
+
+/// Regra de alerta de preço de uma posição, se existir — ver
+/// `PriceAlertRuleService`. Invalidado manualmente depois de
+/// definir/limpar um alerta no ecrã de detalhe.
+final priceAlertRuleProvider = FutureProvider.family<PriceAlertRule?, String>((
+  ref,
+  positionKey,
+) {
+  return ref.watch(priceAlertRuleServiceProvider).get(positionKey);
 });
 
 /// Escolhe a implementação segundo as definições: Demo (sintético, sem
@@ -90,6 +107,15 @@ final positionEventsProvider =
     FutureProvider.family<List<PositionEvent>, String>((ref, positionKey) {
       return ref.watch(poolFeesRepositoryProvider).getEvents(positionKey);
     });
+
+/// Histórico de preço/tick de uma posição — ver nota em `PricePoint` sobre
+/// a limitação em modo Live (só regista a partir de agora).
+final pricePointsProvider = FutureProvider.family<List<PricePoint>, String>((
+  ref,
+  positionKey,
+) {
+  return ref.watch(poolFeesRepositoryProvider).getPricePoints(positionKey);
+});
 
 /// Alertas já disparados (out-of-range, milestones de fees), mais recentes
 /// primeiro — alimenta o ecrã de Alerts. Invalidado manualmente depois de

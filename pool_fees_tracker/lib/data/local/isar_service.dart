@@ -6,6 +6,8 @@ import 'alert_state.dart';
 import 'fee_snapshot.dart';
 import 'pool_position.dart';
 import 'position_event.dart';
+import 'price_alert_rule.dart';
+import 'price_point.dart';
 import 'wallet.dart';
 
 /// Abre (ou devolve) a única instância local do Isar usada pela app.
@@ -30,6 +32,8 @@ class IsarService {
       PositionEventSchema,
       AlertStateSchema,
       AlertLogEntrySchema,
+      PricePointSchema,
+      PriceAlertRuleSchema,
     ], directory: dir.path);
     _instance = isar;
     return isar;

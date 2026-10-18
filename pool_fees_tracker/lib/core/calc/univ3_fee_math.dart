@@ -5,7 +5,7 @@
 /// é `valor / 2^128`.
 library;
 
-import 'dart:math' show pow;
+import 'dart:math' show log, pow;
 
 final BigInt _q128 = BigInt.one << 128;
 final BigInt _mask256 = (BigInt.one << 256) - BigInt.one;
@@ -103,12 +103,26 @@ BigInt tokensOwed({
 /// mint, só a liquidez muda com adds/removes) em vez de só a fração 0..1
 /// que [computeRangeHealth] já dava.
 double priceAtTick({
-  required int tick,
+  required num tick,
   required int token0Decimals,
   required int token1Decimals,
 }) {
   return pow(1.0001, tick) *
       pow(10, token0Decimals - token1Decimals).toDouble();
+}
+
+/// Inverso de [priceAtTick]: a que tick corresponde um preço (token1 por
+/// token0) escolhido pelo utilizador — usado para guardar um alerta de
+/// preço como tick (comparação inteira exata com `currentTick`) em vez de
+/// comparar doubles.
+num tickAtPrice({
+  required double price,
+  required int token0Decimals,
+  required int token1Decimals,
+}) {
+  final decimalsAdjustedPrice =
+      price / pow(10, token0Decimals - token1Decimals);
+  return log(decimalsAdjustedPrice) / log(1.0001);
 }
 
 /// Converte uma quantidade inteira de token (unidades mínimas) para um

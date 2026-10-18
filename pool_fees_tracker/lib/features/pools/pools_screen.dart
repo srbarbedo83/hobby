@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/calc/bar_aggregator.dart';
+import '../../core/calc/leaderboard.dart';
 import '../../core/calc/range_health.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/providers.dart';
@@ -11,6 +12,7 @@ import '../../data/local/pool_position.dart';
 import '../../shared/widgets/pool_row_tile.dart';
 import '../../shared/widgets/segmented_pill_control.dart';
 import '../../shared/widgets/token_pair_icon.dart';
+import '../compare/compare_screen.dart';
 import '../pool_detail/pool_detail_screen.dart';
 
 enum _SortBy { fees, apr, age }
@@ -73,16 +75,34 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Pools',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: palette.textPrimary,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Pools',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: palette.textPrimary,
+                      ),
+                    ),
+                    if (positions.length >= 2)
+                      IconButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const CompareScreen(),
+                          ),
+                        ),
+                        icon: Icon(
+                          Icons.compare_arrows,
+                          size: 20,
+                          color: palette.textSecondary,
+                        ),
+                        tooltip: 'Compare pools',
+                      ),
+                  ],
                 ),
                 SizedBox(
-                  width: 180,
+                  width: 160,
                   child: SegmentedPillControl<_SortBy>(
                     options: _SortBy.values,
                     selected: _sortBy,
@@ -103,6 +123,22 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                     )
                   : ListView(
                       children: [
+                        if (positions.isNotEmpty) ...[
+                          _LeaderboardRow(
+                            leaderboard: computeLeaderboard(
+                              positions: allPositions,
+                              snapshotsByKey: snapshots,
+                            ),
+                            formatter: formatter,
+                            onTap: (positionKey) => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    PoolDetailScreen(positionKey: positionKey),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         for (final position in positions) ...[
                           PoolRowTile(
                             position: position,
@@ -251,6 +287,134 @@ class _ClosedPositionRow extends StatelessWidget {
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: palette.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Resumo rápido de "o que está a compensar": a pool com melhor APR (7d) e
+/// a com maior perda de impermanent loss, lado a lado — ver
+/// `computeLeaderboard`.
+class _LeaderboardRow extends StatelessWidget {
+  final ({LeaderboardEntry? bestApr, LeaderboardEntry? worstIl}) leaderboard;
+  final CurrencyFormatter formatter;
+  final ValueChanged<String> onTap;
+
+  const _LeaderboardRow({
+    required this.leaderboard,
+    required this.formatter,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final best = leaderboard.bestApr;
+    final worst = leaderboard.worstIl;
+    if (best == null && worst == null) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        if (best != null)
+          Expanded(
+            child: _LeaderboardCard(
+              label: 'Best APR',
+              pair:
+                  '${best.position.token0Symbol} / ${best.position.token1Symbol}',
+              value: '${best.aprPct.toStringAsFixed(1)}%',
+              isPositive: true,
+              onTap: () => onTap(best.position.positionKey),
+            ),
+          ),
+        if (best != null && worst != null) const SizedBox(width: 10),
+        if (worst != null && worst.ilLossPct < -0.01)
+          Expanded(
+            child: _LeaderboardCard(
+              label: 'Worst IL',
+              pair:
+                  '${worst.position.token0Symbol} / ${worst.position.token1Symbol}',
+              value: '${worst.ilLossPct.toStringAsFixed(2)}%',
+              isPositive: false,
+              onTap: () => onTap(worst.position.positionKey),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _LeaderboardCard extends StatelessWidget {
+  final String label;
+  final String pair;
+  final String value;
+  final bool isPositive;
+  final VoidCallback onTap;
+
+  const _LeaderboardCard({
+    required this.label,
+    required this.pair,
+    required this.value,
+    required this.isPositive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final accent = isPositive ? palette.positive : palette.negative;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isPositive
+                      ? Icons.emoji_events_outlined
+                      : Icons.trending_down,
+                  size: 14,
+                  color: accent,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                    color: accent,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              pair,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: palette.textPrimary,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: accent,
               ),
             ),
           ],

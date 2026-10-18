@@ -2,7 +2,7 @@ import 'package:isar_community/isar.dart';
 
 part 'alert_log_entry.g.dart';
 
-enum AlertLogKind { outOfRange, feeMilestone }
+enum AlertLogKind { outOfRange, feeMilestone, feeSlowdown, priceThreshold }
 
 /// Um alerta já disparado — guardado para o ecrã de Alerts ter algo para
 /// mostrar (um feed, não só um botão de configuração).

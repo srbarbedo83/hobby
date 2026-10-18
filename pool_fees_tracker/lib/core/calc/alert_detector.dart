@@ -1,7 +1,9 @@
+import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
+import '../../data/local/price_alert_rule.dart';
 import 'range_health.dart';
 
-enum AlertKind { outOfRange, feeMilestone }
+enum AlertKind { outOfRange, feeMilestone, feeSlowdown, priceThreshold }
 
 class AlertEvent {
   final String positionKey;
@@ -80,6 +82,105 @@ List<AlertEvent> detectFeeMilestones({
               '${position.token0Symbol}/${position.token1Symbol} passed a fee milestone',
           body: 'Lifetime fees just passed \$${total.toStringAsFixed(2)}.',
           newNotifiedFeesTotal: total,
+        ),
+      );
+    }
+  }
+  return alerts;
+}
+
+/// `true` quando as fees das últimas 24h estão bem abaixo da média diária
+/// dos últimos 7 dias — sinal de que a pool pode estar a perder volume.
+/// `false` também quando não há média de base suficiente para a
+/// comparação fazer sentido (posição muito nova, ou sem fees ainda).
+bool isFeeSlowdown({
+  required List<FeeSnapshot> snapshots,
+  double dropThresholdFraction = 0.5,
+  DateTime? now,
+}) {
+  final effectiveNow = now ?? DateTime.now();
+  final last24hCutoff = effectiveNow.subtract(const Duration(hours: 24));
+  final last7dCutoff = effectiveNow.subtract(const Duration(days: 7));
+  final fees24h = snapshots
+      .where((s) => s.timestamp.isAfter(last24hCutoff))
+      .fold<double>(0, (a, b) => a + b.feesUsdDelta);
+  final fees7d = snapshots
+      .where((s) => s.timestamp.isAfter(last7dCutoff))
+      .fold<double>(0, (a, b) => a + b.feesUsdDelta);
+  final avgDaily7d = fees7d / 7;
+  if (avgDaily7d <= 0.01) return false;
+  return fees24h < avgDaily7d * dropThresholdFraction;
+}
+
+/// Compara o estado de abrandamento anterior com o atual e devolve um
+/// alerta só para quem acabou de ENTRAR em abrandamento — mesma lógica de
+/// "transição, não estado" de [detectRangeTransitions], para não reavisar
+/// a cada verificação enquanto o abrandamento persistir.
+List<AlertEvent> detectFeeSlowdowns({
+  required List<PoolPosition> positions,
+  required Map<String, List<FeeSnapshot>> snapshotsByKey,
+  required Map<String, bool> previousSlowdownByKey,
+  DateTime? now,
+}) {
+  final alerts = <AlertEvent>[];
+  for (final position in positions) {
+    if (position.isClosed) continue;
+    final snapshots = snapshotsByKey[position.positionKey] ?? const [];
+    final slowdownNow = isFeeSlowdown(snapshots: snapshots, now: now);
+    final wasSlowdown = previousSlowdownByKey[position.positionKey] ?? false;
+    if (slowdownNow && !wasSlowdown) {
+      alerts.add(
+        AlertEvent(
+          positionKey: position.positionKey,
+          kind: AlertKind.feeSlowdown,
+          title:
+              '${position.token0Symbol}/${position.token1Symbol} fees are slowing down',
+          body:
+              'Last 24h fees dropped well below this position\'s 7-day average — '
+              'the pool may be seeing less volume.',
+        ),
+      );
+    }
+  }
+  return alerts;
+}
+
+/// `true` quando o tick atual já cumpre a condição da regra (acima/abaixo
+/// do threshold) — usado tanto para decidir se alerta como para o valor
+/// novo de `PriceAlertRule.lastTriggered` que o chamador persiste.
+bool priceThresholdMet(PriceAlertRule rule, int currentTick) {
+  return rule.direction == PriceAlertDirection.above
+      ? currentTick >= rule.thresholdTick
+      : currentTick <= rule.thresholdTick;
+}
+
+/// Alerta de preço definido pelo utilizador por posição (ver
+/// `PriceAlertRule`) — dispara só na transição para a condição cumprida,
+/// e rearma se o preço voltar para o outro lado do threshold.
+List<AlertEvent> detectPriceThresholdCrossings({
+  required List<PoolPosition> positions,
+  required Map<String, PriceAlertRule> ruleByPositionKey,
+}) {
+  final alerts = <AlertEvent>[];
+  for (final position in positions) {
+    if (position.isClosed) continue;
+    final rule = ruleByPositionKey[position.positionKey];
+    if (rule == null || !rule.enabled) continue;
+
+    final met = priceThresholdMet(rule, position.currentTick);
+    if (met && !rule.lastTriggered) {
+      final directionLabel = rule.direction == PriceAlertDirection.above
+          ? 'above'
+          : 'below';
+      alerts.add(
+        AlertEvent(
+          positionKey: position.positionKey,
+          kind: AlertKind.priceThreshold,
+          title:
+              '${position.token0Symbol}/${position.token1Symbol} price alert',
+          body:
+              'The price just went $directionLabel your threshold — '
+              'independent of this position\'s range.',
         ),
       );
     }

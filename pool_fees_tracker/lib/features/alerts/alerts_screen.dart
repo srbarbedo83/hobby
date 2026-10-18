@@ -162,8 +162,18 @@ class _AlertLogTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final isOutOfRange = entry.kind == AlertLogKind.outOfRange;
-    final color = isOutOfRange ? palette.warning : palette.positive;
+    final color = switch (entry.kind) {
+      AlertLogKind.outOfRange => palette.warning,
+      AlertLogKind.feeMilestone => palette.positive,
+      AlertLogKind.feeSlowdown => palette.negative,
+      AlertLogKind.priceThreshold => palette.accent,
+    };
+    final icon = switch (entry.kind) {
+      AlertLogKind.outOfRange => Icons.warning_amber_rounded,
+      AlertLogKind.feeMilestone => Icons.celebration_outlined,
+      AlertLogKind.feeSlowdown => Icons.trending_down,
+      AlertLogKind.priceThreshold => Icons.notifications_active_outlined,
+    };
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -182,13 +192,7 @@ class _AlertLogTile extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: Icon(
-              isOutOfRange
-                  ? Icons.warning_amber_rounded
-                  : Icons.celebration_outlined,
-              size: 16,
-              color: color,
-            ),
+            child: Icon(icon, size: 16, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(

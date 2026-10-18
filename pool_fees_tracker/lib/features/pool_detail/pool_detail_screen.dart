@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/calc/bar_aggregator.dart';
+import '../../core/calc/out_of_range_estimate.dart';
 import '../../core/calc/pool_metrics.dart';
+import '../../core/calc/price_history_calc.dart';
 import '../../core/calc/univ3_fee_math.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/providers.dart';
@@ -18,6 +20,9 @@ import '../../shared/widgets/segmented_pill_control.dart';
 import '../../shared/widgets/stat_tile.dart';
 import '../../shared/widgets/token_pair_icon.dart';
 import 'fee_bar_chart.dart';
+import 'price_alert_section.dart';
+import 'price_range_chart.dart';
+import 'range_simulator_section.dart';
 
 class PoolDetailScreen extends ConsumerStatefulWidget {
   final String positionKey;
@@ -79,12 +84,30 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     }
 
     final snapshots = snapshotsAsync.value?[widget.positionKey] ?? const [];
+    final pricePoints =
+        ref.watch(pricePointsProvider(widget.positionKey)).value ?? const [];
     final formatter = CurrencyFormatter(settings.currencyCode);
     final gasCostUsd = ref.watch(gasCostUsdProvider(widget.positionKey)).value;
     final metrics = computePoolMetrics(
       position: position,
       snapshots: snapshots,
       gasCostUsdOverride: gasCostUsd,
+    );
+    final outOfRangeEstimate = estimateMissedFees(
+      pricePoints: pricePoints,
+      tickLower: position.tickLower,
+      tickUpper: position.tickUpper,
+      feesTotalUsd: position.feesTotalUsd,
+      createdAt: position.createdAt,
+    );
+    final rebalanceSuggestion = suggestRebalance(
+      position: position,
+      estimate: outOfRangeEstimate,
+    );
+    final inRangeStreak = inRangeStreakDays(
+      points: pricePoints,
+      tickLower: position.tickLower,
+      tickUpper: position.tickUpper,
     );
     final bars = aggregateFeeSnapshots(
       snapshots: snapshots,
@@ -238,6 +261,15 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     '${position.token1Symbol} per ${position.token0Symbol}',
               ),
             ),
+            if (outOfRangeEstimate != null) ...[
+              const SizedBox(height: 14),
+              _OutOfRangeAdvisory(
+                estimate: outOfRangeEstimate,
+                rebalanceSuggestion: rebalanceSuggestion,
+                position: position,
+                formatter: formatter,
+              ),
+            ],
             const SizedBox(height: 14),
             Row(
               children: [
@@ -328,6 +360,16 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            StatTile(
+              label: 'In-range streak',
+              value:
+                  '${inRangeStreak.current} day${inRangeStreak.current == 1 ? '' : 's'}',
+              valueColor: inRangeStreak.current > 0
+                  ? palette.positive
+                  : palette.textPrimary,
+              caption: 'longest: ${inRangeStreak.longest}d',
+            ),
             const SizedBox(height: 18),
             Container(
               padding: const EdgeInsets.all(18),
@@ -392,6 +434,92 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     accentColor: palette.accent,
                     onBarSelected: (index) =>
                         setState(() => _selectedBarIndex = index),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: palette.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Price vs. range',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: palette.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Shaded band is the range created at mint — ${position.token1Symbol} per ${position.token0Symbol}',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: palette.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  PriceRangeChart(
+                    points: aggregatePricePoints(
+                      points: pricePoints,
+                      range: _range,
+                      groupBy: _groupBy,
+                    ),
+                    tickLower: position.tickLower,
+                    tickUpper: position.tickUpper,
+                    token0Decimals: position.token0Decimals,
+                    token1Decimals: position.token1Decimals,
+                    accentColor: palette.accent,
+                  ),
+                  const SizedBox(height: 12),
+                  Divider(color: palette.border, height: 1),
+                  const SizedBox(height: 12),
+                  PriceAlertSection(
+                    positionKey: widget.positionKey,
+                    token0Decimals: position.token0Decimals,
+                    token1Decimals: position.token1Decimals,
+                    token0Symbol: position.token0Symbol,
+                    token1Symbol: position.token1Symbol,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: palette.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Range width simulator',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: palette.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  RangeSimulatorSection(
+                    pricePoints: pricePoints,
+                    actualTickLower: position.tickLower,
+                    actualTickUpper: position.tickUpper,
+                    entryTick: position.entryTick,
+                    token0Decimals: position.token0Decimals,
+                    token1Decimals: position.token1Decimals,
+                    token0Symbol: position.token0Symbol,
+                    token1Symbol: position.token1Symbol,
                   ),
                 ],
               ),
@@ -544,6 +672,97 @@ class _EventRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+String _formatDuration(Duration d) {
+  final days = d.inDays;
+  final hours = d.inHours % 24;
+  if (days > 0) return '${days}d ${hours}h';
+  return '${d.inHours}h';
+}
+
+/// Card de aviso: quanto tempo a posição está fora do range, uma
+/// estimativa de fees perdidas, e — se já durar o suficiente — uma
+/// sugestão de novo range (sem executar nada on-chain).
+class _OutOfRangeAdvisory extends StatelessWidget {
+  final OutOfRangeEstimate estimate;
+  final RebalanceSuggestion? rebalanceSuggestion;
+  final PoolPosition position;
+  final CurrencyFormatter formatter;
+
+  const _OutOfRangeAdvisory({
+    required this.estimate,
+    required this.rebalanceSuggestion,
+    required this.position,
+    required this.formatter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final suggestion = rebalanceSuggestion;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: palette.warning.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.warning.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 16,
+                color: palette.warning,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Out of range for ${_formatDuration(estimate.duration)}',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: palette.warning,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '~${formatter.format(estimate.missedFeesUsd)} in fees missed vs. your '
+            'usual rate while this stayed out of range — estimate only, assumes '
+            'the pre-out-of-range rate would have held.',
+            style: TextStyle(fontSize: 11, color: palette.textSecondary),
+          ),
+          if (suggestion != null) ...[
+            const SizedBox(height: 10),
+            Divider(color: palette.warning.withValues(alpha: 0.2), height: 1),
+            const SizedBox(height: 10),
+            Text(
+              'Consider rebalancing to '
+              '${formatTokenPrice(priceAtTick(tick: suggestion.newTickLower, token0Decimals: position.token0Decimals, token1Decimals: position.token1Decimals))} – '
+              '${formatTokenPrice(priceAtTick(tick: suggestion.newTickUpper, token0Decimals: position.token0Decimals, token1Decimals: position.token1Decimals))} '
+              '${position.token1Symbol} per ${position.token0Symbol} '
+              '(same width, centered on the current price).',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: palette.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Not a transaction — rebalancing means closing this position and '
+              'opening a new one, which costs gas and may trigger impermanent loss.',
+              style: TextStyle(fontSize: 10.5, color: palette.textTertiary),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -18,4 +18,9 @@ class AlertState {
   late RangeStatus lastRangeStatus;
 
   late double lastNotifiedFeesTotal;
+
+  /// Se a última verificação já tinha detetado "fees a abrandar" — para o
+  /// alerta disparar só na transição (como `lastRangeStatus`), não a cada
+  /// execução em background enquanto o abrandamento continuar.
+  bool lastFeeSlowdownNotified = false;
 }

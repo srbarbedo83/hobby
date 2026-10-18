@@ -137,10 +137,12 @@ P _alertLogEntryDeserializeProp<P>(
 const _AlertLogEntrykindEnumValueMap = {
   r'outOfRange': r'outOfRange',
   r'feeMilestone': r'feeMilestone',
+  r'feeSlowdown': r'feeSlowdown',
 };
 const _AlertLogEntrykindValueEnumMap = {
   r'outOfRange': AlertLogKind.outOfRange,
   r'feeMilestone': AlertLogKind.feeMilestone,
+  r'feeSlowdown': AlertLogKind.feeSlowdown,
 };
 
 Id _alertLogEntryGetId(AlertLogEntry object) {
