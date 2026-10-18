@@ -68,14 +68,14 @@ class DashboardScreen extends ConsumerWidget {
               children: [
                 Expanded(
                   child: StatTile(
-                    label: '24h fees',
+                    label: 'Taxas 24h',
                     value: formatter.format(metrics.fees24hUsd),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: StatTile(
-                    label: 'Avg APR',
+                    label: 'APR média',
                     value: '${metrics.avgAprPct.toStringAsFixed(1)}%',
                     valueColor: palette.positive,
                   ),
@@ -83,7 +83,7 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: StatTile(
-                    label: 'Unclaimed',
+                    label: 'Não reclamadas',
                     value: formatter.format(metrics.unclaimedUsd),
                   ),
                 ),
@@ -94,21 +94,21 @@ class DashboardScreen extends ConsumerWidget {
               children: [
                 Expanded(
                   child: StatTile(
-                    label: 'Proj. this month',
+                    label: 'Proj. este mês',
                     value: formatter.format(
                       metrics.projection.projectedEndOfMonthUsd,
                     ),
-                    caption: 'all pools, current rate',
+                    caption: 'todas as pools, taxa atual',
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: StatTile(
-                    label: 'Proj. this year',
+                    label: 'Proj. este ano',
                     value: formatter.format(
                       metrics.projection.projectedEndOfYearUsd,
                     ),
-                    caption: 'all pools, current rate',
+                    caption: 'todas as pools, taxa atual',
                   ),
                 ),
               ],
@@ -124,7 +124,7 @@ class DashboardScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Your Pools',
+                  'As tuas Pools',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -163,8 +163,8 @@ class DashboardScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  '+ $closedCount closed position${closedCount > 1 ? 's' : ''} — '
-                  'still counted in the total above. See Pools tab.',
+                  '+ $closedCount posição${closedCount > 1 ? 'ões' : ''} fechada${closedCount > 1 ? 's' : ''} — '
+                  'continuam a contar no total acima. Ver separador Pools.',
                   style: TextStyle(fontSize: 11.5, color: palette.textTertiary),
                 ),
               ),
@@ -268,7 +268,7 @@ class _HeroCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'TOTAL FEES EARNED',
+                'TOTAL DE TAXAS GANHAS',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -288,13 +288,13 @@ class _HeroCard extends StatelessWidget {
             runSpacing: 6,
             children: [
               _DeltaChip(
-                text: '+${formatter.format(fees24hUsd)} today',
+                text: '+${formatter.format(fees24hUsd)} hoje',
                 positive: true,
               ),
               if (pctChangeVsPrevWeek != null)
                 _DeltaChip(
                   text:
-                      '${pctChangeVsPrevWeek! >= 0 ? '+' : ''}${pctChangeVsPrevWeek!.toStringAsFixed(1)}% vs prev. 7d',
+                      '${pctChangeVsPrevWeek! >= 0 ? '+' : ''}${pctChangeVsPrevWeek!.toStringAsFixed(1)}% vs. 7d anteriores',
                   positive: pctChangeVsPrevWeek! >= 0,
                 ),
               if (updatedAt != null)

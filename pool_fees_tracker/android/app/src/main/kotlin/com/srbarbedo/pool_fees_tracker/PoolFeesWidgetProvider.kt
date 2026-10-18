@@ -31,7 +31,7 @@ class PoolFeesWidgetProvider : HomeWidgetProvider() {
 
             setTextViewText(
                 R.id.widget_title,
-                widgetData.getString("widget_title", null) ?: "TOTAL FEES EARNED",
+                widgetData.getString("widget_title", null) ?: "TOTAL DE TAXAS GANHAS",
             )
             setTextViewText(
                 R.id.widget_total_fees,
@@ -39,7 +39,7 @@ class PoolFeesWidgetProvider : HomeWidgetProvider() {
             )
             setTextViewText(
                 R.id.widget_updated_at,
-                widgetData.getString("updated_at_label", null) ?: "Open the app to update",
+                widgetData.getString("updated_at_label", null) ?: "Abre a app para atualizar",
             )
           }
 

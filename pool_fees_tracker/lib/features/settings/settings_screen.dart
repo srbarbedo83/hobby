@@ -21,7 +21,7 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
         children: [
           Text(
-            'Settings',
+            'Definições',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
@@ -29,7 +29,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const _SectionLabel('Appearance'),
+          const _SectionLabel('Aparência'),
           const SizedBox(height: 8),
           _SettingsCard(
             child: RadioGroup<AppThemeMode>(
@@ -93,7 +93,7 @@ class SettingsScreen extends ConsumerWidget {
               if (wallets.isEmpty)
                 _SettingsCard(
                   child: Text(
-                    'No wallets added — the Demo data source works without one.',
+                    'Ainda sem wallets — a fonte de dados Demo funciona sem nenhuma.',
                     style: TextStyle(
                       color: palette.textSecondary,
                       fontSize: 12.5,
@@ -102,7 +102,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
             ],
             loading: () => const [SizedBox(height: 4)],
-            error: (e, st) => [Text('Error loading wallets: $e')],
+            error: (e, st) => [Text('Erro ao carregar wallets: $e')],
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
@@ -115,10 +115,10 @@ class SettingsScreen extends ConsumerWidget {
               ref.invalidate(walletsProvider);
             },
             icon: const Icon(Icons.add),
-            label: const Text('Add wallet'),
+            label: const Text('Adicionar wallet'),
           ),
           const SizedBox(height: 24),
-          _SectionLabel('Data source'),
+          _SectionLabel('Fonte de dados'),
           const SizedBox(height: 8),
           _SettingsCard(
             child: RadioGroup<DataSourceMode>(
@@ -140,7 +140,7 @@ class SettingsScreen extends ConsumerWidget {
                       style: TextStyle(color: palette.textPrimary),
                     ),
                     subtitle: Text(
-                      'Synthetic positions and fee history — no wallet or API key needed.',
+                      'Posições e histórico de taxas sintéticos — não precisa de wallet nem de API key.',
                       style: TextStyle(
                         color: palette.textTertiary,
                         fontSize: 11.5,
@@ -155,8 +155,8 @@ class SettingsScreen extends ConsumerWidget {
                       style: TextStyle(color: palette.textPrimary),
                     ),
                     subtitle: Text(
-                      'Reads real positions from the Uniswap v3 subgraph + an RPC endpoint. '
-                      'Needs a subgraph API key below.',
+                      'Lê posições reais do subgraph Uniswap v3 + um endpoint RPC. '
+                      'Precisa de uma API key de subgraph abaixo.',
                       style: TextStyle(
                         color: palette.textTertiary,
                         fontSize: 11.5,
@@ -173,8 +173,8 @@ class SettingsScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(
-              'Pick every chain to watch — positions from all of them are summed '
-              'into one dashboard.',
+              'Escolhe todas as chains a acompanhar — as posições de todas são '
+              'somadas num só dashboard.',
               style: TextStyle(color: palette.textTertiary, fontSize: 11),
             ),
           ),
@@ -211,7 +211,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _SectionLabel('Live mode credentials'),
+          _SectionLabel('Credenciais do modo Live'),
           const SizedBox(height: 8),
           _SettingsCard(
             child: Column(
@@ -220,7 +220,7 @@ class SettingsScreen extends ConsumerWidget {
                 TextFormField(
                   initialValue: settings.subgraphApiKey,
                   decoration: const InputDecoration(
-                    labelText: 'Subgraph API key (The Graph)',
+                    labelText: 'API key do subgraph (The Graph)',
                   ),
                   obscureText: true,
                   onChanged: (v) => ref
@@ -232,7 +232,7 @@ class SettingsScreen extends ConsumerWidget {
                   initialValue: settings.rpcUrl,
                   decoration: const InputDecoration(
                     labelText:
-                        'RPC URL (Alchemy / Infura / QuickNode) — optional',
+                        'RPC URL (Alchemy / Infura / QuickNode) — opcional',
                   ),
                   onChanged: (v) => ref
                       .read(appSettingsProvider.notifier)
@@ -240,31 +240,31 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Optional — only used to show the real gas cost (and gas break-even) '
-                  'on the detail screen, by reading the receipts of your position\'s '
-                  'transactions. Must point to the same chain as one of your selected '
-                  'chains above; leave empty to skip. Not used for anything else — '
-                  'positions always come from the subgraph.',
+                  'Opcional — só usado para mostrar o custo real de gas (e o gas '
+                  'break-even) no ecrã de detalhe, lendo os recibos das transações '
+                  'desta posição. Tem de apontar para a mesma chain de uma das '
+                  'chains selecionadas acima; deixa vazio para ignorar. Não é usado '
+                  'para mais nada — as posições vêm sempre do subgraph.',
                   style: TextStyle(color: palette.textTertiary, fontSize: 11),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Stored only on this device. Never your seed phrase or private key — '
-                  'this app is read-only.',
+                  'Guardado só neste dispositivo. Nunca a tua seed phrase ou chave '
+                  'privada — esta app é só de leitura.',
                   style: TextStyle(color: palette.textTertiary, fontSize: 11),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          _SectionLabel('Refresh interval'),
+          _SectionLabel('Intervalo de atualização'),
           const SizedBox(height: 8),
           _SettingsCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Every ${settings.refreshIntervalSeconds}s',
+                  'A cada ${settings.refreshIntervalSeconds}s',
                   style: TextStyle(
                     color: palette.textPrimary,
                     fontWeight: FontWeight.w600,
@@ -286,7 +286,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _SectionLabel('Alerts'),
+          _SectionLabel('Alertas'),
           const SizedBox(height: 8),
           _SettingsCard(
             child: Column(
@@ -295,11 +295,11 @@ class SettingsScreen extends ConsumerWidget {
                   contentPadding: EdgeInsets.zero,
                   activeThumbColor: palette.accent,
                   title: Text(
-                    'Enable alerts',
+                    'Ativar alertas',
                     style: TextStyle(color: palette.textPrimary),
                   ),
                   subtitle: Text(
-                    'Background check roughly every 15 minutes (Android WorkManager).',
+                    'Verificação em background a cada ~15 minutos (Android WorkManager).',
                     style: TextStyle(color: palette.textTertiary, fontSize: 11),
                   ),
                   value: settings.alertsEnabled,
@@ -313,7 +313,7 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: palette.accent,
                     title: Text(
-                      'Out-of-range alerts',
+                      'Alertas de fora do range',
                       style: TextStyle(
                         color: palette.textPrimary,
                         fontSize: 13.5,
@@ -330,7 +330,7 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: palette.accent,
                     title: Text(
-                      'Fee milestone alerts',
+                      'Alertas de milestones de taxas',
                       style: TextStyle(
                         color: palette.textPrimary,
                         fontSize: 13.5,
@@ -350,7 +350,7 @@ class SettingsScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Every \$${settings.feeMilestoneThresholdUsd.toStringAsFixed(0)} per position',
+                            'A cada \$${settings.feeMilestoneThresholdUsd.toStringAsFixed(0)} por posição',
                             style: TextStyle(
                               color: palette.textPrimary,
                               fontWeight: FontWeight.w600,
@@ -377,15 +377,15 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: palette.accent,
                     title: Text(
-                      'Fee slowdown alerts',
+                      'Alertas de abrandamento de taxas',
                       style: TextStyle(
                         color: palette.textPrimary,
                         fontSize: 13.5,
                       ),
                     ),
                     subtitle: Text(
-                      '24h fees well below the 7-day average — may mean the pool is '
-                      'seeing less volume.',
+                      'Taxas de 24h bem abaixo da média de 7 dias — pode significar que '
+                      'a pool está a ter menos volume.',
                       style: TextStyle(
                         color: palette.textTertiary,
                         fontSize: 11,
@@ -403,7 +403,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _SectionLabel('Home screen widget'),
+          _SectionLabel('Widget do ecrã inicial'),
           const SizedBox(height: 8),
           _SettingsCard(
             child: RadioGroup<WidgetMetric>(
@@ -434,7 +434,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _SectionLabel('Currency'),
+          _SectionLabel('Moeda'),
           const SizedBox(height: 8),
           _SettingsCard(
             child: SegmentedButton<String>(

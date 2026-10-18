@@ -74,7 +74,7 @@ Future<int> runBackgroundSync() async {
       titleLabel: settings.widgetMetric.widgetTitle,
       valueFormatted: CurrencyFormatter(settings.currencyCode)
           .format(widgetValue),
-      updatedAtLabel: 'Updated just now',
+      updatedAtLabel: 'Atualizado agora mesmo',
     );
 
     if (!settings.alertsEnabled) return 0;

@@ -67,7 +67,7 @@ class _RootNavigationState extends ConsumerState<_RootNavigation> {
     HomeWidgetService.update(
       titleLabel: settings.widgetMetric.widgetTitle,
       valueFormatted: CurrencyFormatter(settings.currencyCode).format(value),
-      updatedAtLabel: 'Updated just now',
+      updatedAtLabel: 'Atualizado agora mesmo',
     );
   }
 
@@ -101,12 +101,12 @@ class _RootNavigationState extends ConsumerState<_RootNavigation> {
           NavigationDestination(
             icon: Icon(Icons.notifications_outlined),
             selectedIcon: Icon(Icons.notifications),
-            label: 'Alerts',
+            label: 'Alertas',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
+            label: 'Definições',
           ),
         ],
       ),

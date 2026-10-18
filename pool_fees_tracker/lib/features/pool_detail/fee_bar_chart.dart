@@ -29,7 +29,7 @@ class FeeBarChart extends StatelessWidget {
         height: 150,
         child: Center(
           child: Text(
-            'No fee history yet',
+            'Ainda sem histórico de taxas',
             style: TextStyle(color: palette.textTertiary, fontSize: 12),
           ),
         ),

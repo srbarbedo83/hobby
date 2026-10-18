@@ -51,8 +51,8 @@ List<AlertEvent> detectRangeTransitions({
           positionKey: position.positionKey,
           kind: AlertKind.outOfRange,
           title:
-              '${position.token0Symbol}/${position.token1Symbol} is out of range',
-          body: 'The price moved outside your position\'s range — it has stopped earning fees.',
+              '${position.token0Symbol}/${position.token1Symbol} está fora do range',
+          body: 'O preço saiu do range desta posição — deixou de ganhar taxas.',
         ),
       );
     }
@@ -79,8 +79,9 @@ List<AlertEvent> detectFeeMilestones({
           positionKey: position.positionKey,
           kind: AlertKind.feeMilestone,
           title:
-              '${position.token0Symbol}/${position.token1Symbol} passed a fee milestone',
-          body: 'Lifetime fees just passed \$${total.toStringAsFixed(2)}.',
+              '${position.token0Symbol}/${position.token1Symbol} passou um milestone de taxas',
+          body:
+              'As taxas vitalícias acabaram de passar \$${total.toStringAsFixed(2)}.',
           newNotifiedFeesTotal: total,
         ),
       );
@@ -134,10 +135,10 @@ List<AlertEvent> detectFeeSlowdowns({
           positionKey: position.positionKey,
           kind: AlertKind.feeSlowdown,
           title:
-              '${position.token0Symbol}/${position.token1Symbol} fees are slowing down',
+              '${position.token0Symbol}/${position.token1Symbol} — taxas a abrandar',
           body:
-              'Last 24h fees dropped well below this position\'s 7-day average — '
-              'the pool may be seeing less volume.',
+              'As taxas das últimas 24h caíram bem abaixo da média de 7 dias desta '
+              'posição — a pool pode estar a ter menos volume.',
         ),
       );
     }
@@ -170,17 +171,17 @@ List<AlertEvent> detectPriceThresholdCrossings({
     final met = priceThresholdMet(rule, position.currentTick);
     if (met && !rule.lastTriggered) {
       final directionLabel = rule.direction == PriceAlertDirection.above
-          ? 'above'
-          : 'below';
+          ? 'acima'
+          : 'abaixo';
       alerts.add(
         AlertEvent(
           positionKey: position.positionKey,
           kind: AlertKind.priceThreshold,
           title:
-              '${position.token0Symbol}/${position.token1Symbol} price alert',
+              '${position.token0Symbol}/${position.token1Symbol} — alerta de preço',
           body:
-              'The price just went $directionLabel your threshold — '
-              'independent of this position\'s range.',
+              'O preço acabou de ficar $directionLabel do teu threshold — '
+              'independente do range desta posição.',
         ),
       );
     }

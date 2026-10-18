@@ -76,7 +76,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         appBar: AppBar(),
         body: Center(
           child: Text(
-            'Position not found',
+            'Posição não encontrada',
             style: TextStyle(color: palette.textSecondary),
           ),
         ),
@@ -183,7 +183,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   ],
                 ),
                 Text(
-                  'Opened ${DateFormat.yMMMd().format(position.createdAt)}',
+                  'Aberta em ${DateFormat.yMMMd().format(position.createdAt)}',
                   style: TextStyle(fontSize: 11, color: palette.textTertiary),
                 ),
               ],
@@ -203,7 +203,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'FEES EARNED',
+                        'TAXAS GANHAS',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -222,8 +222,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${formatter.format(metrics.sinceOpen.feesEarnedUsd)} since open '
-                    '(+${metrics.sinceOpen.feesEarnedPct.toStringAsFixed(1)}%) · ${metrics.sinceOpen.daysOpen}d open',
+                    '${formatter.format(metrics.sinceOpen.feesEarnedUsd)} desde a abertura '
+                    '(+${metrics.sinceOpen.feesEarnedPct.toStringAsFixed(1)}%) · ${metrics.sinceOpen.daysOpen}d aberta',
                     style: TextStyle(
                       fontSize: 12,
                       color: palette.positive,
@@ -258,7 +258,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   ),
                 ),
                 priceUnitLabel:
-                    '${position.token1Symbol} per ${position.token0Symbol}',
+                    '${position.token1Symbol} por ${position.token0Symbol}',
               ),
             ),
             if (outOfRangeEstimate != null) ...[
@@ -285,9 +285,9 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: StatTile(
-                    label: 'Position value',
+                    label: 'Valor da posição',
                     value: formatter.format(position.liquidityUsd),
-                    caption: 'incl. unclaimed fees',
+                    caption: 'incl. taxas não reclamadas',
                   ),
                 ),
               ],
@@ -299,38 +299,38 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   child: StatTile(
                     label: 'Gas break-even',
                     value: metrics.gasBreakEven.reached
-                        ? 'Paid off'
+                        ? 'Pago'
                         : formatter.format(metrics.gasBreakEven.remainingUsd),
                     valueColor: metrics.gasBreakEven.reached
                         ? palette.positive
                         : palette.textPrimary,
                     caption:
                         (metrics.gasBreakEven.reached
-                            ? 'fees > gas cost'
+                            ? 'taxas > custo de gas'
                             : metrics.gasBreakEven.estimatedDaysRemaining !=
                                   null
-                            ? '~${metrics.gasBreakEven.estimatedDaysRemaining}d left at current rate'
-                            : 'left to cover gas') +
+                            ? '~${metrics.gasBreakEven.estimatedDaysRemaining}d restantes à taxa atual'
+                            : 'para cobrir o gas') +
                         (gasCostUsd != null ? ' · on-chain' : ''),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: StatTile(
-                    label: 'Proj. this month',
+                    label: 'Proj. este mês',
                     value: formatter.format(
                       metrics.projection.projectedEndOfMonthUsd,
                     ),
-                    caption: 'at current daily rate',
+                    caption: 'à taxa diária atual',
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             StatTile(
-              label: 'Proj. this year',
+              label: 'Proj. este ano',
               value: formatter.format(metrics.projection.projectedEndOfYearUsd),
-              caption: 'at current daily rate — trend, not a guarantee',
+              caption: 'à taxa diária atual — tendência, não garantia',
             ),
             const SizedBox(height: 10),
             Row(
@@ -344,7 +344,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     valueColor: metrics.impermanentLoss.lossPct < -0.01
                         ? palette.negative
                         : palette.textPrimary,
-                    caption: 'vs. just holding the tokens — est.',
+                    caption: 'vs. só guardar os tokens — estimativa',
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -355,20 +355,20 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     valueColor: metrics.netVsHoldUsd >= 0
                         ? palette.positive
                         : palette.negative,
-                    caption: 'fees earned minus IL',
+                    caption: 'taxas ganhas menos IL',
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             StatTile(
-              label: 'In-range streak',
+              label: 'Streak em range',
               value:
-                  '${inRangeStreak.current} day${inRangeStreak.current == 1 ? '' : 's'}',
+                  '${inRangeStreak.current} dia${inRangeStreak.current == 1 ? '' : 's'}',
               valueColor: inRangeStreak.current > 0
                   ? palette.positive
                   : palette.textPrimary,
-              caption: 'longest: ${inRangeStreak.longest}d',
+              caption: 'recorde: ${inRangeStreak.longest}d',
             ),
             const SizedBox(height: 18),
             Container(
@@ -382,7 +382,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Fees over time',
+                    'Taxas ao longo do tempo',
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
@@ -450,7 +450,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Price vs. range',
+                    'Preço vs. range',
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
@@ -459,7 +459,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Shaded band is the range created at mint — ${position.token1Symbol} per ${position.token0Symbol}',
+                    'A faixa sombreada é o range criado no mint — ${position.token1Symbol} por ${position.token0Symbol}',
                     style: TextStyle(
                       fontSize: 10.5,
                       color: palette.textTertiary,
@@ -503,7 +503,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Range width simulator',
+                    'Simulador de largura de range',
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
@@ -538,10 +538,10 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
 
 extension on PositionEventType {
   String get label => switch (this) {
-    PositionEventType.mint => 'Position opened',
-    PositionEventType.increaseLiquidity => 'Added liquidity',
-    PositionEventType.decreaseLiquidity => 'Removed liquidity',
-    PositionEventType.collect => 'Collected fees',
+    PositionEventType.mint => 'Posição aberta',
+    PositionEventType.increaseLiquidity => 'Liquidez adicionada',
+    PositionEventType.decreaseLiquidity => 'Liquidez removida',
+    PositionEventType.collect => 'Taxas recolhidas',
   };
 
   IconData get icon => switch (this) {
@@ -581,7 +581,7 @@ class _ActivitySection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Activity',
+            'Atividade',
             style: TextStyle(
               fontSize: 14.5,
               fontWeight: FontWeight.w600,
@@ -592,7 +592,7 @@ class _ActivitySection extends ConsumerWidget {
           eventsAsync.when(
             data: (events) => events.isEmpty
                 ? Text(
-                    'No events yet',
+                    'Ainda sem eventos',
                     style: TextStyle(fontSize: 12, color: palette.textTertiary),
                   )
                 : Column(
@@ -614,7 +614,7 @@ class _ActivitySection extends ConsumerWidget {
               ),
             ),
             error: (e, st) => Text(
-              'Could not load activity',
+              'Não foi possível carregar a atividade',
               style: TextStyle(fontSize: 12, color: palette.textTertiary),
             ),
           ),
@@ -722,7 +722,7 @@ class _OutOfRangeAdvisory extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Out of range for ${_formatDuration(estimate.duration)}',
+                'Fora do range há ${_formatDuration(estimate.duration)}',
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -733,9 +733,9 @@ class _OutOfRangeAdvisory extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '~${formatter.format(estimate.missedFeesUsd)} in fees missed vs. your '
-            'usual rate while this stayed out of range — estimate only, assumes '
-            'the pre-out-of-range rate would have held.',
+            '~${formatter.format(estimate.missedFeesUsd)} em taxas perdidas em relação '
+            'à tua taxa habitual enquanto esteve fora do range — só uma estimativa, '
+            'assume que a taxa anterior à saída do range se teria mantido.',
             style: TextStyle(fontSize: 11, color: palette.textSecondary),
           ),
           if (suggestion != null) ...[
@@ -743,11 +743,11 @@ class _OutOfRangeAdvisory extends StatelessWidget {
             Divider(color: palette.warning.withValues(alpha: 0.2), height: 1),
             const SizedBox(height: 10),
             Text(
-              'Consider rebalancing to '
+              'Considera fazer rebalancing para '
               '${formatTokenPrice(priceAtTick(tick: suggestion.newTickLower, token0Decimals: position.token0Decimals, token1Decimals: position.token1Decimals))} – '
               '${formatTokenPrice(priceAtTick(tick: suggestion.newTickUpper, token0Decimals: position.token0Decimals, token1Decimals: position.token1Decimals))} '
-              '${position.token1Symbol} per ${position.token0Symbol} '
-              '(same width, centered on the current price).',
+              '${position.token1Symbol} por ${position.token0Symbol} '
+              '(mesma largura, centrado no preço atual).',
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
@@ -756,8 +756,8 @@ class _OutOfRangeAdvisory extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Not a transaction — rebalancing means closing this position and '
-              'opening a new one, which costs gas and may trigger impermanent loss.',
+              'Não é uma transação — rebalancing significa fechar esta posição e '
+              'abrir uma nova, o que custa gas e pode gerar impermanent loss.',
               style: TextStyle(fontSize: 10.5, color: palette.textTertiary),
             ),
           ],

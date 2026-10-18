@@ -50,8 +50,8 @@ String formatTokenPrice(double value) {
 
 String formatRelativeUpdatedAt(DateTime updatedAt, {DateTime? now}) {
   final diff = (now ?? DateTime.now()).difference(updatedAt);
-  if (diff.inSeconds < 5) return 'Updated just now';
-  if (diff.inSeconds < 60) return 'Updated ${diff.inSeconds}s ago';
-  if (diff.inMinutes < 60) return 'Updated ${diff.inMinutes}m ago';
-  return 'Updated ${diff.inHours}h ago';
+  if (diff.inSeconds < 5) return 'Atualizado agora mesmo';
+  if (diff.inSeconds < 60) return 'Atualizado há ${diff.inSeconds}s';
+  if (diff.inMinutes < 60) return 'Atualizado há ${diff.inMinutes}m';
+  return 'Atualizado há ${diff.inHours}h';
 }

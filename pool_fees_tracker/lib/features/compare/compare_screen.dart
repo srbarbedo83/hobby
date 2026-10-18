@@ -52,12 +52,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     final positionB = _findByKey(positions, _keyB);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Compare pools')),
+      appBar: AppBar(title: const Text('Comparar pools')),
       body: SafeArea(
         child: positions.length < 2
             ? Center(
                 child: Text(
-                  'Need at least 2 open positions to compare',
+                  'Precisas de pelo menos 2 posições abertas para comparar',
                   style: TextStyle(color: palette.textSecondary),
                 ),
               )
@@ -217,7 +217,7 @@ class _ComparisonChart extends StatelessWidget {
         height: 140,
         child: Center(
           child: Text(
-            'Not enough history yet',
+            'Ainda sem histórico suficiente',
             style: TextStyle(color: palette.textTertiary, fontSize: 12),
           ),
         ),
@@ -359,7 +359,7 @@ class _StatComparisonRow extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _StatRow(
-            label: 'Lifetime fees',
+            label: 'Taxas vitalícias',
             valueA: formatter.format(positionA.feesTotalUsd),
             valueB: formatter.format(positionB.feesTotalUsd),
           ),
@@ -374,7 +374,7 @@ class _StatComparisonRow extends StatelessWidget {
             valueB: '${metricsB.impermanentLoss.lossPct.toStringAsFixed(2)}%',
           ),
           _StatRow(
-            label: 'Position value',
+            label: 'Valor da posição',
             valueA: formatter.format(positionA.liquidityUsd),
             valueB: formatter.format(positionB.liquidityUsd),
           ),

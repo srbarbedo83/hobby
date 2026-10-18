@@ -10,9 +10,9 @@ enum AppThemeMode { system, light, dark }
 
 extension AppThemeModeLabel on AppThemeMode {
   String get label => switch (this) {
-    AppThemeMode.system => 'System',
-    AppThemeMode.light => 'Light',
-    AppThemeMode.dark => 'Dark',
+    AppThemeMode.system => 'Sistema',
+    AppThemeMode.light => 'Claro',
+    AppThemeMode.dark => 'Escuro',
   };
 }
 
@@ -22,17 +22,17 @@ enum WidgetMetric { totalFees, fees24h, unclaimed }
 
 extension WidgetMetricLabel on WidgetMetric {
   String get label => switch (this) {
-    WidgetMetric.totalFees => 'Total fees earned',
-    WidgetMetric.fees24h => '24h fees',
-    WidgetMetric.unclaimed => 'Unclaimed fees',
+    WidgetMetric.totalFees => 'Total de taxas ganhas',
+    WidgetMetric.fees24h => 'Taxas 24h',
+    WidgetMetric.unclaimed => 'Taxas não reclamadas',
   };
 
   /// Título mostrado no widget acima do número (maiúsculas, como no
   /// layout atual).
   String get widgetTitle => switch (this) {
-    WidgetMetric.totalFees => 'TOTAL FEES EARNED',
-    WidgetMetric.fees24h => '24H FEES',
-    WidgetMetric.unclaimed => 'UNCLAIMED FEES',
+    WidgetMetric.totalFees => 'TOTAL DE TAXAS GANHAS',
+    WidgetMetric.fees24h => 'TAXAS 24H',
+    WidgetMetric.unclaimed => 'TAXAS NÃO RECLAMADAS',
   };
 }
 

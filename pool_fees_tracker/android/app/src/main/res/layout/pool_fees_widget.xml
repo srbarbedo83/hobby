@@ -17,7 +17,7 @@
         android:textSize="10sp"
         android:letterSpacing="0.08"
         android:textStyle="bold"
-        tools:text="TOTAL FEES EARNED" />
+        tools:text="TOTAL DE TAXAS GANHAS" />
 
     <TextView
         android:id="@+id/widget_total_fees"
@@ -36,5 +36,5 @@
         android:layout_marginTop="4dp"
         android:textColor="#5B6168"
         android:textSize="11sp"
-        tools:text="Updated 2m ago" />
+        tools:text="Atualizado há 2m" />
 </LinearLayout>

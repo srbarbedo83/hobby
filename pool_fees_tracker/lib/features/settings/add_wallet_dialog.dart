@@ -15,26 +15,26 @@ Future<AddWalletResult?> showAddWalletDialog(BuildContext context) {
     context: context,
     builder: (context) {
       return AlertDialog(
-        title: const Text('Add wallet'),
+        title: const Text('Adicionar wallet'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: addressController,
-              decoration: const InputDecoration(labelText: 'Address (0x…)'),
+              decoration: const InputDecoration(labelText: 'Endereço (0x…)'),
               autofocus: true,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: labelController,
-              decoration: const InputDecoration(labelText: 'Label (optional)'),
+              decoration: const InputDecoration(labelText: 'Nome (opcional)'),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text('Cancelar'),
           ),
           FilledButton(
             onPressed: () {
@@ -43,7 +43,7 @@ Future<AddWalletResult?> showAddWalletDialog(BuildContext context) {
               Navigator.of(context)
                   .pop(AddWalletResult(address, labelController.text.trim()));
             },
-            child: const Text('Add'),
+            child: const Text('Adicionar'),
           ),
         ],
       );

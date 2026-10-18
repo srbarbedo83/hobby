@@ -61,7 +61,7 @@ class _PortfolioCompositionCardState extends State<PortfolioCompositionCard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Portfolio composition',
+                'Composição da carteira',
                 style: TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w600,
@@ -85,7 +85,7 @@ class _PortfolioCompositionCardState extends State<PortfolioCompositionCard> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                'No open positions yet',
+                'Ainda sem posições abertas',
                 style: TextStyle(color: palette.textTertiary, fontSize: 12),
               ),
             )

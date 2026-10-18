@@ -40,7 +40,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Alerts',
+                'Alertas',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -57,7 +57,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Check now'),
+                    : const Text('Verificar agora'),
               ),
             ],
           ),
@@ -66,16 +66,16 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
             _InfoCard(
               icon: Icons.notifications_off_outlined,
               text:
-                  'Alerts are off. Turn them on in Settings to get notified when a '
-                  'position goes out of range or crosses a fee milestone.',
+                  'Os alertas estão desligados. Ativa-os nas Definições para seres '
+                  'avisado quando uma posição sair do range ou passar um milestone de taxas.',
             )
           else
             _InfoCard(
               icon: Icons.info_outline,
               text:
-                  'Checked roughly every 15 minutes in the background (Android '
-                  'WorkManager — timing isn\'t exact and the OS may delay it under '
-                  'battery optimization). "Check now" runs it immediately.',
+                  'Verificado a cada ~15 minutos em background (Android WorkManager — '
+                  'o tempo não é exato e o sistema pode atrasá-lo com a otimização de '
+                  'bateria). "Verificar agora" corre-o de imediato.',
             ),
           const SizedBox(height: 18),
           logAsync.when(
@@ -84,7 +84,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 32),
                     child: Center(
                       child: Text(
-                        'No alerts yet',
+                        'Ainda sem alertas',
                         style: TextStyle(color: palette.textSecondary),
                       ),
                     ),
@@ -105,7 +105,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen> {
               padding: const EdgeInsets.symmetric(vertical: 32),
               child: Center(
                 child: Text(
-                  'Could not load alerts',
+                  'Não foi possível carregar os alertas',
                   style: TextStyle(color: palette.textSecondary),
                 ),
               ),
@@ -227,8 +227,8 @@ class _AlertLogTile extends StatelessWidget {
 
   String _relativeTime(DateTime t) {
     final diff = DateTime.now().difference(t);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+    if (diff.inMinutes < 60) return 'há ${diff.inMinutes}m';
+    if (diff.inHours < 24) return 'há ${diff.inHours}h';
+    return 'há ${diff.inDays}d';
   }
 }

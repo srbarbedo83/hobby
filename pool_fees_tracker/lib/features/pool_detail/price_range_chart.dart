@@ -41,7 +41,7 @@ class PriceRangeChart extends StatelessWidget {
         height: 140,
         child: Center(
           child: Text(
-            'Not enough price history yet',
+            'Ainda sem histórico de preço suficiente',
             style: TextStyle(color: palette.textTertiary, fontSize: 12),
           ),
         ),

@@ -47,10 +47,10 @@ extension ChartRangeInfo on ChartRange {
 
 extension ChartGroupByInfo on ChartGroupBy {
   String get label => switch (this) {
-    ChartGroupBy.hour => 'Hour',
-    ChartGroupBy.day => 'Day',
-    ChartGroupBy.week => 'Week',
-    ChartGroupBy.month => 'Month',
+    ChartGroupBy.hour => 'Hora',
+    ChartGroupBy.day => 'Dia',
+    ChartGroupBy.week => 'Semana',
+    ChartGroupBy.month => 'Mês',
   };
 }
 

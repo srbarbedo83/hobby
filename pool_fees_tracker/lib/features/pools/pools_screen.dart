@@ -19,9 +19,9 @@ enum _SortBy { fees, apr, age }
 
 extension on _SortBy {
   String get label => switch (this) {
-    _SortBy.fees => 'Fees',
+    _SortBy.fees => 'Taxas',
     _SortBy.apr => 'APR',
-    _SortBy.age => 'Newest',
+    _SortBy.age => 'Recentes',
   };
 }
 
@@ -97,7 +97,7 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                           size: 20,
                           color: palette.textSecondary,
                         ),
-                        tooltip: 'Compare pools',
+                        tooltip: 'Comparar pools',
                       ),
                   ],
                 ),
@@ -117,7 +117,7 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
               child: positions.isEmpty && closedPositions.isEmpty
                   ? Center(
                       child: Text(
-                        'No pools yet',
+                        'Ainda sem pools',
                         style: TextStyle(color: palette.textSecondary),
                       ),
                     )
@@ -167,7 +167,7 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                         if (closedPositions.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Text(
-                            'CLOSED (still counted in lifetime total)'
+                            'FECHADAS (continuam a contar no total vitalício)'
                                 .toUpperCase(),
                             style: TextStyle(
                               fontSize: 10.5,
@@ -272,7 +272,7 @@ class _ClosedPositionRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    daysAgo != null ? 'Closed ${daysAgo}d ago' : 'Closed',
+                    daysAgo != null ? 'Fechada há ${daysAgo}d' : 'Fechada',
                     style: TextStyle(
                       fontSize: 10.5,
                       color: palette.textTertiary,
@@ -321,7 +321,7 @@ class _LeaderboardRow extends StatelessWidget {
         if (best != null)
           Expanded(
             child: _LeaderboardCard(
-              label: 'Best APR',
+              label: 'Melhor APR',
               pair:
                   '${best.position.token0Symbol} / ${best.position.token1Symbol}',
               value: '${best.aprPct.toStringAsFixed(1)}%',
@@ -333,7 +333,7 @@ class _LeaderboardRow extends StatelessWidget {
         if (worst != null && worst.ilLossPct < -0.01)
           Expanded(
             child: _LeaderboardCard(
-              label: 'Worst IL',
+              label: 'Pior IL',
               pair:
                   '${worst.position.token0Symbol} / ${worst.position.token1Symbol}',
               value: '${worst.ilLossPct.toStringAsFixed(2)}%',

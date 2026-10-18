@@ -45,7 +45,7 @@ class RangeSimulatorSection extends StatelessWidget {
 
     if (results.length < 2) {
       return Text(
-        'Not enough price history yet to simulate alternate ranges',
+        'Ainda sem histórico de preço suficiente para simular ranges alternativos',
         style: TextStyle(fontSize: 11.5, color: palette.textTertiary),
       );
     }
@@ -54,9 +54,9 @@ class RangeSimulatorSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'What if you had chosen a different range width? Backtested '
-          'against this position\'s own recorded price history — '
-          'estimate, not a prediction.',
+          'E se tivesses escolhido outra largura de range? Backtest feito '
+          'contra o histórico de preço já gravado desta posição — '
+          'é uma estimativa, não uma previsão.',
           style: TextStyle(fontSize: 10.5, color: palette.textTertiary),
         ),
         const SizedBox(height: 10),
@@ -128,7 +128,7 @@ class _RangeSimRow extends StatelessWidget {
           SizedBox(
             width: 48,
             child: Text(
-              isActual ? 'Actual' : '${result.widthMultiplier}×',
+              isActual ? 'Atual' : '${result.widthMultiplier}×',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -144,7 +144,7 @@ class _RangeSimRow extends StatelessWidget {
             ),
           ),
           Text(
-            '${(result.fractionInRange * 100).toStringAsFixed(0)}% in range',
+            '${(result.fractionInRange * 100).toStringAsFixed(0)}% em range',
             style: TextStyle(fontSize: 10.5, color: palette.textTertiary),
           ),
           const SizedBox(width: 8),

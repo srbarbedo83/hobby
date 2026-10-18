@@ -36,7 +36,7 @@ class PriceAlertSection extends ConsumerWidget {
       return OutlinedButton.icon(
         onPressed: () => _openDialog(context, ref, existing: null),
         icon: const Icon(Icons.notifications_outlined, size: 16),
-        label: const Text('Set price alert'),
+        label: const Text('Definir alerta de preço'),
       );
     }
 
@@ -46,28 +46,28 @@ class PriceAlertSection extends ConsumerWidget {
       token1Decimals: token1Decimals,
     );
     final directionLabel = rule.direction == PriceAlertDirection.above
-        ? 'goes above'
-        : 'goes below';
+        ? 'subir acima de'
+        : 'cair abaixo de';
 
     return Row(
       children: [
         Expanded(
           child: Text(
-            'Alert when price $directionLabel '
-            '${formatTokenPrice(thresholdPrice)} $token1Symbol per $token0Symbol',
+            'Alerta quando o preço $directionLabel '
+            '${formatTokenPrice(thresholdPrice)} $token1Symbol por $token0Symbol',
             style: TextStyle(fontSize: 11.5, color: palette.textSecondary),
           ),
         ),
         TextButton(
           onPressed: () => _openDialog(context, ref, existing: rule),
-          child: const Text('Edit'),
+          child: const Text('Editar'),
         ),
         TextButton(
           onPressed: () async {
             await ref.read(priceAlertRuleServiceProvider).clear(positionKey);
             ref.invalidate(priceAlertRuleProvider(positionKey));
           },
-          child: Text('Clear', style: TextStyle(color: palette.negative)),
+          child: Text('Limpar', style: TextStyle(color: palette.negative)),
         ),
       ],
     );
@@ -152,21 +152,21 @@ class _PriceAlertDialogState extends State<_PriceAlertDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Price alert'),
+      title: const Text('Alerta de preço'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Notify me when the price (${widget.token1Symbol} per '
-            '${widget.token0Symbol}) crosses:',
+            'Avisa-me quando o preço (${widget.token1Symbol} por '
+            '${widget.token0Symbol}) cruzar:',
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _controller,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: 'Price (${widget.token1Symbol})',
+              labelText: 'Preço (${widget.token1Symbol})',
             ),
             autofocus: true,
           ),
@@ -175,11 +175,11 @@ class _PriceAlertDialogState extends State<_PriceAlertDialog> {
             segments: const [
               ButtonSegment(
                 value: PriceAlertDirection.above,
-                label: Text('Above'),
+                label: Text('Acima'),
               ),
               ButtonSegment(
                 value: PriceAlertDirection.below,
-                label: Text('Below'),
+                label: Text('Abaixo'),
               ),
             ],
             selected: {_direction},
@@ -190,7 +190,7 @@ class _PriceAlertDialogState extends State<_PriceAlertDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text('Cancelar'),
         ),
         FilledButton(
           onPressed: () {
@@ -198,7 +198,7 @@ class _PriceAlertDialogState extends State<_PriceAlertDialog> {
             if (price == null || price <= 0) return;
             Navigator.of(context).pop((price: price, direction: _direction));
           },
-          child: const Text('Save'),
+          child: const Text('Guardar'),
         ),
       ],
     );

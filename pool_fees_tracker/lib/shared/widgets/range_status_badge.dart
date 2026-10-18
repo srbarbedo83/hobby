@@ -13,9 +13,9 @@ extension RangeStatusPresentation on RangeStatus {
   };
 
   String get label => switch (this) {
-    RangeStatus.inRange => 'In range',
-    RangeStatus.nearEdge => 'Near edge',
-    RangeStatus.outOfRange => 'Out of range',
+    RangeStatus.inRange => 'Em range',
+    RangeStatus.nearEdge => 'Perto da margem',
+    RangeStatus.outOfRange => 'Fora do range',
   };
 }
 
@@ -78,7 +78,7 @@ class RangeHealthBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Price range',
+              'Range de preço',
               style: TextStyle(fontSize: 11.5, color: palette.textSecondary),
             ),
             RangeStatusPill(status: health.status),
@@ -121,11 +121,11 @@ class RangeHealthBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              minPriceLabel == null ? 'Min' : 'Min $minPriceLabel',
+              minPriceLabel == null ? 'Mín' : 'Mín $minPriceLabel',
               style: TextStyle(fontSize: 9.5, color: palette.textTertiary),
             ),
             Text(
-              maxPriceLabel == null ? 'Max' : 'Max $maxPriceLabel',
+              maxPriceLabel == null ? 'Máx' : 'Máx $maxPriceLabel',
               style: TextStyle(fontSize: 9.5, color: palette.textTertiary),
             ),
           ],

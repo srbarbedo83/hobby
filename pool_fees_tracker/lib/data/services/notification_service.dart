@@ -36,9 +36,10 @@ class NotificationService {
     await init();
     const androidDetails = AndroidNotificationDetails(
       'pool_fees_alerts',
-      'Pool alerts',
+      'Alertas de pools',
       channelDescription:
-          'Out-of-range and fee milestone alerts for your Uniswap positions',
+          'Alertas de fora do range, milestones de taxas, abrandamento e preço '
+          'das tuas posições Uniswap',
       importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
     );
