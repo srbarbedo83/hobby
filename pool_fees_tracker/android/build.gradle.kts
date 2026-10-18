@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.compile.JavaCompile
+
 allprojects {
     repositories {
         google()
@@ -42,6 +44,12 @@ subprojects {
                 // Tarefa sem a propriedade `kotlinOptions` — ignora.
             }
         }
+    // O Gradle exige que o alvo Java e Kotlin do mesmo módulo coincidam —
+    // sobe também o lado Java para 11 (o módulo tinha 1.8).
+    tasks.withType<JavaCompile>().configureEach {
+        sourceCompatibility = "11"
+        targetCompatibility = "11"
+    }
 }
 
 val newBuildDir: Directory =
