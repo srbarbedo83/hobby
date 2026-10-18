@@ -38,8 +38,13 @@ const AlertStateSchema = CollectionSchema(
       type: IsarType.string,
       enumMap: _AlertStatelastRangeStatusEnumValueMap,
     ),
-    r'positionKey': PropertySchema(
+    r'lastWeeklyDigestSentAt': PropertySchema(
       id: 4,
+      name: r'lastWeeklyDigestSentAt',
+      type: IsarType.dateTime,
+    ),
+    r'positionKey': PropertySchema(
+      id: 5,
       name: r'positionKey',
       type: IsarType.string,
     ),
@@ -95,7 +100,8 @@ void _alertStateSerialize(
   writer.writeBool(offsets[1], object.lastFeeSlowdownNotified);
   writer.writeDouble(offsets[2], object.lastNotifiedFeesTotal);
   writer.writeString(offsets[3], object.lastRangeStatus.name);
-  writer.writeString(offsets[4], object.positionKey);
+  writer.writeDateTime(offsets[4], object.lastWeeklyDigestSentAt);
+  writer.writeString(offsets[5], object.positionKey);
 }
 
 AlertState _alertStateDeserialize(
@@ -114,7 +120,8 @@ AlertState _alertStateDeserialize(
         offsets[3],
       )] ??
       RangeStatus.inRange;
-  object.positionKey = reader.readString(offsets[4]);
+  object.lastWeeklyDigestSentAt = reader.readDateTimeOrNull(offsets[4]);
+  object.positionKey = reader.readString(offsets[5]);
   return object;
 }
 
@@ -138,6 +145,8 @@ P _alertStateDeserializeProp<P>(
               RangeStatus.inRange)
           as P;
     case 4:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 5:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -665,6 +674,82 @@ extension AlertStateQueryFilter
   }
 
   QueryBuilder<AlertState, AlertState, QAfterFilterCondition>
+  lastWeeklyDigestSentAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'lastWeeklyDigestSentAt'),
+      );
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterFilterCondition>
+  lastWeeklyDigestSentAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'lastWeeklyDigestSentAt'),
+      );
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterFilterCondition>
+  lastWeeklyDigestSentAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'lastWeeklyDigestSentAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterFilterCondition>
+  lastWeeklyDigestSentAtGreaterThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'lastWeeklyDigestSentAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterFilterCondition>
+  lastWeeklyDigestSentAtLessThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'lastWeeklyDigestSentAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterFilterCondition>
+  lastWeeklyDigestSentAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'lastWeeklyDigestSentAt',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterFilterCondition>
   positionKeyEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -869,6 +954,20 @@ extension AlertStateQuerySortBy
     });
   }
 
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  sortByLastWeeklyDigestSentAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastWeeklyDigestSentAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  sortByLastWeeklyDigestSentAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastWeeklyDigestSentAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<AlertState, AlertState, QAfterSortBy> sortByPositionKey() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'positionKey', Sort.asc);
@@ -951,6 +1050,20 @@ extension AlertStateQuerySortThenBy
     });
   }
 
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  thenByLastWeeklyDigestSentAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastWeeklyDigestSentAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  thenByLastWeeklyDigestSentAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastWeeklyDigestSentAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<AlertState, AlertState, QAfterSortBy> thenByPositionKey() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'positionKey', Sort.asc);
@@ -998,6 +1111,13 @@ extension AlertStateQueryWhereDistinct
     });
   }
 
+  QueryBuilder<AlertState, AlertState, QDistinct>
+  distinctByLastWeeklyDigestSentAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastWeeklyDigestSentAt');
+    });
+  }
+
   QueryBuilder<AlertState, AlertState, QDistinct> distinctByPositionKey({
     bool caseSensitive = true,
   }) {
@@ -1040,6 +1160,13 @@ extension AlertStateQueryProperty
   lastRangeStatusProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'lastRangeStatus');
+    });
+  }
+
+  QueryBuilder<AlertState, DateTime?, QQueryOperations>
+  lastWeeklyDigestSentAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastWeeklyDigestSentAt');
     });
   }
 

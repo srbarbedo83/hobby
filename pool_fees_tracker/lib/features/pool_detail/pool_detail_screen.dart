@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/calc/apr_history.dart';
 import '../../core/calc/bar_aggregator.dart';
 import '../../core/calc/out_of_range_estimate.dart';
+import '../../core/calc/staleness.dart';
 import '../../core/calc/pool_metrics.dart';
 import '../../core/export/position_summary.dart';
 import '../../core/calc/price_history_calc.dart';
@@ -21,6 +23,7 @@ import '../../shared/widgets/range_status_badge.dart';
 import '../../shared/widgets/segmented_pill_control.dart';
 import '../../shared/widgets/stat_tile.dart';
 import '../../shared/widgets/token_pair_icon.dart';
+import 'apr_history_chart.dart';
 import 'fee_bar_chart.dart';
 import 'liquidity_profile_section.dart';
 import 'price_alert_section.dart';
@@ -93,6 +96,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         ref.watch(liquidityProfileProvider(widget.positionKey)).value ??
         const [];
     final formatter = CurrencyFormatter(settings.currencyCode);
+    final lastUpdatedAt = ref.watch(poolFeesRepositoryProvider).lastUpdatedAt;
     final gasCostUsd = ref.watch(gasCostUsdProvider(widget.positionKey)).value;
     final metrics = computePoolMetrics(
       position: position,
@@ -244,7 +248,13 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                           color: palette.textSecondary,
                         ),
                       ),
-                      const LiveBadge(),
+                      LiveBadge(
+                        isStale: isDataStale(
+                          lastUpdatedAt: lastUpdatedAt,
+                          refreshIntervalSeconds:
+                              settings.refreshIntervalSeconds,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -467,6 +477,46 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     accentColor: palette.accent,
                     onBarSelected: (index) =>
                         setState(() => _selectedBarIndex = index),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: palette.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'APR ao longo do tempo',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: palette.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'APR anualizada implícita em cada barra, à liquidez atual da posição',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: palette.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  AprHistoryChart(
+                    points: computeAprHistory(
+                      snapshots: snapshots,
+                      liquidityUsd: position.liquidityUsd,
+                      range: _range,
+                      groupBy: _groupBy,
+                    ),
+                    accentColor: palette.accent,
                   ),
                 ],
               ),

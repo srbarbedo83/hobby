@@ -27,6 +27,10 @@ class AlertState {
   /// Só usado na linha reservada `positionKey == "__portfolio__"` (ver
   /// `detectConcentrationRisk`) — não é por posição, é da carteira toda.
   bool lastConcentrationRiskActive = false;
+
+  /// Também só na linha `__portfolio__` — quando foi enviado o último
+  /// resumo semanal (ver `shouldSendWeeklyDigest`). `null` = nunca enviado.
+  DateTime? lastWeeklyDigestSentAt;
 }
 
 /// Chave reservada para a linha de `AlertState` que guarda estado a nível

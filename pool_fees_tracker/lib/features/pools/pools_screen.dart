@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/calc/bar_aggregator.dart';
+import '../../core/calc/impermanent_loss.dart';
 import '../../core/calc/leaderboard.dart';
+import '../../core/calc/pool_health_score.dart';
 import '../../core/calc/range_health.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
+import '../../data/local/wallet.dart';
 import '../../shared/widgets/pool_row_tile.dart';
 import '../../shared/widgets/segmented_pill_control.dart';
 import '../../shared/widgets/token_pair_icon.dart';
@@ -34,6 +37,7 @@ class PoolsScreen extends ConsumerStatefulWidget {
 
 class _PoolsScreenState extends ConsumerState<PoolsScreen> {
   _SortBy _sortBy = _SortBy.fees;
+  String? _selectedWalletAddress;
 
   @override
   Widget build(BuildContext context) {
@@ -41,8 +45,15 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
     final settings = ref.watch(appSettingsProvider);
     final positionsAsync = ref.watch(positionsStreamProvider);
     final snapshotsAsync = ref.watch(allFeeSnapshotsProvider);
+    final wallets = ref.watch(walletsProvider).value ?? const <Wallet>[];
 
-    final allPositions = positionsAsync.value ?? const <PoolPosition>[];
+    final allPositionsUnfiltered =
+        positionsAsync.value ?? const <PoolPosition>[];
+    final allPositions = _selectedWalletAddress == null
+        ? allPositionsUnfiltered
+        : allPositionsUnfiltered
+              .where((p) => p.walletAddress == _selectedWalletAddress)
+              .toList();
     final positions = allPositions.where((p) => !p.isClosed).toList();
     final closedPositions = allPositions.where((p) => p.isClosed).toList()
       ..sort(
@@ -112,6 +123,15 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                 ),
               ],
             ),
+            if (wallets.length > 1) ...[
+              const SizedBox(height: 10),
+              _WalletFilterRow(
+                wallets: wallets,
+                selectedAddress: _selectedWalletAddress,
+                onSelected: (address) =>
+                    setState(() => _selectedWalletAddress = address),
+              ),
+            ],
             const SizedBox(height: 14),
             Expanded(
               child: positions.isEmpty && closedPositions.isEmpty
@@ -154,6 +174,21 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                               groupBy: ChartGroupBy.day,
                             ).map((b) => b.valueUsd).toList(),
                             formatter: formatter,
+                            healthScore: computePoolHealthScore(
+                              rangeStatus: computeRangeHealth(
+                                tickLower: position.tickLower,
+                                tickUpper: position.tickUpper,
+                                currentTick: position.currentTick,
+                              ).status,
+                              snapshots:
+                                  snapshots[position.positionKey] ?? const [],
+                              impermanentLossPct: computeImpermanentLoss(
+                                entryTick: position.entryTick,
+                                currentTick: position.currentTick,
+                                initialLiquidityUsd:
+                                    position.initialLiquidityUsd,
+                              ).lossPct,
+                            ).score,
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => PoolDetailScreen(
@@ -212,6 +247,82 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
     return position.liquidityUsd > 0
         ? (feesLast7d / position.liquidityUsd) * (365 / 7) * 100
         : 0;
+  }
+}
+
+/// Filtro horizontal por carteira — só aparece quando há mais do que uma
+/// carteira seguida, para não ocupar espaço sem necessidade.
+class _WalletFilterRow extends StatelessWidget {
+  final List<Wallet> wallets;
+  final String? selectedAddress;
+  final ValueChanged<String?> onSelected;
+
+  const _WalletFilterRow({
+    required this.wallets,
+    required this.selectedAddress,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 30,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _WalletFilterChip(
+            label: 'Todas',
+            selected: selectedAddress == null,
+            onTap: () => onSelected(null),
+          ),
+          for (final wallet in wallets) ...[
+            const SizedBox(width: 6),
+            _WalletFilterChip(
+              label: wallet.label,
+              selected: selectedAddress == wallet.address,
+              onTap: () => onSelected(wallet.address),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _WalletFilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _WalletFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? palette.accent : palette.surfaceAlt,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: selected ? palette.background : palette.textSecondary,
+          ),
+        ),
+      ),
+    );
   }
 }
 

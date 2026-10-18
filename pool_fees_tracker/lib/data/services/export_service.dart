@@ -41,4 +41,19 @@ class ExportService {
   static Future<void> sharePositionSummary(String summary) async {
     await SharePlus.instance.share(ShareParams(text: summary));
   }
+
+  /// Partilha o backup de definições/carteiras como ficheiro .json — para
+  /// guardar nas Notas, Drive, etc. e colar de volta mais tarde no ecrã de
+  /// Definições para restaurar.
+  static Future<void> shareSettingsBackup(String json) async {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/pool_fees_tracker_backup.json');
+    await file.writeAsString(json);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        subject: 'Backup — Pool Fees Tracker',
+      ),
+    );
+  }
 }

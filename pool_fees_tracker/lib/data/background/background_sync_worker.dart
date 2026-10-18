@@ -4,6 +4,7 @@ import 'package:workmanager/workmanager.dart';
 import '../../core/calc/alert_detector.dart';
 import '../../core/calc/dashboard_metrics.dart';
 import '../../core/calc/range_health.dart';
+import '../../core/calc/weekly_digest.dart';
 import '../../core/format/currency_formatter.dart';
 import '../local/alert_log_entry.dart';
 import '../local/alert_state.dart';
@@ -90,9 +91,11 @@ Future<int> runBackgroundSync() async {
       for (final s in previousStates) s.positionKey: s.lastFeeSlowdownNotified,
     };
     bool previousConcentrationActive = false;
+    DateTime? previousWeeklyDigestSentAt;
     for (final s in previousStates) {
       if (s.positionKey == portfolioAlertStateKey) {
         previousConcentrationActive = s.lastConcentrationRiskActive;
+        previousWeeklyDigestSentAt = s.lastWeeklyDigestSentAt;
         break;
       }
     }
@@ -147,6 +150,24 @@ Future<int> runBackgroundSync() async {
       );
     }
 
+    var weeklyDigestSentAt = previousWeeklyDigestSentAt;
+    if (settings.weeklyDigestEnabled &&
+        shouldSendWeeklyDigest(lastSentAt: previousWeeklyDigestSentAt)) {
+      final digest = computeWeeklyDigest(
+        positions: positions,
+        snapshotsByKey: snapshotsByKey,
+      );
+      await NotificationService.instance.show(
+        id: 'weekly_digest'.hashCode & 0x7fffffff,
+        title: 'Resumo semanal',
+        body: buildWeeklyDigestBody(
+          digest,
+          CurrencyFormatter(settings.currencyCode),
+        ),
+      );
+      weeklyDigestSentAt = DateTime.now();
+    }
+
     await isar.writeTxn(() async {
       for (final position in positions) {
         final health = computeRangeHealth(
@@ -189,7 +210,8 @@ Future<int> runBackgroundSync() async {
           ..lastNotifiedFeesTotal = 0
           ..lastConcentrationRiskActive = isConcentrationRisk(
             positions: positions,
-          ),
+          )
+          ..lastWeeklyDigestSentAt = weeklyDigestSentAt,
       );
 
       for (final alert in allAlerts) {

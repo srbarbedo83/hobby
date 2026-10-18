@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/export/settings_backup.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/local/chain.dart';
 import '../../data/local/settings_service.dart';
+import '../../data/services/export_service.dart';
 import 'add_wallet_dialog.dart';
+import 'restore_backup_dialog.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -424,6 +427,29 @@ class SettingsScreen extends ConsumerWidget {
                               s.copyWith(concentrationRiskAlertsEnabled: value),
                         ),
                   ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: palette.accent,
+                    title: Text(
+                      'Resumo semanal',
+                      style: TextStyle(
+                        color: palette.textPrimary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Uma notificação por semana com as taxas ganhas, a APR '
+                      'média e a melhor pool — não precisas de abrir a app.',
+                      style: TextStyle(
+                        color: palette.textTertiary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    value: settings.weeklyDigestEnabled,
+                    onChanged: (value) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update((s) => s.copyWith(weeklyDigestEnabled: value)),
+                  ),
                 ],
               ],
             ),
@@ -474,9 +500,89 @@ class SettingsScreen extends ConsumerWidget {
                   .update((s) => s.copyWith(currencyCode: selection.first)),
             ),
           ),
+          const SizedBox(height: 24),
+          _SectionLabel('Backup'),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'Exporta as definições e a lista de wallets para um ficheiro — '
+              'guarda-o nas Notas, Drive, etc. e usa "Restaurar" para o trazer '
+              'de volta neste ou noutro dispositivo. Não inclui posições nem '
+              'histórico de taxas, só configuração.',
+              style: TextStyle(color: palette.textTertiary, fontSize: 11),
+            ),
+          ),
+          _SettingsCard(
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final wallets = walletsAsync.value ?? const [];
+                      await ExportService.shareSettingsBackup(
+                        encodeSettingsBackup(settings, wallets),
+                      );
+                    },
+                    icon: const Icon(Icons.upload_outlined),
+                    label: const Text('Exportar'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final text = await showRestoreBackupDialog(context);
+                      if (text == null || !context.mounted) return;
+                      await _restoreBackup(context, ref, text);
+                    },
+                    icon: const Icon(Icons.download_outlined),
+                    label: const Text('Restaurar'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _restoreBackup(
+    BuildContext context,
+    WidgetRef ref,
+    String text,
+  ) async {
+    SettingsBackup backup;
+    try {
+      backup = decodeSettingsBackup(text);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Backup inválido — verifica o texto colado.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    await ref.read(settingsServiceProvider).save(backup.settings);
+    ref.invalidate(appSettingsProvider);
+
+    final walletRepository = ref.read(walletRepositoryProvider);
+    for (final wallet in backup.wallets) {
+      await walletRepository.upsert(
+        address: wallet.address,
+        label: wallet.label,
+      );
+    }
+    ref.invalidate(walletsProvider);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Backup restaurado.')));
+    }
   }
 }
 

@@ -16,6 +16,9 @@ class PoolRowTile extends StatelessWidget {
   final CurrencyFormatter formatter;
   final VoidCallback? onTap;
 
+  /// 0-100, ver `computePoolHealthScore` — `null` omite o badge.
+  final int? healthScore;
+
   const PoolRowTile({
     super.key,
     required this.position,
@@ -23,6 +26,7 @@ class PoolRowTile extends StatelessWidget {
     required this.sparklineValues,
     required this.formatter,
     this.onTap,
+    this.healthScore,
   });
 
   @override
@@ -103,6 +107,8 @@ class PoolRowTile extends StatelessWidget {
                         ],
                       ),
                       RangeStatusPill(status: rangeHealth.status),
+                      if (healthScore != null)
+                        _HealthScoreBadge(score: healthScore!),
                     ],
                   ),
                 ],
@@ -130,6 +136,46 @@ class PoolRowTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Pequena pill com o `PoolHealthScore` (0-100): verde/âmbar/vermelho.
+class _HealthScoreBadge extends StatelessWidget {
+  final int score;
+
+  const _HealthScoreBadge({required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final color = score >= 70
+        ? palette.positive
+        : score >= 40
+        ? palette.warning
+        : palette.negative;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.favorite, size: 9, color: color),
+          const SizedBox(width: 3),
+          Text(
+            '$score',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

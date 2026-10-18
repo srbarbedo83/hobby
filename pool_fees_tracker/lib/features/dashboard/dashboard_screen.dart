@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/calc/bar_aggregator.dart';
 import '../../core/calc/dashboard_metrics.dart';
+import '../../core/calc/impermanent_loss.dart';
+import '../../core/calc/pool_health_score.dart';
 import '../../core/calc/portfolio_composition.dart';
 import '../../core/calc/range_health.dart';
+import '../../core/calc/staleness.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -62,6 +65,7 @@ class DashboardScreen extends ConsumerWidget {
               pctChangeVsPrevWeek: metrics.pctChangeVsPrevWeek,
               formatter: formatter,
               updatedAt: updatedAt,
+              refreshIntervalSeconds: settings.refreshIntervalSeconds,
             ),
             const SizedBox(height: 14),
             Row(
@@ -150,6 +154,19 @@ class DashboardScreen extends ConsumerWidget {
                   snapshots[position.positionKey] ?? const [],
                 ),
                 formatter: formatter,
+                healthScore: computePoolHealthScore(
+                  rangeStatus: computeRangeHealth(
+                    tickLower: position.tickLower,
+                    tickUpper: position.tickUpper,
+                    currentTick: position.currentTick,
+                  ).status,
+                  snapshots: snapshots[position.positionKey] ?? const [],
+                  impermanentLossPct: computeImpermanentLoss(
+                    entryTick: position.entryTick,
+                    currentTick: position.currentTick,
+                    initialLiquidityUsd: position.initialLiquidityUsd,
+                  ).lossPct,
+                ).score,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) =>
@@ -242,6 +259,7 @@ class _HeroCard extends StatelessWidget {
   final double? pctChangeVsPrevWeek;
   final CurrencyFormatter formatter;
   final DateTime? updatedAt;
+  final int refreshIntervalSeconds;
 
   const _HeroCard({
     required this.totalFeesUsd,
@@ -249,6 +267,7 @@ class _HeroCard extends StatelessWidget {
     required this.pctChangeVsPrevWeek,
     required this.formatter,
     required this.updatedAt,
+    required this.refreshIntervalSeconds,
   });
 
   @override
@@ -276,7 +295,12 @@ class _HeroCard extends StatelessWidget {
                   color: palette.textSecondary,
                 ),
               ),
-              const LiveBadge(),
+              LiveBadge(
+                isStale: isDataStale(
+                  lastUpdatedAt: updatedAt,
+                  refreshIntervalSeconds: refreshIntervalSeconds,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),

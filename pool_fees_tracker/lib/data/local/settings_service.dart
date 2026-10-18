@@ -60,6 +60,7 @@ class AppSettings {
   final double feeMilestoneThresholdUsd;
   final bool feeSlowdownAlertsEnabled;
   final bool concentrationRiskAlertsEnabled;
+  final bool weeklyDigestEnabled;
 
   const AppSettings({
     this.dataSourceMode = DataSourceMode.demo,
@@ -76,6 +77,7 @@ class AppSettings {
     this.feeMilestoneThresholdUsd = 50,
     this.feeSlowdownAlertsEnabled = true,
     this.concentrationRiskAlertsEnabled = true,
+    this.weeklyDigestEnabled = true,
   });
 
   AppSettings copyWith({
@@ -93,6 +95,7 @@ class AppSettings {
     double? feeMilestoneThresholdUsd,
     bool? feeSlowdownAlertsEnabled,
     bool? concentrationRiskAlertsEnabled,
+    bool? weeklyDigestEnabled,
   }) {
     return AppSettings(
       dataSourceMode: dataSourceMode ?? this.dataSourceMode,
@@ -115,6 +118,7 @@ class AppSettings {
           feeSlowdownAlertsEnabled ?? this.feeSlowdownAlertsEnabled,
       concentrationRiskAlertsEnabled:
           concentrationRiskAlertsEnabled ?? this.concentrationRiskAlertsEnabled,
+      weeklyDigestEnabled: weeklyDigestEnabled ?? this.weeklyDigestEnabled,
     );
   }
 
@@ -140,6 +144,7 @@ class SettingsService {
   static const _keyFeeSlowdownAlerts = 'fee_slowdown_alerts_enabled';
   static const _keyConcentrationRiskAlerts =
       'concentration_risk_alerts_enabled';
+  static const _keyWeeklyDigestEnabled = 'weekly_digest_enabled';
 
   final SharedPreferences _prefs;
 
@@ -187,6 +192,7 @@ class SettingsService {
       feeSlowdownAlertsEnabled: _prefs.getBool(_keyFeeSlowdownAlerts) ?? true,
       concentrationRiskAlertsEnabled:
           _prefs.getBool(_keyConcentrationRiskAlerts) ?? true,
+      weeklyDigestEnabled: _prefs.getBool(_keyWeeklyDigestEnabled) ?? true,
     );
   }
 
@@ -223,5 +229,6 @@ class SettingsService {
       _keyConcentrationRiskAlerts,
       settings.concentrationRiskAlertsEnabled,
     );
+    await _prefs.setBool(_keyWeeklyDigestEnabled, settings.weeklyDigestEnabled);
   }
 }

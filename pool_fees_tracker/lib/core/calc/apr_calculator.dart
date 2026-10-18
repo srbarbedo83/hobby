@@ -6,7 +6,7 @@
 double realizedAprPct({
   required double feesUsdEarnedInPeriod,
   required double liquidityUsd,
-  required int periodDays,
+  required num periodDays,
 }) {
   if (liquidityUsd <= 0 || periodDays <= 0) return 0;
   final periodReturn = feesUsdEarnedInPeriod / liquidityUsd;
