@@ -1,12 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_community/isar.dart';
 
+import '../data/local/alert_log_entry.dart';
 import '../data/local/fee_snapshot.dart';
+import '../data/local/position_event.dart';
 import '../data/local/settings_service.dart';
-import '../data/repositories/demo_pool_fees_repository.dart';
 import '../data/repositories/isar_wallet_repository.dart';
-import '../data/repositories/live_pool_fees_repository.dart';
 import '../data/repositories/pool_fees_repository.dart';
+import '../data/repositories/pool_fees_repository_factory.dart';
 import '../data/repositories/wallet_repository.dart';
 
 /// Sobreposto em `main()` com a instância já aberta.
@@ -46,19 +47,11 @@ final walletRepositoryProvider = Provider<WalletRepository>((ref) {
 /// toda a vida da app em vez de ser recriado a cada rebuild não relacionado.
 final poolFeesRepositoryProvider = Provider<PoolFeesRepository>((ref) {
   final settings = ref.watch(appSettingsProvider);
-
-  final PoolFeesRepository repo;
-  if (settings.dataSourceMode == DataSourceMode.live &&
-      settings.isLiveModeReady) {
-    repo = LivePoolFeesRepository(
-      chain: settings.chain,
-      apiKey: settings.subgraphApiKey,
-      walletRepository: ref.watch(walletRepositoryProvider),
-      isar: ref.watch(isarProvider),
-    );
-  } else {
-    repo = DemoPoolFeesRepository();
-  }
+  final repo = createPoolFeesRepository(
+    settings: settings,
+    walletRepository: ref.watch(walletRepositoryProvider),
+    isar: ref.watch(isarProvider),
+  );
   repo.startAutoRefresh(Duration(seconds: settings.refreshIntervalSeconds));
   ref.onDispose(repo.dispose);
   return repo;
@@ -88,4 +81,24 @@ final allFeeSnapshotsProvider = FutureProvider<Map<String, List<FeeSnapshot>>>((
     ),
   );
   return Map.fromEntries(entries);
+});
+
+/// Histórico de eventos (mint/collect/burn) de uma posição — pedido só
+/// quando o ecrã de detalhe abre (não é preciso em toda a app como os
+/// snapshots), por isso é uma family keyed por `positionKey`.
+final positionEventsProvider =
+    FutureProvider.family<List<PositionEvent>, String>((ref, positionKey) {
+      return ref.watch(poolFeesRepositoryProvider).getEvents(positionKey);
+    });
+
+/// Alertas já disparados (out-of-range, milestones de fees), mais recentes
+/// primeiro — alimenta o ecrã de Alerts. Invalidado manualmente depois de
+/// "Check now" ou de alterar as definições de alertas.
+final alertLogProvider = FutureProvider((ref) {
+  return ref
+      .watch(isarProvider)
+      .alertLogEntrys
+      .where()
+      .sortByFiredAtDesc()
+      .findAll();
 });

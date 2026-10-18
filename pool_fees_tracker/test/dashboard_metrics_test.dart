@@ -23,6 +23,7 @@ PoolPosition _position({
     ..tickLower = -100
     ..tickUpper = 100
     ..currentTick = 0
+    ..entryTick = 0
     ..liquidityUsd = liquidityUsd
     ..initialLiquidityUsd = liquidityUsd
     ..feesClaimedUsd = feesClaimedUsd

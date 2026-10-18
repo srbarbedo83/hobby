@@ -1,9 +1,10 @@
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
+import '../local/position_event.dart';
 
 /// Fonte das posições de liquidez e do seu histórico de fees. Tem duas
 /// implementações: [DemoPoolFeesRepository] (dados sintéticos, sem rede) e
-/// a futura implementação "live" (subgraph Uniswap + RPC).
+/// [LivePoolFeesRepository] (subgraph Uniswap + fórmula de fees on-chain).
 abstract class PoolFeesRepository {
   /// Emite a lista mais recente de posições sempre que há uma atualização
   /// (live tick, refresh manual, ou poll periódico).
@@ -14,6 +15,10 @@ abstract class PoolFeesRepository {
 
   /// Histórico de fees de uma posição (para o gráfico de barras).
   Future<List<FeeSnapshot>> getFeeSnapshots(String positionKey);
+
+  /// Histórico de eventos (mint, adds/removes de liquidez, collects) de
+  /// uma posição, mais recente primeiro.
+  Future<List<PositionEvent>> getEvents(String positionKey);
 
   /// Força uma atualização imediata (pull-to-refresh).
   Future<void> refreshNow();

@@ -52,6 +52,14 @@ dependencies:
   intl: ^0.20.3
   fl_chart: ^1.2.0
 
+  # Notificações locais + trabalho periódico em background (alertas de
+  # out-of-range e de milestones de fees, mesmo com a app fechada)
+  flutter_local_notifications: ^19.4.2
+  workmanager: ^0.9.0+3
+
+  # Widget de ecrã inicial Android com o número de fees em destaque
+  home_widget: ^0.8.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

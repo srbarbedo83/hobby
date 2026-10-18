@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/format/currency_formatter.dart';
+import '../core/providers.dart';
 import '../core/theme/app_theme.dart';
+import '../data/services/home_widget_service.dart';
 import '../features/alerts/alerts_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/pools/pools_screen.dart';
@@ -21,14 +25,14 @@ class PoolFeesTrackerApp extends StatelessWidget {
   }
 }
 
-class _RootNavigation extends StatefulWidget {
+class _RootNavigation extends ConsumerStatefulWidget {
   const _RootNavigation();
 
   @override
-  State<_RootNavigation> createState() => _RootNavigationState();
+  ConsumerState<_RootNavigation> createState() => _RootNavigationState();
 }
 
-class _RootNavigationState extends State<_RootNavigation> {
+class _RootNavigationState extends ConsumerState<_RootNavigation> {
   int _index = 0;
 
   static const _screens = [
@@ -40,6 +44,23 @@ class _RootNavigationState extends State<_RootNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    // Mantém o widget de ecrã inicial atualizado enquanto a app está
+    // aberta (em background, só a sincronização periódica do Workmanager
+    // o faz — ver background_sync_worker.dart).
+    ref.listen(positionsStreamProvider, (previous, next) {
+      final positions = next.value;
+      if (positions == null) return;
+      final total = positions.fold<double>(
+        0,
+        (sum, position) => sum + position.feesTotalUsd,
+      );
+      final currencyCode = ref.read(appSettingsProvider).currencyCode;
+      HomeWidgetService.update(
+        totalFeesFormatted: CurrencyFormatter(currencyCode).format(total),
+        updatedAtLabel: 'Updated just now',
+      );
+    });
+
     return Scaffold(
       body: IndexedStack(index: _index, children: _screens),
       bottomNavigationBar: NavigationBar(

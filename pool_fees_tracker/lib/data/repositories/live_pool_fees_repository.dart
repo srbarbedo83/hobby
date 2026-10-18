@@ -6,6 +6,7 @@ import '../../core/calc/univ3_fee_math.dart';
 import '../local/chain.dart';
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
+import '../local/position_event.dart';
 import '../remote/uniswap_subgraph_client.dart';
 import 'pool_fees_repository.dart';
 import 'wallet_repository.dart';
@@ -13,6 +14,12 @@ import 'wallet_repository.dart';
 /// Implementação "live": lê posições reais do subgraph Uniswap v3 e
 /// calcula fees não reclamadas com a mesma fórmula do contrato
 /// (`univ3_fee_math.dart`), sem precisar de uma chamada RPC.
+///
+/// Agrega várias chains ao mesmo tempo (uma ligação ao subgraph por
+/// chain, a mesma API key): as mesmas wallets são consultadas em cada
+/// chain selecionada e os resultados somados num só dashboard — um
+/// endereço EVM é o mesmo em todas as chains, não há nada específico por
+/// chain a configurar além de quais ligar.
 ///
 /// Inclui posições já FECHADAS (liquidez removida): continuam a contar
 /// para o total vitalício de fees do dashboard, só deixam de aparecer na
@@ -33,6 +40,12 @@ import 'wallet_repository.dart';
 /// - `closedAt` fica `null`: o subgraph não dá diretamente o timestamp em
 ///   que uma posição fechou (seria preciso o evento `Burn` mais recente
 ///   dessa posição). O ecrã de Pools mostra "Closed" sem data nesse caso.
+/// - `entryTick` (para o impermanent loss) usa o centro do range como
+///   proxy do tick de entrada — o subgraph não liga o tick exato do mint
+///   ao tokenId do NFT.
+/// - `getEvents` identifica os eventos (mint/collect/burn) desta posição
+///   por `pool + owner + tickLower + tickUpper`, pela mesma razão — ver
+///   `UniswapSubgraphClient.fetchPositionEvents`.
 /// - O histórico por posição (para o gráfico de barras) é alocado a partir
 ///   do histórico da POOL (`poolHourData`/`poolDayData`), repartido pela
 ///   quota de liquidez da posição — o subgraph não guarda uma série
@@ -44,12 +57,13 @@ import 'wallet_repository.dart';
 /// disponível) — valide com uma Subgraph API key antes de confiar nos
 /// números em modo live.
 class LivePoolFeesRepository implements PoolFeesRepository {
-  final Chain chain;
   final WalletRepository _walletRepository;
   final Isar _isar;
-  final UniswapSubgraphClient _client;
+  final Map<Chain, UniswapSubgraphClient> _clients;
 
   List<PoolPosition> _positions = [];
+  final Map<String, String> _poolIdByPositionKey = {};
+  final Map<String, Chain> _chainByPositionKey = {};
   final StreamController<List<PoolPosition>> _controller =
       StreamController.broadcast();
   DateTime? _lastUpdatedAt;
@@ -57,14 +71,19 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   bool _refreshing = false;
 
   LivePoolFeesRepository({
-    required this.chain,
+    required List<Chain> chains,
     required String apiKey,
     required WalletRepository walletRepository,
     required Isar isar,
-    UniswapSubgraphClient? client,
+    Map<Chain, UniswapSubgraphClient>? clients,
   }) : _walletRepository = walletRepository,
        _isar = isar,
-       _client = client ?? UniswapSubgraphClient(chain: chain, apiKey: apiKey) {
+       _clients =
+           clients ??
+           {
+             for (final chain in chains)
+               chain: UniswapSubgraphClient(chain: chain, apiKey: apiKey),
+           } {
     _loadCachedThenRefresh();
   }
 
@@ -93,6 +112,44 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   }
 
   @override
+  Future<List<PositionEvent>> getEvents(String positionKey) async {
+    final poolId = _poolIdByPositionKey[positionKey];
+    final chain = _chainByPositionKey[positionKey];
+    final client = chain == null ? null : _clients[chain];
+    if (poolId == null || client == null) return [];
+
+    PoolPosition? position;
+    for (final p in _positions) {
+      if (p.positionKey == positionKey) {
+        position = p;
+        break;
+      }
+    }
+    if (position == null) return [];
+
+    final raw = await client.fetchPositionEvents(
+      poolId: poolId,
+      owner: position.walletAddress,
+      tickLower: position.tickLower,
+      tickUpper: position.tickUpper,
+    );
+    return raw
+        .map(
+          (e) => PositionEvent()
+            ..positionKey = positionKey
+            ..timestamp = e.timestamp
+            ..type = switch (e.kind) {
+              RawEventKind.mint => PositionEventType.mint,
+              RawEventKind.collect => PositionEventType.collect,
+              RawEventKind.burn => PositionEventType.decreaseLiquidity,
+            }
+            ..amountUsd = e.amountUsd
+            ..txHash = e.txHash,
+        )
+        .toList();
+  }
+
+  @override
   Future<void> refreshNow() async {
     if (_refreshing) return;
     _refreshing = true;
@@ -103,24 +160,32 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         _controller.add(List.unmodifiable(_positions));
         return;
       }
+      final owners = wallets.map((w) => w.address).toList();
 
-      final result = await _client.fetchPositions(
-        wallets.map((w) => w.address).toList(),
-      );
       final now = DateTime.now();
       final mapped = <PoolPosition>[];
-      for (final raw in result.positions) {
-        final position = _mapPosition(raw, result.ethPriceUsd);
-        mapped.add(position);
-        // Uma posição fechada já não tem quota da pool (liquidity == 0) —
-        // não há como alocar-lhe fees novas, por isso o seu histórico fica
-        // congelado no que já estava guardado em Isar.
-        if (!position.isClosed) {
-          await _refreshHistoryForPosition(
-            raw: raw,
-            position: position,
-            now: now,
-          );
+
+      for (final entry in _clients.entries) {
+        final chain = entry.key;
+        final client = entry.value;
+        final result = await client.fetchPositions(owners);
+
+        for (final raw in result.positions) {
+          final position = _mapPosition(chain, raw, result.ethPriceUsd);
+          mapped.add(position);
+          _poolIdByPositionKey[position.positionKey] = raw.pool.id;
+          _chainByPositionKey[position.positionKey] = chain;
+          // Uma posição fechada já não tem quota da pool (liquidity == 0)
+          // — não há como alocar-lhe fees novas, por isso o seu histórico
+          // fica congelado no que já estava guardado em Isar.
+          if (!position.isClosed) {
+            await _refreshHistoryForPosition(
+              client: client,
+              raw: raw,
+              position: position,
+              now: now,
+            );
+          }
         }
       }
 
@@ -151,10 +216,12 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   void dispose() {
     _autoRefreshTimer?.cancel();
     _controller.close();
-    _client.dispose();
+    for (final client in _clients.values) {
+      client.dispose();
+    }
   }
 
-  PoolPosition _mapPosition(RawPosition raw, double ethPriceUsd) {
+  PoolPosition _mapPosition(Chain chain, RawPosition raw, double ethPriceUsd) {
     final price0 = raw.pool.token0.priceUsd(ethPriceUsd);
     final price1 = raw.pool.token1.priceUsd(ethPriceUsd);
 
@@ -202,6 +269,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       ..tickLower = raw.tickLower.tickIdx
       ..tickUpper = raw.tickUpper.tickIdx
       ..currentTick = raw.pool.tick
+      // Aproximação: o subgraph não liga o tick exato do mint ao tokenId
+      // do NFT — usa-se o centro do range como proxy do preço de entrada,
+      // para o impermanent loss. Ver nota no topo do ficheiro.
+      ..entryTick = (raw.tickLower.tickIdx + raw.tickUpper.tickIdx) ~/ 2
       ..liquidityUsd = raw.isClosed ? 0 : currentUsd
       ..initialLiquidityUsd = initialUsd
       ..feesClaimedUsd = claimedUsd
@@ -212,6 +283,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   }
 
   Future<void> _refreshHistoryForPosition({
+    required UniswapSubgraphClient client,
     required RawPosition raw,
     required PoolPosition position,
     required DateTime now,
@@ -221,8 +293,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         : 0.0;
 
     final weekAgo = now.subtract(const Duration(days: 7));
-    final hourBuckets = await _client.fetchPoolHourData(raw.pool.id, weekAgo);
-    final dayBuckets = (await _client.fetchPoolDayData(
+    final hourBuckets = await client.fetchPoolHourData(raw.pool.id, weekAgo);
+    final dayBuckets = (await client.fetchPoolDayData(
       raw.pool.id,
       now.subtract(const Duration(days: 365)),
     )).where((b) => b.periodStart.isBefore(weekAgo));

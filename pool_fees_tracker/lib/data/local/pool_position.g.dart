@@ -38,79 +38,84 @@ const PoolPositionSchema = CollectionSchema(
       name: r'currentTick',
       type: IsarType.long,
     ),
-    r'feeTierBps': PropertySchema(
+    r'entryTick': PropertySchema(
       id: 4,
+      name: r'entryTick',
+      type: IsarType.long,
+    ),
+    r'feeTierBps': PropertySchema(
+      id: 5,
       name: r'feeTierBps',
       type: IsarType.long,
     ),
     r'feeTierPct': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'feeTierPct',
       type: IsarType.double,
     ),
     r'feesClaimedUsd': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'feesClaimedUsd',
       type: IsarType.double,
     ),
     r'feesTotalUsd': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'feesTotalUsd',
       type: IsarType.double,
     ),
     r'feesUnclaimedUsd': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'feesUnclaimedUsd',
       type: IsarType.double,
     ),
     r'gasCostUsd': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'gasCostUsd',
       type: IsarType.double,
     ),
     r'initialLiquidityUsd': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'initialLiquidityUsd',
       type: IsarType.double,
     ),
-    r'isClosed': PropertySchema(id: 11, name: r'isClosed', type: IsarType.bool),
+    r'isClosed': PropertySchema(id: 12, name: r'isClosed', type: IsarType.bool),
     r'liquidityUsd': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'liquidityUsd',
       type: IsarType.double,
     ),
     r'positionKey': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'positionKey',
       type: IsarType.string,
     ),
     r'tickLower': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'tickLower',
       type: IsarType.long,
     ),
     r'tickUpper': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'tickUpper',
       type: IsarType.long,
     ),
     r'token0Symbol': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'token0Symbol',
       type: IsarType.string,
     ),
     r'token1Symbol': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'token1Symbol',
       type: IsarType.string,
     ),
     r'tokenIdOnChain': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'tokenIdOnChain',
       type: IsarType.string,
     ),
     r'walletAddress': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'walletAddress',
       type: IsarType.string,
     ),
@@ -183,22 +188,23 @@ void _poolPositionSerialize(
   writer.writeDateTime(offsets[1], object.closedAt);
   writer.writeDateTime(offsets[2], object.createdAt);
   writer.writeLong(offsets[3], object.currentTick);
-  writer.writeLong(offsets[4], object.feeTierBps);
-  writer.writeDouble(offsets[5], object.feeTierPct);
-  writer.writeDouble(offsets[6], object.feesClaimedUsd);
-  writer.writeDouble(offsets[7], object.feesTotalUsd);
-  writer.writeDouble(offsets[8], object.feesUnclaimedUsd);
-  writer.writeDouble(offsets[9], object.gasCostUsd);
-  writer.writeDouble(offsets[10], object.initialLiquidityUsd);
-  writer.writeBool(offsets[11], object.isClosed);
-  writer.writeDouble(offsets[12], object.liquidityUsd);
-  writer.writeString(offsets[13], object.positionKey);
-  writer.writeLong(offsets[14], object.tickLower);
-  writer.writeLong(offsets[15], object.tickUpper);
-  writer.writeString(offsets[16], object.token0Symbol);
-  writer.writeString(offsets[17], object.token1Symbol);
-  writer.writeString(offsets[18], object.tokenIdOnChain);
-  writer.writeString(offsets[19], object.walletAddress);
+  writer.writeLong(offsets[4], object.entryTick);
+  writer.writeLong(offsets[5], object.feeTierBps);
+  writer.writeDouble(offsets[6], object.feeTierPct);
+  writer.writeDouble(offsets[7], object.feesClaimedUsd);
+  writer.writeDouble(offsets[8], object.feesTotalUsd);
+  writer.writeDouble(offsets[9], object.feesUnclaimedUsd);
+  writer.writeDouble(offsets[10], object.gasCostUsd);
+  writer.writeDouble(offsets[11], object.initialLiquidityUsd);
+  writer.writeBool(offsets[12], object.isClosed);
+  writer.writeDouble(offsets[13], object.liquidityUsd);
+  writer.writeString(offsets[14], object.positionKey);
+  writer.writeLong(offsets[15], object.tickLower);
+  writer.writeLong(offsets[16], object.tickUpper);
+  writer.writeString(offsets[17], object.token0Symbol);
+  writer.writeString(offsets[18], object.token1Symbol);
+  writer.writeString(offsets[19], object.tokenIdOnChain);
+  writer.writeString(offsets[20], object.walletAddress);
 }
 
 PoolPosition _poolPositionDeserialize(
@@ -214,21 +220,22 @@ PoolPosition _poolPositionDeserialize(
   object.closedAt = reader.readDateTimeOrNull(offsets[1]);
   object.createdAt = reader.readDateTime(offsets[2]);
   object.currentTick = reader.readLong(offsets[3]);
-  object.feeTierBps = reader.readLong(offsets[4]);
-  object.feesClaimedUsd = reader.readDouble(offsets[6]);
-  object.feesUnclaimedUsd = reader.readDouble(offsets[8]);
-  object.gasCostUsd = reader.readDouble(offsets[9]);
+  object.entryTick = reader.readLong(offsets[4]);
+  object.feeTierBps = reader.readLong(offsets[5]);
+  object.feesClaimedUsd = reader.readDouble(offsets[7]);
+  object.feesUnclaimedUsd = reader.readDouble(offsets[9]);
+  object.gasCostUsd = reader.readDouble(offsets[10]);
   object.id = id;
-  object.initialLiquidityUsd = reader.readDouble(offsets[10]);
-  object.isClosed = reader.readBool(offsets[11]);
-  object.liquidityUsd = reader.readDouble(offsets[12]);
-  object.positionKey = reader.readString(offsets[13]);
-  object.tickLower = reader.readLong(offsets[14]);
-  object.tickUpper = reader.readLong(offsets[15]);
-  object.token0Symbol = reader.readString(offsets[16]);
-  object.token1Symbol = reader.readString(offsets[17]);
-  object.tokenIdOnChain = reader.readString(offsets[18]);
-  object.walletAddress = reader.readString(offsets[19]);
+  object.initialLiquidityUsd = reader.readDouble(offsets[11]);
+  object.isClosed = reader.readBool(offsets[12]);
+  object.liquidityUsd = reader.readDouble(offsets[13]);
+  object.positionKey = reader.readString(offsets[14]);
+  object.tickLower = reader.readLong(offsets[15]);
+  object.tickUpper = reader.readLong(offsets[16]);
+  object.token0Symbol = reader.readString(offsets[17]);
+  object.token1Symbol = reader.readString(offsets[18]);
+  object.tokenIdOnChain = reader.readString(offsets[19]);
+  object.walletAddress = reader.readString(offsets[20]);
   return object;
 }
 
@@ -252,7 +259,7 @@ P _poolPositionDeserializeProp<P>(
     case 4:
       return (reader.readLong(offset)) as P;
     case 5:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 6:
       return (reader.readDouble(offset)) as P;
     case 7:
@@ -264,22 +271,24 @@ P _poolPositionDeserializeProp<P>(
     case 10:
       return (reader.readDouble(offset)) as P;
     case 11:
-      return (reader.readBool(offset)) as P;
-    case 12:
       return (reader.readDouble(offset)) as P;
+    case 12:
+      return (reader.readBool(offset)) as P;
     case 13:
-      return (reader.readString(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 14:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 15:
       return (reader.readLong(offset)) as P;
     case 16:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 17:
       return (reader.readString(offset)) as P;
     case 18:
       return (reader.readString(offset)) as P;
     case 19:
+      return (reader.readString(offset)) as P;
+    case 20:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -891,6 +900,61 @@ extension PoolPositionQueryFilter
       return query.addFilterCondition(
         FilterCondition.between(
           property: r'currentTick',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  entryTickEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'entryTick', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  entryTickGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'entryTick',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  entryTickLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'entryTick',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  entryTickBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'entryTick',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
@@ -2421,6 +2485,18 @@ extension PoolPositionQuerySortBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByEntryTick() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'entryTick', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByEntryTickDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'entryTick', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByFeeTierBps() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'feeTierBps', Sort.asc);
@@ -2682,6 +2758,18 @@ extension PoolPositionQuerySortThenBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByEntryTick() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'entryTick', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByEntryTickDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'entryTick', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByFeeTierBps() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'feeTierBps', Sort.asc);
@@ -2932,6 +3020,12 @@ extension PoolPositionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QDistinct> distinctByEntryTick() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'entryTick');
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QDistinct> distinctByFeeTierBps() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'feeTierBps');
@@ -3077,6 +3171,12 @@ extension PoolPositionQueryProperty
   QueryBuilder<PoolPosition, int, QQueryOperations> currentTickProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'currentTick');
+    });
+  }
+
+  QueryBuilder<PoolPosition, int, QQueryOperations> entryTickProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'entryTick');
     });
   }
 

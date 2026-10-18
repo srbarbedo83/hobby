@@ -36,6 +36,13 @@ class PoolPosition {
   late int tickUpper;
   late int currentTick;
 
+  /// Tick da pool no momento em que a posição foi criada — usado para
+  /// estimar o impermanent loss (variação de preço desde a abertura).
+  /// Em modo Live é uma aproximação (ponto médio do range, por o subgraph
+  /// não guardar o tick exato do mint ligado ao tokenId do NFT); em modo
+  /// Demo é o valor exato definido nos dados sintéticos.
+  late int entryTick;
+
   /// Valor atual da posição (token0 + token1) em USD.
   late double liquidityUsd;
 

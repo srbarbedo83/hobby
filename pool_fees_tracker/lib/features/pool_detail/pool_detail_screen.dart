@@ -7,7 +7,9 @@ import '../../core/calc/pool_metrics.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/local/chain.dart';
 import '../../data/local/pool_position.dart';
+import '../../data/local/position_event.dart';
 import '../../shared/widgets/animated_usd_number.dart';
 import '../../shared/widgets/live_badge.dart';
 import '../../shared/widgets/range_status_badge.dart';
@@ -110,7 +112,10 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
           children: [
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -129,7 +134,27 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: position.chain.accentColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      position.chain.displayName,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
                 Text(
                   'Opened ${DateFormat.yMMMd().format(position.createdAt)}',
                   style: const TextStyle(
@@ -253,6 +278,34 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               value: formatter.format(metrics.projection.projectedEndOfYearUsd),
               caption: 'at current daily rate — trend, not a guarantee',
             ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: StatTile(
+                    label: 'Impermanent loss',
+                    value: metrics.impermanentLoss.lossPct > -0.01
+                        ? '~0%'
+                        : '${metrics.impermanentLoss.lossPct.toStringAsFixed(2)}%',
+                    valueColor: metrics.impermanentLoss.lossPct < -0.01
+                        ? AppColors.negative
+                        : AppColors.textPrimary,
+                    caption: 'vs. just holding the tokens — est.',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: StatTile(
+                    label: 'Net vs. HODL',
+                    value: formatter.format(metrics.netVsHoldUsd),
+                    valueColor: metrics.netVsHoldUsd >= 0
+                        ? AppColors.positive
+                        : AppColors.negative,
+                    caption: 'fees earned minus IL',
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 18),
             Container(
               padding: const EdgeInsets.all(18),
@@ -321,9 +374,163 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 18),
+            _ActivitySection(
+              positionKey: widget.positionKey,
+              formatter: formatter,
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+extension on PositionEventType {
+  String get label => switch (this) {
+    PositionEventType.mint => 'Position opened',
+    PositionEventType.increaseLiquidity => 'Added liquidity',
+    PositionEventType.decreaseLiquidity => 'Removed liquidity',
+    PositionEventType.collect => 'Collected fees',
+  };
+
+  IconData get icon => switch (this) {
+    PositionEventType.mint => Icons.add_circle_outline,
+    PositionEventType.increaseLiquidity => Icons.arrow_upward,
+    PositionEventType.decreaseLiquidity => Icons.arrow_downward,
+    PositionEventType.collect => Icons.redeem_outlined,
+  };
+
+  Color get color => switch (this) {
+    PositionEventType.mint => AppColors.accent,
+    PositionEventType.increaseLiquidity => AppColors.positive,
+    PositionEventType.decreaseLiquidity => AppColors.warning,
+    PositionEventType.collect => AppColors.positive,
+  };
+}
+
+class _ActivitySection extends ConsumerWidget {
+  final String positionKey;
+  final CurrencyFormatter formatter;
+
+  const _ActivitySection({required this.positionKey, required this.formatter});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventsAsync = ref.watch(positionEventsProvider(positionKey));
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Activity',
+            style: TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          eventsAsync.when(
+            data: (events) => events.isEmpty
+                ? const Text(
+                    'No events yet',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiary,
+                    ),
+                  )
+                : Column(
+                    children: [
+                      for (final event in events) ...[
+                        _EventRow(event: event, formatter: formatter),
+                        if (event != events.last) const SizedBox(height: 10),
+                      ],
+                    ],
+                  ),
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Center(
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+            error: (e, st) => Text(
+              'Could not load activity',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textTertiary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EventRow extends StatelessWidget {
+  final PositionEvent event;
+  final CurrencyFormatter formatter;
+
+  const _EventRow({required this.event, required this.formatter});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: event.type.color.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Icon(event.type.icon, size: 15, color: event.type.color),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                event.type.label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                DateFormat.yMMMd().add_Hm().format(event.timestamp),
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          formatter.format(event.amountUsd),
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:background="@drawable/widget_background"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="TOTAL FEES EARNED"
+        android:textColor="#8A8F98"
+        android:textSize="10sp"
+        android:letterSpacing="0.08"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_total_fees"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="#F2F3F5"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        tools:text="$12,847.32" />
+
+    <TextView
+        android:id="@+id/widget_updated_at"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="#5B6168"
+        android:textSize="11sp"
+        tools:text="Updated 2m ago" />
+</LinearLayout>

@@ -13,6 +13,17 @@ extension ChainInfo on Chain {
     Chain.polygon => 'Polygon',
   };
 
+  /// Abreviação curta para badges compactos (listas de pools) — o nome
+  /// completo ([displayName]) é usado onde há mais espaço, como o ecrã de
+  /// detalhe.
+  String get shortLabel => switch (this) {
+    Chain.ethereum => 'ETH',
+    Chain.arbitrum => 'ARB',
+    Chain.base => 'BASE',
+    Chain.optimism => 'OP',
+    Chain.polygon => 'POLY',
+  };
+
   String get nativeSymbol => switch (this) {
     Chain.polygon => 'MATIC',
     _ => 'ETH',

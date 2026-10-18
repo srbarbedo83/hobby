@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/calc/range_health.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/local/chain.dart';
 import '../../data/local/pool_position.dart';
 import 'range_status_badge.dart';
 import 'sparkline.dart';
@@ -57,7 +58,10 @@ class PoolRowTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -76,7 +80,27 @@ class PoolRowTile extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: position.chain.accentColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            position.chain.shortLabel,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
                       RangeStatusPill(status: rangeHealth.status),
                     ],
                   ),

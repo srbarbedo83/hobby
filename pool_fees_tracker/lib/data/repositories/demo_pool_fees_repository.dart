@@ -4,6 +4,7 @@ import 'dart:math';
 import '../local/chain.dart';
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
+import '../local/position_event.dart';
 import 'pool_fees_repository.dart';
 
 /// Repositório de demonstração: gera posições e histórico de fees
@@ -13,6 +14,7 @@ import 'pool_fees_repository.dart';
 class DemoPoolFeesRepository implements PoolFeesRepository {
   final List<PoolPosition> _positions = [];
   final Map<String, List<FeeSnapshot>> _snapshotsByKey = {};
+  final Map<String, List<PositionEvent>> _eventsByKey = {};
   final StreamController<List<PoolPosition>> _controller =
       StreamController.broadcast();
   final Random _rng = Random(7);
@@ -38,6 +40,11 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
   @override
   Future<List<FeeSnapshot>> getFeeSnapshots(String positionKey) async {
     return List.unmodifiable(_snapshotsByKey[positionKey] ?? const []);
+  }
+
+  @override
+  Future<List<PositionEvent>> getEvents(String positionKey) async {
+    return List.unmodifiable(_eventsByKey[positionKey] ?? const []);
   }
 
   @override
@@ -99,6 +106,7 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         tickLower: -100,
         tickUpper: 100,
         currentTick: 20,
+        entryTick: -40,
       ),
       _PositionSpec(
         tokenId: '418355',
@@ -114,6 +122,7 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         tickLower: -200,
         tickUpper: 200,
         currentTick: -30,
+        entryTick: 50,
       ),
       _PositionSpec(
         tokenId: '419042',
@@ -129,6 +138,7 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         tickLower: -50,
         tickUpper: 50,
         currentTick: 80,
+        entryTick: -20,
       ),
       _PositionSpec(
         tokenId: '419501',
@@ -144,6 +154,7 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         tickLower: -10,
         tickUpper: 10,
         currentTick: 9,
+        entryTick: 10,
       ),
       // Posição FECHADA: toda a liquidez foi removida (ex.: para a
       // redeployar numa pool nova). As fees ficam congeladas no valor final
@@ -165,6 +176,26 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         tickLower: -150,
         tickUpper: 150,
         currentTick: 0,
+        entryTick: -100,
+      ),
+      // Numa chain diferente (Arbitrum) — mostra que a app agrega fees de
+      // várias chains no mesmo total, não só da chain "principal".
+      _PositionSpec(
+        chain: Chain.arbitrum,
+        tokenId: '88214',
+        token0: 'ETH',
+        token1: 'USDC',
+        feeTierBps: 500,
+        daysAgo: 25,
+        liquidityUsd: 3200,
+        initialLiquidityUsd: 3000,
+        feesClaimedUsd: 40,
+        feesUnclaimedUsd: 22.50,
+        gasCostUsd: 2,
+        tickLower: -80,
+        tickUpper: 80,
+        currentTick: 10,
+        entryTick: -5,
       ),
     ];
 
@@ -174,8 +205,8 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
           ? now.subtract(Duration(days: spec.closedDaysAgo!))
           : null;
       final position = PoolPosition()
-        ..positionKey = '${Chain.ethereum.name}:${spec.tokenId}'
-        ..chain = Chain.ethereum
+        ..positionKey = '${spec.chain.name}:${spec.tokenId}'
+        ..chain = spec.chain
         ..walletAddress = wallet
         ..tokenIdOnChain = spec.tokenId
         ..token0Symbol = spec.token0
@@ -185,6 +216,7 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         ..tickLower = spec.tickLower
         ..tickUpper = spec.tickUpper
         ..currentTick = spec.currentTick
+        ..entryTick = spec.entryTick
         ..liquidityUsd = spec.liquidityUsd
         ..initialLiquidityUsd = spec.initialLiquidityUsd
         ..feesClaimedUsd = spec.feesClaimedUsd
@@ -201,9 +233,62 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
         totalFeesUsd: position.feesTotalUsd,
         seed: i + 1,
       );
+      _eventsByKey[position.positionKey] = _buildEvents(position);
     }
 
     _lastUpdatedAt = now;
+  }
+
+  /// Linha do tempo sintética: mint na abertura, dois collects a meio da
+  /// vida da posição (repartindo as fees já reclamadas), e — se a posição
+  /// estiver fechada — um collect final seguido da remoção de liquidez.
+  List<PositionEvent> _buildEvents(PoolPosition position) {
+    final events = <PositionEvent>[
+      PositionEvent()
+        ..positionKey = position.positionKey
+        ..timestamp = position.createdAt
+        ..type = PositionEventType.mint
+        ..amountUsd = position.initialLiquidityUsd,
+    ];
+
+    final lifetimeEnd = position.closedAt ?? DateTime.now();
+    final lifetime = lifetimeEnd.difference(position.createdAt);
+
+    if (position.feesClaimedUsd > 0) {
+      final collectFractions = position.isClosed
+          ? [0.4, 0.75, 1.0]
+          : [0.35, 0.7];
+      final perCollect = position.feesClaimedUsd / collectFractions.length;
+      for (final fraction in collectFractions) {
+        events.add(
+          PositionEvent()
+            ..positionKey = position.positionKey
+            ..timestamp = position.createdAt.add(
+              Duration(
+                seconds: (lifetime.inSeconds * fraction).round().clamp(
+                  0,
+                  lifetime.inSeconds,
+                ),
+              ),
+            )
+            ..type = PositionEventType.collect
+            ..amountUsd = perCollect,
+        );
+      }
+    }
+
+    if (position.isClosed) {
+      events.add(
+        PositionEvent()
+          ..positionKey = position.positionKey
+          ..timestamp = lifetimeEnd
+          ..type = PositionEventType.decreaseLiquidity
+          ..amountUsd = position.initialLiquidityUsd,
+      );
+    }
+
+    events.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return events;
   }
 
   /// Reparte [totalFeesUsd] por snapshots horários entre [createdAt] e
@@ -248,6 +333,7 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
 }
 
 class _PositionSpec {
+  final Chain chain;
   final String tokenId;
   final String token0;
   final String token1;
@@ -261,12 +347,14 @@ class _PositionSpec {
   final int tickLower;
   final int tickUpper;
   final int currentTick;
+  final int entryTick;
 
   /// `null` = posição ainda aberta; caso contrário, há quantos dias foi
   /// fechada (toda a liquidez removida).
   final int? closedDaysAgo;
 
   const _PositionSpec({
+    this.chain = Chain.ethereum,
     required this.tokenId,
     required this.token0,
     required this.token1,
@@ -276,6 +364,7 @@ class _PositionSpec {
     required this.initialLiquidityUsd,
     required this.feesClaimedUsd,
     required this.feesUnclaimedUsd,
+    required this.entryTick,
     required this.gasCostUsd,
     required this.tickLower,
     required this.tickUpper,

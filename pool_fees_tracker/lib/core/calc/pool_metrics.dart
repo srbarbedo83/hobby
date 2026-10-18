@@ -2,6 +2,7 @@ import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
 import 'apr_calculator.dart';
 import 'gas_break_even.dart';
+import 'impermanent_loss.dart';
 import 'projection_calculator.dart';
 import 'range_health.dart';
 import 'since_open.dart';
@@ -15,6 +16,7 @@ class PoolMetrics {
   final double realizedAprPct;
   final GasBreakEven gasBreakEven;
   final EarningsProjection projection;
+  final ImpermanentLoss impermanentLoss;
 
   const PoolMetrics({
     required this.rangeHealth,
@@ -23,7 +25,12 @@ class PoolMetrics {
     required this.realizedAprPct,
     required this.gasBreakEven,
     required this.projection,
+    required this.impermanentLoss,
   });
+
+  /// Fees ganhas menos a estimativa de impermanent loss — uma noção de
+  /// "ganho real" vs. só ter guardado os tokens, não só olhar às fees.
+  double get netVsHoldUsd => sinceOpen.feesEarnedUsd + impermanentLoss.lossUsd;
 }
 
 PoolMetrics computePoolMetrics({
@@ -76,6 +83,11 @@ PoolMetrics computePoolMetrics({
       alreadyEarnedThisYearUsd: earnedThisYear,
       avgDailyFeeUsd: avgDailyFeeUsd,
       now: effectiveNow,
+    ),
+    impermanentLoss: computeImpermanentLoss(
+      entryTick: position.entryTick,
+      currentTick: position.currentTick,
+      initialLiquidityUsd: position.initialLiquidityUsd,
     ),
   );
 }

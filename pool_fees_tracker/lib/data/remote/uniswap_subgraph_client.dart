@@ -168,6 +168,36 @@ class RawPosition {
   }
 }
 
+enum RawEventKind { mint, collect, burn }
+
+class RawPositionEvent {
+  final RawEventKind kind;
+  final DateTime timestamp;
+  final double amountUsd;
+  final String? txHash;
+
+  RawPositionEvent({
+    required this.kind,
+    required this.timestamp,
+    required this.amountUsd,
+    required this.txHash,
+  });
+
+  factory RawPositionEvent.fromJson(
+    Map<String, dynamic> json,
+    RawEventKind kind,
+  ) {
+    return RawPositionEvent(
+      kind: kind,
+      timestamp: DateTime.fromMillisecondsSinceEpoch(
+        int.parse(json['timestamp'] as String) * 1000,
+      ),
+      amountUsd: double.parse(json['amountUSD'] as String),
+      txHash: (json['transaction'] as Map<String, dynamic>?)?['id'] as String?,
+    );
+  }
+}
+
 class RawFeeBucket {
   final DateTime periodStart;
   final double feesUsd;
@@ -348,6 +378,67 @@ class UniswapSubgraphClient {
     return buckets
         .map((b) => RawFeeBucket.fromJson(b, startField: 'date'))
         .toList();
+  }
+
+  /// Eventos (mint, collect, burn) de uma posição, aproximados por
+  /// `pool + owner + tickLower + tickUpper` — o subgraph não liga estes
+  /// eventos diretamente ao tokenId do NFT (esse mapeamento só existe no
+  /// `NonfungiblePositionManager`, fora do subgraph de pools). Isto é
+  /// preciso quando o par (owner, tickLower, tickUpper) é único para essa
+  /// pool, o que é o caso normal; se o mesmo dono abrir duas posições
+  /// exatamente no mesmo range na mesma pool, os eventos das duas
+  /// aparecem misturados.
+  Future<List<RawPositionEvent>> fetchPositionEvents({
+    required String poolId,
+    required String owner,
+    required int tickLower,
+    required int tickUpper,
+  }) async {
+    const query = r'''
+      query PositionEvents($pool: String!, $owner: String!, $tickLower: Int!, $tickUpper: Int!) {
+        mints(
+          where: { pool: $pool, owner: $owner, tickLower: $tickLower, tickUpper: $tickUpper }
+          orderBy: timestamp, orderDirection: desc, first: 50
+        ) {
+          timestamp
+          amountUSD
+          transaction { id }
+        }
+        collects(
+          where: { pool: $pool, owner: $owner, tickLower: $tickLower, tickUpper: $tickUpper }
+          orderBy: timestamp, orderDirection: desc, first: 50
+        ) {
+          timestamp
+          amountUSD
+          transaction { id }
+        }
+        burns(
+          where: { pool: $pool, owner: $owner, tickLower: $tickLower, tickUpper: $tickUpper }
+          orderBy: timestamp, orderDirection: desc, first: 50
+        ) {
+          timestamp
+          amountUSD
+          transaction { id }
+        }
+      }
+    ''';
+    final data = await _post(query, {
+      'pool': poolId,
+      'owner': owner.toLowerCase(),
+      'tickLower': tickLower,
+      'tickUpper': tickUpper,
+    });
+
+    final events = <RawPositionEvent>[
+      for (final m in (data['mints'] as List).cast<Map<String, dynamic>>())
+        RawPositionEvent.fromJson(m, RawEventKind.mint),
+      for (final c in (data['collects'] as List).cast<Map<String, dynamic>>())
+        RawPositionEvent.fromJson(c, RawEventKind.collect),
+      for (final b in (data['burns'] as List).cast<Map<String, dynamic>>())
+        RawPositionEvent.fromJson(b, RawEventKind.burn),
+    ];
+    events.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return events;
   }
 
   void dispose() => _httpClient.close();

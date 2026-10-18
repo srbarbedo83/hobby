@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Precisa de rede em modo Live (subgraph Uniswap v3); em modo Demo não é usada. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Alertas locais (out-of-range / milestones de fees) — pedida em runtime
+         no Android 13+, mas tem de estar declarada aqui para isso funcionar. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="Pool Fees Tracker"
         android:name="${applicationName}"
@@ -27,6 +30,16 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Widget de ecrã inicial com o total de fees em destaque. -->
+        <receiver android:name=".PoolFeesWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/pool_fees_widget_info" />
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

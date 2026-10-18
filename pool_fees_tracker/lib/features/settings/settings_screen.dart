@@ -139,27 +139,46 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _SectionLabel('Chain'),
-          const SizedBox(height: 8),
+          _SectionLabel('Chains'),
+          const SizedBox(height: 4),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 4),
+            child: Text(
+              'Pick every chain to watch — positions from all of them are summed '
+              'into one dashboard.',
+              style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
+            ),
+          ),
           _SettingsCard(
-            child: DropdownButtonFormField<Chain>(
-              initialValue: settings.chain,
-              dropdownColor: AppColors.surfaceAlt,
-              decoration: const InputDecoration(border: InputBorder.none),
-              items: [
+            child: Column(
+              children: [
                 for (final chain in Chain.values)
-                  DropdownMenuItem(
-                    value: chain,
-                    child: Text(chain.displayName),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: AppColors.accent,
+                    title: Text(
+                      chain.displayName,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    value: settings.selectedChains.contains(chain),
+                    onChanged: (checked) {
+                      if (checked == null) return;
+                      final updated = {...settings.selectedChains};
+                      if (checked) {
+                        updated.add(chain);
+                      } else if (updated.length > 1) {
+                        // Pelo menos uma chain tem de ficar selecionada.
+                        updated.remove(chain);
+                      }
+                      ref
+                          .read(appSettingsProvider.notifier)
+                          .update((s) => s.copyWith(selectedChains: updated));
+                    },
                   ),
               ],
-              onChanged: (chain) {
-                if (chain != null) {
-                  ref
-                      .read(appSettingsProvider.notifier)
-                      .update((s) => s.copyWith(chain: chain));
-                }
-              },
             ),
           ),
           const SizedBox(height: 24),
@@ -224,6 +243,101 @@ class SettingsScreen extends ConsumerWidget {
                         (s) => s.copyWith(refreshIntervalSeconds: v.round()),
                       ),
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _SectionLabel('Alerts'),
+          const SizedBox(height: 8),
+          _SettingsCard(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  activeThumbColor: AppColors.accent,
+                  title: const Text(
+                    'Enable alerts',
+                    style: TextStyle(color: AppColors.textPrimary),
+                  ),
+                  subtitle: const Text(
+                    'Background check roughly every 15 minutes (Android WorkManager).',
+                    style: TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 11,
+                    ),
+                  ),
+                  value: settings.alertsEnabled,
+                  onChanged: (value) => ref
+                      .read(appSettingsProvider.notifier)
+                      .update((s) => s.copyWith(alertsEnabled: value)),
+                ),
+                if (settings.alertsEnabled) ...[
+                  const Divider(color: AppColors.border, height: 1),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: AppColors.accent,
+                    title: const Text(
+                      'Out-of-range alerts',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    value: settings.outOfRangeAlertsEnabled,
+                    onChanged: (value) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update(
+                          (s) => s.copyWith(outOfRangeAlertsEnabled: value),
+                        ),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: AppColors.accent,
+                    title: const Text(
+                      'Fee milestone alerts',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    value: settings.feeMilestoneAlertsEnabled,
+                    onChanged: (value) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update(
+                          (s) => s.copyWith(feeMilestoneAlertsEnabled: value),
+                        ),
+                  ),
+                  if (settings.feeMilestoneAlertsEnabled)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Every \$${settings.feeMilestoneThresholdUsd.toStringAsFixed(0)} per position',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Slider(
+                            value: settings.feeMilestoneThresholdUsd,
+                            min: 5,
+                            max: 500,
+                            divisions: 99,
+                            activeColor: AppColors.accent,
+                            onChanged: (v) => ref
+                                .read(appSettingsProvider.notifier)
+                                .update(
+                                  (s) =>
+                                      s.copyWith(feeMilestoneThresholdUsd: v),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
