@@ -53,6 +53,9 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
   DateTime? get lastUpdatedAt => _lastUpdatedAt;
 
   @override
+  String? get lastError => null;
+
+  @override
   Future<List<FeeSnapshot>> getFeeSnapshots(String positionKey) async {
     return List.unmodifiable(_snapshotsByKey[positionKey] ?? const []);
   }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chain.dart';
@@ -50,6 +52,14 @@ class AppSettings {
   /// nas Definições impede desmarcar a última.
   final Set<Chain> selectedChains;
   final String subgraphApiKey;
+
+  /// Override manual do id do subgraph por chain — avançado, normalmente
+  /// vazio (usa-se o id publicado em [ChainInfo.uniswapV3SubgraphId]). Serve
+  /// para testar outro deployment sem precisar de recompilar a app, caso o
+  /// subgraph oficial deixe de responder (deployments na rede do The Graph
+  /// mudam de id ao longo do tempo, e indexadores podem deixar de servir um
+  /// id antigo).
+  final Map<Chain, String> subgraphIdOverrides;
   final String rpcUrl;
   final int refreshIntervalSeconds;
   final String currencyCode;
@@ -68,6 +78,7 @@ class AppSettings {
     this.widgetMetric = WidgetMetric.totalFees,
     this.selectedChains = const {Chain.ethereum},
     this.subgraphApiKey = '',
+    this.subgraphIdOverrides = const {},
     this.rpcUrl = '',
     this.refreshIntervalSeconds = 30,
     this.currencyCode = 'USD',
@@ -86,6 +97,7 @@ class AppSettings {
     WidgetMetric? widgetMetric,
     Set<Chain>? selectedChains,
     String? subgraphApiKey,
+    Map<Chain, String>? subgraphIdOverrides,
     String? rpcUrl,
     int? refreshIntervalSeconds,
     String? currencyCode,
@@ -103,6 +115,7 @@ class AppSettings {
       widgetMetric: widgetMetric ?? this.widgetMetric,
       selectedChains: selectedChains ?? this.selectedChains,
       subgraphApiKey: subgraphApiKey ?? this.subgraphApiKey,
+      subgraphIdOverrides: subgraphIdOverrides ?? this.subgraphIdOverrides,
       rpcUrl: rpcUrl ?? this.rpcUrl,
       refreshIntervalSeconds:
           refreshIntervalSeconds ?? this.refreshIntervalSeconds,
@@ -134,6 +147,7 @@ class SettingsService {
   static const _keyWidgetMetric = 'widget_metric';
   static const _keySelectedChains = 'selected_chains';
   static const _keySubgraphApiKey = 'subgraph_api_key';
+  static const _keySubgraphIdOverrides = 'subgraph_id_overrides';
   static const _keyRpcUrl = 'rpc_url';
   static const _keyRefreshInterval = 'refresh_interval_seconds';
   static const _keyCurrency = 'currency_code';
@@ -181,6 +195,9 @@ class SettingsService {
           ? const {Chain.ethereum}
           : selectedChains,
       subgraphApiKey: _prefs.getString(_keySubgraphApiKey) ?? '',
+      subgraphIdOverrides: _decodeSubgraphIdOverrides(
+        _prefs.getString(_keySubgraphIdOverrides),
+      ),
       rpcUrl: _prefs.getString(_keyRpcUrl) ?? '',
       refreshIntervalSeconds: _prefs.getInt(_keyRefreshInterval) ?? 30,
       currencyCode: _prefs.getString(_keyCurrency) ?? 'USD',
@@ -205,6 +222,13 @@ class SettingsService {
       settings.selectedChains.map((c) => c.name).toList(),
     );
     await _prefs.setString(_keySubgraphApiKey, settings.subgraphApiKey);
+    await _prefs.setString(
+      _keySubgraphIdOverrides,
+      jsonEncode({
+        for (final entry in settings.subgraphIdOverrides.entries)
+          entry.key.name: entry.value,
+      }),
+    );
     await _prefs.setString(_keyRpcUrl, settings.rpcUrl);
     await _prefs.setInt(_keyRefreshInterval, settings.refreshIntervalSeconds);
     await _prefs.setString(_keyCurrency, settings.currencyCode);
@@ -230,5 +254,22 @@ class SettingsService {
       settings.concentrationRiskAlertsEnabled,
     );
     await _prefs.setBool(_keyWeeklyDigestEnabled, settings.weeklyDigestEnabled);
+  }
+
+  static Map<Chain, String> _decodeSubgraphIdOverrides(String? raw) {
+    if (raw == null || raw.isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return {
+        for (final entry in decoded.entries)
+          for (final chain in Chain.values)
+            if (chain.name == entry.key && (entry.value as String).isNotEmpty)
+              chain: entry.value as String,
+      };
+    } catch (_) {
+      // Prefs corrompidas ou de uma versão anterior — ignora em vez de
+      // rebentar o carregamento de todas as outras definições.
+      return const {};
+    }
   }
 }

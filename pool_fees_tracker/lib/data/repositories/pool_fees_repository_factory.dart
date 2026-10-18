@@ -22,6 +22,7 @@ PoolFeesRepository createPoolFeesRepository({
       walletRepository: walletRepository,
       isar: isar,
       rpcUrl: settings.rpcUrl,
+      subgraphIdOverrides: settings.subgraphIdOverrides,
     );
   }
   return DemoPoolFeesRepository();

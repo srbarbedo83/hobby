@@ -15,6 +15,11 @@ abstract class PoolFeesRepository {
   /// Timestamp da última atualização bem sucedida.
   DateTime? get lastUpdatedAt;
 
+  /// Mensagem de erro do último [refreshNow] que falhou, ou `null` se o
+  /// último refresh (ou o único até agora) teve sucesso. Só populado pela
+  /// implementação Live — a Demo nunca falha.
+  String? get lastError;
+
   /// Histórico de fees de uma posição (para o gráfico de barras).
   Future<List<FeeSnapshot>> getFeeSnapshots(String positionKey);
 

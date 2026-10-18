@@ -82,6 +82,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   final StreamController<List<PoolPosition>> _controller =
       StreamController.broadcast();
   DateTime? _lastUpdatedAt;
+  String? _lastError;
   Timer? _autoRefreshTimer;
   bool _refreshing = false;
   Future<Chain?>? _rpcChainFuture;
@@ -92,6 +93,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     required WalletRepository walletRepository,
     required Isar isar,
     String rpcUrl = '',
+    Map<Chain, String> subgraphIdOverrides = const {},
     Map<Chain, UniswapSubgraphClient>? clients,
     EthRpcClient? rpcClient,
   }) : _walletRepository = walletRepository,
@@ -100,7 +102,11 @@ class LivePoolFeesRepository implements PoolFeesRepository {
            clients ??
            {
              for (final chain in chains)
-               chain: UniswapSubgraphClient(chain: chain, apiKey: apiKey),
+               chain: UniswapSubgraphClient(
+                 chain: chain,
+                 apiKey: apiKey,
+                 subgraphIdOverride: subgraphIdOverrides[chain],
+               ),
            },
        _rpcClient =
            rpcClient ?? (rpcUrl.isEmpty ? null : EthRpcClient(rpcUrl: rpcUrl)) {
@@ -121,6 +127,9 @@ class LivePoolFeesRepository implements PoolFeesRepository {
 
   @override
   DateTime? get lastUpdatedAt => _lastUpdatedAt;
+
+  @override
+  String? get lastError => _lastError;
 
   @override
   Future<List<FeeSnapshot>> getFeeSnapshots(String positionKey) {
@@ -298,7 +307,15 @@ class LivePoolFeesRepository implements PoolFeesRepository {
 
       _positions = mapped;
       _lastUpdatedAt = now;
+      _lastError = null;
       _controller.add(List.unmodifiable(_positions));
+    } catch (e) {
+      // Nunca deixa um erro do subgraph/RPC (rede, API key inválida,
+      // schema inesperado) rebentar como excepção não apanhada — isso
+      // deixava o ecrã silenciosamente sem dados, sem nenhuma pista
+      // visível na app (só via logcat). Guarda a mensagem para a UI
+      // mostrar um aviso em vez disto.
+      _lastError = e.toString();
     } finally {
       _refreshing = false;
     }

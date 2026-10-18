@@ -260,6 +260,51 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          _SectionLabel('Avançado'),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'Só precisas disto se o modo Live mostrar um erro do subgraph '
+              '(ex.: "has no field positions") — normalmente quer dizer que o '
+              'deployment oficial deixou de responder, e precisas de um id '
+              'diferente do subgraph nessa chain. Deixa em branco para usar o '
+              'id padrão.',
+              style: TextStyle(color: palette.textTertiary, fontSize: 11),
+            ),
+          ),
+          _SettingsCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final chain in settings.selectedChains) ...[
+                  TextFormField(
+                    key: ValueKey('subgraph_override_${chain.name}'),
+                    initialValue: settings.subgraphIdOverrides[chain] ?? '',
+                    decoration: InputDecoration(
+                      labelText: 'Id do subgraph — ${chain.displayName}',
+                      hintText: chain.uniswapV3SubgraphId,
+                    ),
+                    style: const TextStyle(fontSize: 12.5),
+                    onChanged: (v) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update((s) {
+                      final updated = {...s.subgraphIdOverrides};
+                      if (v.isEmpty) {
+                        updated.remove(chain);
+                      } else {
+                        updated[chain] = v;
+                      }
+                      return s.copyWith(subgraphIdOverrides: updated);
+                    }),
+                  ),
+                  if (chain != settings.selectedChains.last)
+                    const SizedBox(height: 12),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           _SectionLabel('Intervalo de atualização'),
           const SizedBox(height: 8),
           _SettingsCard(

@@ -244,16 +244,24 @@ class RawFeeBucket {
 class UniswapSubgraphClient {
   final Chain chain;
   final String apiKey;
+
+  /// Override manual do id do subgraph (Definições → Avançado) — usado em
+  /// vez do id publicado por omissão quando preenchido. Ver nota em
+  /// `AppSettings.subgraphIdOverrides`.
+  final String? subgraphIdOverride;
   final http.Client _httpClient;
 
   UniswapSubgraphClient({
     required this.chain,
     required this.apiKey,
+    this.subgraphIdOverride,
     http.Client? httpClient,
   }) : _httpClient = httpClient ?? http.Client();
 
   Uri get _endpoint {
-    final subgraphId = chain.uniswapV3SubgraphId;
+    final subgraphId = (subgraphIdOverride != null && subgraphIdOverride!.isNotEmpty)
+        ? subgraphIdOverride
+        : chain.uniswapV3SubgraphId;
     if (subgraphId == null) {
       throw SubgraphException(
         'No Uniswap v3 subgraph known for ${chain.displayName}',

@@ -49,7 +49,9 @@ class DashboardScreen extends ConsumerWidget {
     final walletLabel = walletsAsync.value?.isNotEmpty == true
         ? walletsAsync.value!.first.label
         : '0x7a3f…9c21 (demo)';
-    final updatedAt = ref.watch(poolFeesRepositoryProvider).lastUpdatedAt;
+    final repository = ref.watch(poolFeesRepositoryProvider);
+    final updatedAt = repository.lastUpdatedAt;
+    final lastError = repository.lastError;
 
     return SafeArea(
       child: RefreshIndicator(
@@ -58,6 +60,10 @@ class DashboardScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
           children: [
             _TopBar(walletLabel: walletLabel),
+            if (lastError != null) ...[
+              const SizedBox(height: 12),
+              _LiveErrorBanner(message: lastError),
+            ],
             const SizedBox(height: 18),
             _HeroCard(
               totalFeesUsd: metrics.totalFeesUsd,
@@ -198,6 +204,64 @@ class DashboardScreen extends ConsumerWidget {
       groupBy: ChartGroupBy.day,
     );
     return bars.map((b) => b.valueUsd).toList();
+  }
+}
+
+/// Aviso visível quando o último [PoolFeesRepository.refreshNow] falhou em
+/// modo Live (rede, API key inválida, schema do subgraph inesperado) — sem
+/// isto, um erro ficava só no logcat e o utilizador via o dashboard
+/// silenciosamente vazio, sem nenhuma pista do que se passou.
+class _LiveErrorBanner extends ConsumerWidget {
+  final String message;
+
+  const _LiveErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = AppPalette.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: palette.negative.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: palette.negative.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, color: palette.negative, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Não foi possível atualizar as posições',
+                  style: TextStyle(
+                    color: palette.negative,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  message,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: palette.textSecondary, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            icon: Icon(Icons.refresh, color: palette.textSecondary, size: 18),
+            tooltip: 'Tentar novamente',
+            onPressed: () => ref.read(poolFeesRepositoryProvider).refreshNow(),
+          ),
+        ],
+      ),
+    );
   }
 }
 
