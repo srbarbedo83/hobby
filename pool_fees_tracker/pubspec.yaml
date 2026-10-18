@@ -60,6 +60,9 @@ dependencies:
   # Widget de ecrã inicial Android com o número de fees em destaque
   home_widget: ^0.8.0
 
+  # Share sheet nativo — export CSV e partilha de resumo de posição
+  share_plus: ^12.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

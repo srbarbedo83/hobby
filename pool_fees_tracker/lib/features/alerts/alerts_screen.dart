@@ -167,12 +167,14 @@ class _AlertLogTile extends StatelessWidget {
       AlertLogKind.feeMilestone => palette.positive,
       AlertLogKind.feeSlowdown => palette.negative,
       AlertLogKind.priceThreshold => palette.accent,
+      AlertLogKind.concentrationRisk => palette.warning,
     };
     final icon = switch (entry.kind) {
       AlertLogKind.outOfRange => Icons.warning_amber_rounded,
       AlertLogKind.feeMilestone => Icons.celebration_outlined,
       AlertLogKind.feeSlowdown => Icons.trending_down,
       AlertLogKind.priceThreshold => Icons.notifications_active_outlined,
+      AlertLogKind.concentrationRisk => Icons.pie_chart_outline,
     };
     return Container(
       padding: const EdgeInsets.all(14),

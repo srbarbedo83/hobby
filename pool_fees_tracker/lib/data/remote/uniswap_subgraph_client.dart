@@ -102,6 +102,21 @@ class RawTick {
   }
 }
 
+/// Liquidez bruta inicializada num tick — ver `fetchLiquidityProfile`.
+class RawTickLiquidity {
+  final int tickIdx;
+  final BigInt liquidityGross;
+
+  RawTickLiquidity({required this.tickIdx, required this.liquidityGross});
+
+  factory RawTickLiquidity.fromJson(Map<String, dynamic> json) {
+    return RawTickLiquidity(
+      tickIdx: int.parse(json['tickIdx'] as String),
+      liquidityGross: BigInt.parse(json['liquidityGross'] as String),
+    );
+  }
+}
+
 class RawPosition {
   final String id; // = NFT token id
   final String owner;
@@ -439,6 +454,37 @@ class UniswapSubgraphClient {
     ];
     events.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return events;
+  }
+
+  /// Liquidez bruta inicializada por tick, numa janela ao redor do range
+  /// desta posição — para ver se o teu range está numa zona concorrida
+  /// (muita liquidez de outros LPs) ou não. Só ticks com liquidez
+  /// inicializada aparecem (a maioria dos ticks está vazia).
+  Future<List<RawTickLiquidity>> fetchLiquidityProfile({
+    required String poolId,
+    required int tickLowerBound,
+    required int tickUpperBound,
+  }) async {
+    const query = r'''
+      query LiquidityProfile($pool: String!, $tickLowerBound: BigInt!, $tickUpperBound: BigInt!) {
+        ticks(
+          where: { pool: $pool, tickIdx_gte: $tickLowerBound, tickIdx_lte: $tickUpperBound, liquidityGross_gt: "0" }
+          orderBy: tickIdx, orderDirection: asc, first: 1000
+        ) {
+          tickIdx
+          liquidityGross
+        }
+      }
+    ''';
+    final data = await _post(query, {
+      'pool': poolId,
+      'tickLowerBound': tickLowerBound.toString(),
+      'tickUpperBound': tickUpperBound.toString(),
+    });
+    return (data['ticks'] as List)
+        .cast<Map<String, dynamic>>()
+        .map(RawTickLiquidity.fromJson)
+        .toList();
   }
 
   void dispose() => _httpClient.close();

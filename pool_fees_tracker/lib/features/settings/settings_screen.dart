@@ -398,6 +398,32 @@ class SettingsScreen extends ConsumerWidget {
                           (s) => s.copyWith(feeSlowdownAlertsEnabled: value),
                         ),
                   ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: palette.accent,
+                    title: Text(
+                      'Alertas de concentração de risco',
+                      style: TextStyle(
+                        color: palette.textPrimary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Uma única chain a passar 60% do valor total da carteira — '
+                      'considera diversificar.',
+                      style: TextStyle(
+                        color: palette.textTertiary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    value: settings.concentrationRiskAlertsEnabled,
+                    onChanged: (value) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update(
+                          (s) =>
+                              s.copyWith(concentrationRiskAlertsEnabled: value),
+                        ),
+                  ),
                 ],
               ],
             ),

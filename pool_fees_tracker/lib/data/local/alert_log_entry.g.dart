@@ -138,11 +138,15 @@ const _AlertLogEntrykindEnumValueMap = {
   r'outOfRange': r'outOfRange',
   r'feeMilestone': r'feeMilestone',
   r'feeSlowdown': r'feeSlowdown',
+  r'priceThreshold': r'priceThreshold',
+  r'concentrationRisk': r'concentrationRisk',
 };
 const _AlertLogEntrykindValueEnumMap = {
   r'outOfRange': AlertLogKind.outOfRange,
   r'feeMilestone': AlertLogKind.feeMilestone,
   r'feeSlowdown': AlertLogKind.feeSlowdown,
+  r'priceThreshold': AlertLogKind.priceThreshold,
+  r'concentrationRisk': AlertLogKind.concentrationRisk,
 };
 
 Id _alertLogEntryGetId(AlertLogEntry object) {

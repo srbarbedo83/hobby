@@ -23,4 +23,13 @@ class AlertState {
   /// alerta disparar só na transição (como `lastRangeStatus`), não a cada
   /// execução em background enquanto o abrandamento continuar.
   bool lastFeeSlowdownNotified = false;
+
+  /// Só usado na linha reservada `positionKey == "__portfolio__"` (ver
+  /// `detectConcentrationRisk`) — não é por posição, é da carteira toda.
+  bool lastConcentrationRiskActive = false;
 }
+
+/// Chave reservada para a linha de `AlertState` que guarda estado a nível
+/// da carteira toda (não de uma posição específica) — ver
+/// `lastConcentrationRiskActive`.
+const portfolioAlertStateKey = '__portfolio__';

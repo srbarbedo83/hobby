@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:isar_community/isar.dart';
 
+import '../../core/calc/liquidity_profile.dart';
 import '../../core/calc/univ3_fee_math.dart';
 import '../local/chain.dart';
 import '../local/fee_snapshot.dart';
@@ -137,6 +138,40 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         .positionKeyEqualTo(positionKey)
         .sortByTimestamp()
         .findAll();
+  }
+
+  @override
+  Future<List<TickLiquidity>> getLiquidityProfile(String positionKey) async {
+    final poolId = _poolIdByPositionKey[positionKey];
+    final chain = _chainByPositionKey[positionKey];
+    final client = chain == null ? null : _clients[chain];
+    if (poolId == null || client == null) return const [];
+
+    PoolPosition? position;
+    for (final p in _positions) {
+      if (p.positionKey == positionKey) {
+        position = p;
+        break;
+      }
+    }
+    if (position == null) return const [];
+
+    final width = position.tickUpper - position.tickLower;
+    if (width <= 0) return const [];
+
+    final raw = await client.fetchLiquidityProfile(
+      poolId: poolId,
+      tickLowerBound: position.tickLower - width,
+      tickUpperBound: position.tickUpper + width,
+    );
+    return raw
+        .map(
+          (t) => TickLiquidity(
+            tick: t.tickIdx,
+            liquidityGross: t.liquidityGross.toDouble(),
+          ),
+        )
+        .toList();
   }
 
   @override

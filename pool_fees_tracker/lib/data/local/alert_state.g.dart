@@ -17,24 +17,29 @@ const AlertStateSchema = CollectionSchema(
   name: r'AlertState',
   id: -7642080039112220721,
   properties: {
-    r'lastFeeSlowdownNotified': PropertySchema(
+    r'lastConcentrationRiskActive': PropertySchema(
       id: 0,
+      name: r'lastConcentrationRiskActive',
+      type: IsarType.bool,
+    ),
+    r'lastFeeSlowdownNotified': PropertySchema(
+      id: 1,
       name: r'lastFeeSlowdownNotified',
       type: IsarType.bool,
     ),
     r'lastNotifiedFeesTotal': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'lastNotifiedFeesTotal',
       type: IsarType.double,
     ),
     r'lastRangeStatus': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'lastRangeStatus',
       type: IsarType.string,
       enumMap: _AlertStatelastRangeStatusEnumValueMap,
     ),
     r'positionKey': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'positionKey',
       type: IsarType.string,
     ),
@@ -86,10 +91,11 @@ void _alertStateSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeBool(offsets[0], object.lastFeeSlowdownNotified);
-  writer.writeDouble(offsets[1], object.lastNotifiedFeesTotal);
-  writer.writeString(offsets[2], object.lastRangeStatus.name);
-  writer.writeString(offsets[3], object.positionKey);
+  writer.writeBool(offsets[0], object.lastConcentrationRiskActive);
+  writer.writeBool(offsets[1], object.lastFeeSlowdownNotified);
+  writer.writeDouble(offsets[2], object.lastNotifiedFeesTotal);
+  writer.writeString(offsets[3], object.lastRangeStatus.name);
+  writer.writeString(offsets[4], object.positionKey);
 }
 
 AlertState _alertStateDeserialize(
@@ -100,14 +106,15 @@ AlertState _alertStateDeserialize(
 ) {
   final object = AlertState();
   object.id = id;
-  object.lastFeeSlowdownNotified = reader.readBool(offsets[0]);
-  object.lastNotifiedFeesTotal = reader.readDouble(offsets[1]);
+  object.lastConcentrationRiskActive = reader.readBool(offsets[0]);
+  object.lastFeeSlowdownNotified = reader.readBool(offsets[1]);
+  object.lastNotifiedFeesTotal = reader.readDouble(offsets[2]);
   object.lastRangeStatus =
       _AlertStatelastRangeStatusValueEnumMap[reader.readStringOrNull(
-        offsets[2],
+        offsets[3],
       )] ??
       RangeStatus.inRange;
-  object.positionKey = reader.readString(offsets[3]);
+  object.positionKey = reader.readString(offsets[4]);
   return object;
 }
 
@@ -121,14 +128,16 @@ P _alertStateDeserializeProp<P>(
     case 0:
       return (reader.readBool(offset)) as P;
     case 1:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 2:
+      return (reader.readDouble(offset)) as P;
+    case 3:
       return (_AlertStatelastRangeStatusValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
               RangeStatus.inRange)
           as P;
-    case 3:
+    case 4:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -410,6 +419,18 @@ extension AlertStateQueryFilter
           includeLower: includeLower,
           upper: upper,
           includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterFilterCondition>
+  lastConcentrationRiskActiveEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'lastConcentrationRiskActive',
+          value: value,
         ),
       );
     });
@@ -794,6 +815,20 @@ extension AlertStateQueryLinks
 extension AlertStateQuerySortBy
     on QueryBuilder<AlertState, AlertState, QSortBy> {
   QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  sortByLastConcentrationRiskActive() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastConcentrationRiskActive', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  sortByLastConcentrationRiskActiveDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastConcentrationRiskActive', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
   sortByLastFeeSlowdownNotified() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastFeeSlowdownNotified', Sort.asc);
@@ -862,6 +897,20 @@ extension AlertStateQuerySortThenBy
   }
 
   QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  thenByLastConcentrationRiskActive() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastConcentrationRiskActive', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  thenByLastConcentrationRiskActiveDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastConcentrationRiskActive', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
   thenByLastFeeSlowdownNotified() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastFeeSlowdownNotified', Sort.asc);
@@ -918,6 +967,13 @@ extension AlertStateQuerySortThenBy
 extension AlertStateQueryWhereDistinct
     on QueryBuilder<AlertState, AlertState, QDistinct> {
   QueryBuilder<AlertState, AlertState, QDistinct>
+  distinctByLastConcentrationRiskActive() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastConcentrationRiskActive');
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QDistinct>
   distinctByLastFeeSlowdownNotified() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'lastFeeSlowdownNotified');
@@ -956,6 +1012,13 @@ extension AlertStateQueryProperty
   QueryBuilder<AlertState, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<AlertState, bool, QQueryOperations>
+  lastConcentrationRiskActiveProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastConcentrationRiskActive');
     });
   }
 

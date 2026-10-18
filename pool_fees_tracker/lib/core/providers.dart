@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar_community/isar.dart';
 
+import 'calc/liquidity_profile.dart';
 import '../data/local/alert_log_entry.dart';
 import '../data/local/fee_snapshot.dart';
 import '../data/local/position_event.dart';
@@ -116,6 +117,15 @@ final pricePointsProvider = FutureProvider.family<List<PricePoint>, String>((
 ) {
   return ref.watch(poolFeesRepositoryProvider).getPricePoints(positionKey);
 });
+
+/// Perfil de liquidez por tick da pool desta posição — ver
+/// `computeRangeConcentrationPct`.
+final liquidityProfileProvider =
+    FutureProvider.family<List<TickLiquidity>, String>((ref, positionKey) {
+      return ref
+          .watch(poolFeesRepositoryProvider)
+          .getLiquidityProfile(positionKey);
+    });
 
 /// Alertas já disparados (out-of-range, milestones de fees), mais recentes
 /// primeiro — alimenta o ecrã de Alerts. Invalidado manualmente depois de

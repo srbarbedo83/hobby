@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/calc/bar_aggregator.dart';
 import '../../core/calc/out_of_range_estimate.dart';
 import '../../core/calc/pool_metrics.dart';
+import '../../core/export/position_summary.dart';
 import '../../core/calc/price_history_calc.dart';
 import '../../core/calc/univ3_fee_math.dart';
 import '../../core/format/currency_formatter.dart';
@@ -13,6 +14,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/local/chain.dart';
 import '../../data/local/pool_position.dart';
 import '../../data/local/position_event.dart';
+import '../../data/services/export_service.dart';
 import '../../shared/widgets/animated_usd_number.dart';
 import '../../shared/widgets/live_badge.dart';
 import '../../shared/widgets/range_status_badge.dart';
@@ -20,6 +22,7 @@ import '../../shared/widgets/segmented_pill_control.dart';
 import '../../shared/widgets/stat_tile.dart';
 import '../../shared/widgets/token_pair_icon.dart';
 import 'fee_bar_chart.dart';
+import 'liquidity_profile_section.dart';
 import 'price_alert_section.dart';
 import 'price_range_chart.dart';
 import 'range_simulator_section.dart';
@@ -86,6 +89,9 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     final snapshots = snapshotsAsync.value?[widget.positionKey] ?? const [];
     final pricePoints =
         ref.watch(pricePointsProvider(widget.positionKey)).value ?? const [];
+    final liquidityProfile =
+        ref.watch(liquidityProfileProvider(widget.positionKey)).value ??
+        const [];
     final formatter = CurrencyFormatter(settings.currencyCode);
     final gasCostUsd = ref.watch(gasCostUsdProvider(widget.positionKey)).value;
     final metrics = computePoolMetrics(
@@ -134,6 +140,33 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
             Text('${position.token0Symbol} / ${position.token1Symbol}'),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Partilhar resumo',
+            onPressed: () => ExportService.sharePositionSummary(
+              buildPositionSummaryText(
+                position: position!,
+                metrics: metrics,
+                formatter: formatter,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: 'Exportar CSV',
+            onPressed: () async {
+              final events = await ref.read(
+                positionEventsProvider(widget.positionKey).future,
+              );
+              await ExportService.shareFeeHistoryCsv(
+                pairLabel: '${position!.token0Symbol}_${position.token1Symbol}',
+                snapshots: snapshots,
+                events: events,
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -520,6 +553,35 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     token1Decimals: position.token1Decimals,
                     token0Symbol: position.token0Symbol,
                     token1Symbol: position.token1Symbol,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: palette.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Concentração de liquidez',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: palette.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  LiquidityProfileSection(
+                    profile: liquidityProfile,
+                    tickLower: position.tickLower,
+                    tickUpper: position.tickUpper,
+                    accentColor: palette.accent,
                   ),
                 ],
               ),

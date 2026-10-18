@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import '../../core/calc/liquidity_profile.dart';
 import '../local/chain.dart';
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
@@ -71,6 +72,41 @@ class DemoPoolFeesRepository implements PoolFeesRepository {
     // Em Demo não há RPC nem transações reais — o valor sintético já
     // definido em PoolPosition.gasCostUsd é a única fonte.
     return null;
+  }
+
+  @override
+  Future<List<TickLiquidity>> getLiquidityProfile(String positionKey) async {
+    PoolPosition? position;
+    for (final p in _positions) {
+      if (p.positionKey == positionKey) {
+        position = p;
+        break;
+      }
+    }
+    if (position == null) return const [];
+
+    final width = position.tickUpper - position.tickLower;
+    if (width <= 0) return const [];
+    final windowLower = position.tickLower - width;
+    final windowUpper = position.tickUpper + width;
+    final spacing = max(1, (width / 20).round());
+    final center = (position.tickLower + position.tickUpper) / 2;
+    final rng = Random(positionKey.hashCode);
+
+    final profile = <TickLiquidity>[];
+    for (var tick = windowLower; tick <= windowUpper; tick += spacing) {
+      // Mais densidade perto do centro do range (onde o preço passou mais
+      // tempo), com ruído para não ficar uma curva perfeita demais.
+      final distanceFromCenter = (tick - center).abs();
+      final falloff = 1 / (1 + distanceFromCenter / width);
+      profile.add(
+        TickLiquidity(
+          tick: tick,
+          liquidityGross: falloff * 1000 + rng.nextDouble() * 400,
+        ),
+      );
+    }
+    return profile;
   }
 
   @override

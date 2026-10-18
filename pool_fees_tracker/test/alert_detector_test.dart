@@ -36,10 +36,12 @@ PoolPosition _position({
   double feesClaimedUsd = 0,
   double feesUnclaimedUsd = 0,
   bool isClosed = false,
+  Chain chain = Chain.ethereum,
+  double liquidityUsd = 1000,
 }) {
   return PoolPosition()
     ..positionKey = key
-    ..chain = Chain.ethereum
+    ..chain = chain
     ..walletAddress = '0xabc'
     ..tokenIdOnChain = '1'
     ..token0Symbol = 'ETH'
@@ -50,8 +52,8 @@ PoolPosition _position({
     ..tickUpper = tickUpper
     ..currentTick = currentTick
     ..entryTick = 0
-    ..liquidityUsd = 1000
-    ..initialLiquidityUsd = 1000
+    ..liquidityUsd = liquidityUsd
+    ..initialLiquidityUsd = liquidityUsd
     ..feesClaimedUsd = feesClaimedUsd
     ..feesUnclaimedUsd = feesUnclaimedUsd
     ..gasCostUsd = 0
@@ -306,6 +308,51 @@ void main() {
         },
       );
       expect(alerts, hasLength(1));
+    });
+  });
+
+  group('isConcentrationRisk / detectConcentrationRisk', () {
+    test('true quando uma chain passa o threshold', () {
+      final positions = [
+        _position(key: 'a', chain: Chain.ethereum, liquidityUsd: 700),
+        _position(key: 'b', chain: Chain.arbitrum, liquidityUsd: 300),
+      ];
+      expect(isConcentrationRisk(positions: positions), isTrue);
+    });
+
+    test('false quando bem distribuído', () {
+      final positions = [
+        _position(key: 'a', chain: Chain.ethereum, liquidityUsd: 500),
+        _position(key: 'b', chain: Chain.arbitrum, liquidityUsd: 500),
+      ];
+      expect(isConcentrationRisk(positions: positions), isFalse);
+    });
+
+    test('detectConcentrationRisk só alerta na transição', () {
+      final positions = [
+        _position(key: 'a', chain: Chain.ethereum, liquidityUsd: 900),
+        _position(key: 'b', chain: Chain.arbitrum, liquidityUsd: 100),
+      ];
+      final first = detectConcentrationRisk(
+        positions: positions,
+        previouslyActive: false,
+      );
+      expect(first, hasLength(1));
+      expect(first.first.kind, AlertKind.concentrationRisk);
+
+      final second = detectConcentrationRisk(
+        positions: positions,
+        previouslyActive: true,
+      );
+      expect(second, isEmpty);
+    });
+
+    test('sem posições não alerta', () {
+      expect(isConcentrationRisk(positions: const []), isFalse);
+      expect(
+        detectConcentrationRisk(positions: const [], previouslyActive: false),
+        isEmpty,
+      );
     });
   });
 }

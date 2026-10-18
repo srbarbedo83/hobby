@@ -89,6 +89,13 @@ Future<int> runBackgroundSync() async {
     final previousSlowdownByKey = {
       for (final s in previousStates) s.positionKey: s.lastFeeSlowdownNotified,
     };
+    bool previousConcentrationActive = false;
+    for (final s in previousStates) {
+      if (s.positionKey == portfolioAlertStateKey) {
+        previousConcentrationActive = s.lastConcentrationRiskActive;
+        break;
+      }
+    }
     final priceAlertRules = await isar.priceAlertRules.where().findAll();
     final ruleByPositionKey = {
       for (final rule in priceAlertRules) rule.positionKey: rule,
@@ -118,11 +125,18 @@ Future<int> runBackgroundSync() async {
       positions: positions,
       ruleByPositionKey: ruleByPositionKey,
     );
+    final concentrationAlerts = settings.concentrationRiskAlertsEnabled
+        ? detectConcentrationRisk(
+            positions: positions,
+            previouslyActive: previousConcentrationActive,
+          )
+        : <AlertEvent>[];
     final allAlerts = [
       ...rangeAlerts,
       ...milestoneAlerts,
       ...slowdownAlerts,
       ...priceThresholdAlerts,
+      ...concentrationAlerts,
     ];
 
     for (final alert in allAlerts) {
@@ -168,6 +182,16 @@ Future<int> runBackgroundSync() async {
         }
       }
 
+      await isar.alertStates.put(
+        AlertState()
+          ..positionKey = portfolioAlertStateKey
+          ..lastRangeStatus = RangeStatus.inRange
+          ..lastNotifiedFeesTotal = 0
+          ..lastConcentrationRiskActive = isConcentrationRisk(
+            positions: positions,
+          ),
+      );
+
       for (final alert in allAlerts) {
         await isar.alertLogEntrys.put(
           AlertLogEntry()
@@ -177,6 +201,7 @@ Future<int> runBackgroundSync() async {
               AlertKind.feeMilestone => AlertLogKind.feeMilestone,
               AlertKind.feeSlowdown => AlertLogKind.feeSlowdown,
               AlertKind.priceThreshold => AlertLogKind.priceThreshold,
+              AlertKind.concentrationRisk => AlertLogKind.concentrationRisk,
             }
             ..title = alert.title
             ..body = alert.body

@@ -59,6 +59,7 @@ class AppSettings {
   final bool feeMilestoneAlertsEnabled;
   final double feeMilestoneThresholdUsd;
   final bool feeSlowdownAlertsEnabled;
+  final bool concentrationRiskAlertsEnabled;
 
   const AppSettings({
     this.dataSourceMode = DataSourceMode.demo,
@@ -74,6 +75,7 @@ class AppSettings {
     this.feeMilestoneAlertsEnabled = true,
     this.feeMilestoneThresholdUsd = 50,
     this.feeSlowdownAlertsEnabled = true,
+    this.concentrationRiskAlertsEnabled = true,
   });
 
   AppSettings copyWith({
@@ -90,6 +92,7 @@ class AppSettings {
     bool? feeMilestoneAlertsEnabled,
     double? feeMilestoneThresholdUsd,
     bool? feeSlowdownAlertsEnabled,
+    bool? concentrationRiskAlertsEnabled,
   }) {
     return AppSettings(
       dataSourceMode: dataSourceMode ?? this.dataSourceMode,
@@ -110,6 +113,8 @@ class AppSettings {
           feeMilestoneThresholdUsd ?? this.feeMilestoneThresholdUsd,
       feeSlowdownAlertsEnabled:
           feeSlowdownAlertsEnabled ?? this.feeSlowdownAlertsEnabled,
+      concentrationRiskAlertsEnabled:
+          concentrationRiskAlertsEnabled ?? this.concentrationRiskAlertsEnabled,
     );
   }
 
@@ -133,6 +138,8 @@ class SettingsService {
   static const _keyFeeMilestoneAlerts = 'fee_milestone_alerts_enabled';
   static const _keyFeeMilestoneThreshold = 'fee_milestone_threshold_usd';
   static const _keyFeeSlowdownAlerts = 'fee_slowdown_alerts_enabled';
+  static const _keyConcentrationRiskAlerts =
+      'concentration_risk_alerts_enabled';
 
   final SharedPreferences _prefs;
 
@@ -178,6 +185,8 @@ class SettingsService {
       feeMilestoneThresholdUsd:
           _prefs.getDouble(_keyFeeMilestoneThreshold) ?? 50,
       feeSlowdownAlertsEnabled: _prefs.getBool(_keyFeeSlowdownAlerts) ?? true,
+      concentrationRiskAlertsEnabled:
+          _prefs.getBool(_keyConcentrationRiskAlerts) ?? true,
     );
   }
 
@@ -209,6 +218,10 @@ class SettingsService {
     await _prefs.setBool(
       _keyFeeSlowdownAlerts,
       settings.feeSlowdownAlertsEnabled,
+    );
+    await _prefs.setBool(
+      _keyConcentrationRiskAlerts,
+      settings.concentrationRiskAlertsEnabled,
     );
   }
 }

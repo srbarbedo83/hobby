@@ -1,9 +1,17 @@
+import '../../data/local/alert_state.dart';
 import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
 import '../../data/local/price_alert_rule.dart';
+import 'portfolio_composition.dart';
 import 'range_health.dart';
 
-enum AlertKind { outOfRange, feeMilestone, feeSlowdown, priceThreshold }
+enum AlertKind {
+  outOfRange,
+  feeMilestone,
+  feeSlowdown,
+  priceThreshold,
+  concentrationRisk,
+}
 
 class AlertEvent {
   final String positionKey;
@@ -187,4 +195,51 @@ List<AlertEvent> detectPriceThresholdCrossings({
     }
   }
   return alerts;
+}
+
+/// Maior fatia (por chain) da carteira, como % do valor total — `null`
+/// sem posições abertas.
+({String label, double pct})? biggestChainSlicePct(
+  List<PoolPosition> positions,
+) {
+  final slices = compositionByChain(positions);
+  final total = slices.fold<double>(0, (a, b) => a + b.valueUsd);
+  if (slices.isEmpty || total <= 0) return null;
+  final biggest = slices.reduce((a, b) => b.valueUsd > a.valueUsd ? b : a);
+  return (label: biggest.label, pct: biggest.valueUsd / total * 100);
+}
+
+/// `true` quando uma única chain já passa [thresholdPct] do valor total da
+/// carteira — sinal de concentração de risco.
+bool isConcentrationRisk({
+  required List<PoolPosition> positions,
+  double thresholdPct = 60,
+}) {
+  final biggest = biggestChainSlicePct(positions);
+  return biggest != null && biggest.pct >= thresholdPct;
+}
+
+/// Compara o estado de concentração anterior com o atual e devolve um
+/// alerta só na transição para "em risco" — mesmo padrão de
+/// [detectRangeTransitions]. É um alerta da CARTEIRA, não de uma posição
+/// específica, por isso usa [portfolioAlertStateKey] como `positionKey`.
+List<AlertEvent> detectConcentrationRisk({
+  required List<PoolPosition> positions,
+  required bool previouslyActive,
+  double thresholdPct = 60,
+}) {
+  final biggest = biggestChainSlicePct(positions);
+  if (biggest == null) return [];
+  final isRiskNow = biggest.pct >= thresholdPct;
+  if (!isRiskNow || previouslyActive) return [];
+  return [
+    AlertEvent(
+      positionKey: portfolioAlertStateKey,
+      kind: AlertKind.concentrationRisk,
+      title: 'Concentração de risco alta',
+      body:
+          '${biggest.label} já representa ${biggest.pct.toStringAsFixed(0)}% '
+          'do valor total da carteira — considera diversificar por mais chains.',
+    ),
+  ];
 }

@@ -1,3 +1,4 @@
+import '../../core/calc/liquidity_profile.dart';
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
 import '../local/position_event.dart';
@@ -25,6 +26,12 @@ abstract class PoolFeesRepository {
   /// nota em `PricePoint` sobre a limitação em modo Live (só regista a
   /// partir de agora, não faz backfill do histórico antigo).
   Future<List<PricePoint>> getPricePoints(String positionKey);
+
+  /// Liquidez bruta por tick da pool desta posição, numa janela ao redor
+  /// do seu range — ver `computeRangeConcentrationPct`. Lista vazia em
+  /// Demo se não houver dados sintéticos, ou em Live se a pool não tiver
+  /// ticks inicializados na janela (raro).
+  Future<List<TickLiquidity>> getLiquidityProfile(String positionKey);
 
   /// Custo real de gás da posição, em USD, quando há forma de calculá-lo
   /// (só [LivePoolFeesRepository], com RPC configurado — ver a nota em
