@@ -86,6 +86,30 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: StatTile(
+                    label: 'Proj. this month',
+                    value: formatter.format(
+                      metrics.projection.projectedEndOfMonthUsd,
+                    ),
+                    caption: 'all pools, current rate',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: StatTile(
+                    label: 'Proj. this year',
+                    value: formatter.format(
+                      metrics.projection.projectedEndOfYearUsd,
+                    ),
+                    caption: 'all pools, current rate',
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 18),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

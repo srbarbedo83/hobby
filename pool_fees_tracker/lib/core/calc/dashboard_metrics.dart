@@ -1,6 +1,7 @@
 import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
 import 'apr_calculator.dart';
+import 'projection_calculator.dart';
 
 class DashboardMetrics {
   final double totalFeesUsd;
@@ -13,12 +14,18 @@ class DashboardMetrics {
   final double avgAprPct;
   final double unclaimedUsd;
 
+  /// Soma da projeção de cada posição (mesmo cálculo do ecrã de detalhe,
+  /// agregado) — para a resposta "quanto vou ganhar este mês/ano" não
+  /// precisar de abrir pool a pool.
+  final EarningsProjection projection;
+
   const DashboardMetrics({
     required this.totalFeesUsd,
     required this.fees24hUsd,
     required this.pctChangeVsPrevWeek,
     required this.avgAprPct,
     required this.unclaimedUsd,
+    required this.projection,
   });
 }
 
@@ -32,6 +39,9 @@ DashboardMetrics computeDashboardMetrics({
   final last7dCutoff = effectiveNow.subtract(const Duration(days: 7));
   final prev7dCutoff = effectiveNow.subtract(const Duration(days: 14));
 
+  final startOfMonth = DateTime(effectiveNow.year, effectiveNow.month, 1);
+  final startOfYear = DateTime(effectiveNow.year, 1, 1);
+
   double totalFeesUsd = 0;
   double fees24hUsd = 0;
   double feesLast7d = 0;
@@ -39,6 +49,9 @@ DashboardMetrics computeDashboardMetrics({
   double unclaimedUsd = 0;
   double aprSum = 0;
   var aprCount = 0;
+  double totalAvgDailyFeeUsd = 0;
+  double earnedThisMonth = 0;
+  double earnedThisYear = 0;
 
   for (final position in positions) {
     totalFeesUsd += position.feesTotalUsd;
@@ -54,7 +67,10 @@ DashboardMetrics computeDashboardMetrics({
       } else if (s.timestamp.isAfter(prev7dCutoff)) {
         feesPrev7d += s.feesUsdDelta;
       }
+      if (s.timestamp.isAfter(startOfMonth)) earnedThisMonth += s.feesUsdDelta;
+      if (s.timestamp.isAfter(startOfYear)) earnedThisYear += s.feesUsdDelta;
     }
+    totalAvgDailyFeeUsd += feesInLast7d / 7;
 
     if (position.liquidityUsd > 0) {
       aprSum += realizedAprPct(
@@ -74,5 +90,11 @@ DashboardMetrics computeDashboardMetrics({
         : null,
     avgAprPct: aprCount > 0 ? aprSum / aprCount : 0,
     unclaimedUsd: unclaimedUsd,
+    projection: projectFromDailyRate(
+      alreadyEarnedThisMonthUsd: earnedThisMonth,
+      alreadyEarnedThisYearUsd: earnedThisYear,
+      avgDailyFeeUsd: totalAvgDailyFeeUsd,
+      now: effectiveNow,
+    ),
   );
 }

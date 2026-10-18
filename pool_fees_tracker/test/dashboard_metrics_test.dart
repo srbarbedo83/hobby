@@ -152,6 +152,29 @@ void main() {
       expect(metrics.avgAprPct, closeTo(36.5, 0.01));
     });
 
+    test('a projeção agregada soma a taxa diária e o já ganho de todas as posições', () {
+      final midMonth = DateTime(2026, 2, 10, 12);
+      final positions = [_position(key: 'a'), _position(key: 'b')];
+      final snapshotsByKey = {
+        // 7 USD/dia nos últimos 7 dias (média) para cada posição.
+        'a': [_snap('a', midMonth.subtract(const Duration(days: 2)), 49)],
+        'b': [_snap('b', midMonth.subtract(const Duration(days: 2)), 21)],
+      };
+      final metrics = computeDashboardMetrics(
+        positions: positions,
+        snapshotsByKey: snapshotsByKey,
+        now: midMonth,
+      );
+      final daysRemainingInMonth =
+          DateTime(2026, 3, 1).difference(midMonth).inHours / 24;
+      // (49/7 + 21/7) = 10 USD/dia agregado; os 70 já ganhos este mês
+      // (ambos os snapshots caem dentro de fevereiro).
+      expect(
+        metrics.projection.projectedEndOfMonthUsd,
+        closeTo(70 + 10 * daysRemainingInMonth, 0.5),
+      );
+    });
+
     test('lista de posições vazia não rebenta nada', () {
       final metrics = computeDashboardMetrics(
         positions: [],
