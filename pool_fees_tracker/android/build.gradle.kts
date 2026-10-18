@@ -32,23 +32,30 @@ allprojects {
 // o seu jvmTarget (17) pelo DSL novo `compilerOptions`.
 subprojects {
     if (name == "app") return@subprojects
-    tasks.matching { it.name.contains("compile", ignoreCase = true) && it.name.contains("Kotlin") }
-        .configureEach {
-            try {
-                withGroovyBuilder {
-                    getProperty("kotlinOptions").withGroovyBuilder {
-                        setProperty("jvmTarget", "11")
+    // `afterEvaluate` é essencial aqui: o próprio build.gradle do plugin
+    // (ex.: home_widget) configura `android.compileOptions`/`kotlinOptions`
+    // com 1.8 ao ser avaliado, e essa configuração é aplicada às tasks
+    // nesse momento — sem esperar por isso, a nossa alteração corre o
+    // risco de ser sobreposta pela do próprio plugin.
+    afterEvaluate {
+        tasks.matching { it.name.contains("compile", ignoreCase = true) && it.name.contains("Kotlin") }
+            .configureEach {
+                try {
+                    withGroovyBuilder {
+                        getProperty("kotlinOptions").withGroovyBuilder {
+                            setProperty("jvmTarget", "11")
+                        }
                     }
+                } catch (_: Exception) {
+                    // Tarefa sem a propriedade `kotlinOptions` — ignora.
                 }
-            } catch (_: Exception) {
-                // Tarefa sem a propriedade `kotlinOptions` — ignora.
             }
+        // O Gradle exige que o alvo Java e Kotlin do mesmo módulo coincidam —
+        // sobe também o lado Java para 11 (o módulo tinha 1.8).
+        tasks.withType<JavaCompile>().configureEach {
+            sourceCompatibility = "11"
+            targetCompatibility = "11"
         }
-    // O Gradle exige que o alvo Java e Kotlin do mesmo módulo coincidam —
-    // sobe também o lado Java para 11 (o módulo tinha 1.8).
-    tasks.withType<JavaCompile>().configureEach {
-        sourceCompatibility = "11"
-        targetCompatibility = "11"
     }
 }
 
