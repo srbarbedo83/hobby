@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -16,18 +18,6 @@ Future<void> main() async {
   final isar = await IsarService.open();
   final settingsService = await SettingsService.create();
 
-  await NotificationService.instance.init();
-  // Regista sempre (não só quando os alertas estão ligados): esta task
-  // também é o que mantém o widget de ecrã inicial atualizado com a app
-  // fechada. Registar de novo com o mesmo nome único é idempotente
-  // (atualiza a task em vez de duplicar).
-  await Workmanager().initialize(backgroundSyncCallbackDispatcher);
-  await Workmanager().registerPeriodicTask(
-    backgroundSyncTaskName,
-    backgroundSyncTaskName,
-    frequency: const Duration(minutes: 15),
-  );
-
   runApp(
     ProviderScope(
       overrides: [
@@ -37,4 +27,33 @@ Future<void> main() async {
       child: const PoolFeesTrackerApp(),
     ),
   );
+
+  // Fora do caminho crítico do primeiro frame — notificações e o registo do
+  // Workmanager não são precisos para mostrar a UI, e uma falha ou demora
+  // aqui (ex.: diálogo de permissão, handshake do WorkManager) nunca deve
+  // deixar a app presa no splash screen.
+  unawaited(_initBackgroundServices());
+}
+
+Future<void> _initBackgroundServices() async {
+  try {
+    await NotificationService.instance.init();
+  } catch (_) {
+    // Alertas locais ficam indisponíveis, mas a app continua a funcionar.
+  }
+  try {
+    // Regista sempre (não só quando os alertas estão ligados): esta task
+    // também é o que mantém o widget de ecrã inicial atualizado com a app
+    // fechada. Registar de novo com o mesmo nome único é idempotente
+    // (atualiza a task em vez de duplicar).
+    await Workmanager().initialize(backgroundSyncCallbackDispatcher);
+    await Workmanager().registerPeriodicTask(
+      backgroundSyncTaskName,
+      backgroundSyncTaskName,
+      frequency: const Duration(minutes: 15),
+    );
+  } catch (_) {
+    // Atualização em background indisponível, mas a app em primeiro plano
+    // continua a funcionar normalmente.
+  }
 }
