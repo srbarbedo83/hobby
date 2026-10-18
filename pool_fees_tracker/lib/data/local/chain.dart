@@ -1,0 +1,39 @@
+import 'package:flutter/material.dart';
+
+/// Rede EVM suportada. O subgraph id e o RPC ficam associados aqui para que
+/// o resto da app nunca tenha de saber detalhes de endpoints.
+enum Chain { ethereum, arbitrum, base, optimism, polygon }
+
+extension ChainInfo on Chain {
+  String get displayName => switch (this) {
+    Chain.ethereum => 'Ethereum',
+    Chain.arbitrum => 'Arbitrum',
+    Chain.base => 'Base',
+    Chain.optimism => 'Optimism',
+    Chain.polygon => 'Polygon',
+  };
+
+  String get nativeSymbol => switch (this) {
+    Chain.polygon => 'MATIC',
+    _ => 'ETH',
+  };
+
+  Color get accentColor => switch (this) {
+    Chain.ethereum => const Color(0xFF627EEA),
+    Chain.arbitrum => const Color(0xFF28A0F0),
+    Chain.base => const Color(0xFF0052FF),
+    Chain.optimism => const Color(0xFFFF0420),
+    Chain.polygon => const Color(0xFF8247E5),
+  };
+
+  /// Subgraph id publicado pela Uniswap na rede descentralizada do The Graph
+  /// (usado como sufixo de `https://gateway.thegraph.com/api/<key>/subgraphs/id/<id>`).
+  /// Preenchido só para as chains com subgraph oficial de Uniswap v3.
+  String? get uniswapV3SubgraphId => switch (this) {
+    Chain.ethereum => '5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV',
+    Chain.arbitrum => 'FbCGRftH4a3yZugY7TnbYgPJVEv2LvMT6oF1fxPe9aJM',
+    Chain.base => 'GqzP4Xaehti8KSfQmv3ZctFSjnSUYZ4En5NRsiTbvZpz',
+    Chain.optimism => 'Cghf4LfVqPiFw6fp6Y5X5Ubc8UpmUhSfJL82zwiBFLaj',
+    Chain.polygon => '3hCPRGf4z88VC5rsBKU5AA9FBBq5nF3jbKJG7VZCbhjm',
+  };
+}
