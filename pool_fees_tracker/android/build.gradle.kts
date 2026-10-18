@@ -30,14 +30,16 @@ allprojects {
 // `KotlinCompile` (que não está no classpath deste script) só para alcançar
 // uma propriedade que, nestes módulos, existe. Exclui `:app`, que já define
 // o seu jvmTarget (17) pelo DSL novo `compilerOptions`.
-subprojects {
-    if (name == "app") return@subprojects
-    // `afterEvaluate` é essencial aqui: o próprio build.gradle do plugin
-    // (ex.: home_widget) configura `android.compileOptions`/`kotlinOptions`
-    // com 1.8 ao ser avaliado, e essa configuração é aplicada às tasks
-    // nesse momento — sem esperar por isso, a nossa alteração corre o
-    // risco de ser sobreposta pela do próprio plugin.
-    afterEvaluate {
+//
+// `gradle.projectsEvaluated` (em vez de só `afterEvaluate`) é necessário
+// porque o próprio AGP religa `android.compileOptions` às tasks de Java
+// dentro de um `afterEvaluate` ANINHADO (registado de dentro do seu próprio
+// `afterEvaluate`) — e callbacks aninhados ficam sempre para uma ronda
+// posterior à do nosso, sobrepondo-se-lhe. `projectsEvaluated` só corre
+// depois de esgotadas TODAS essas rondas, em todos os projetos.
+gradle.projectsEvaluated {
+    subprojects {
+        if (name == "app") return@subprojects
         tasks.matching { it.name.contains("compile", ignoreCase = true) && it.name.contains("Kotlin") }
             .configureEach {
                 try {
