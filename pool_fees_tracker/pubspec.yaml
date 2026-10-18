@@ -63,6 +63,14 @@ dependencies:
   # Share sheet nativo — export CSV e partilha de resumo de posição
   share_plus: ^13.3.1
 
+# A 2.5.0 do shared_preferences_android reescreveu a implementação nativa
+# para "Pigeon JNI" e tem uma regressão que rebenta em runtime logo no
+# arranque (NoSuchMethodError em SharedPreferencesApiRegistrar.getAll,
+# antes do primeiro frame — a app fica presa no splash). Fixa a última
+# versão estável anterior até a regressão ser corrigida a montante.
+dependency_overrides:
+  shared_preferences_android: 2.4.28
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
