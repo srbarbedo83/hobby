@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/build_info.dart';
 import '../../core/export/settings_backup.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -586,6 +587,13 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Text(
+              appBuildLabel,
+              style: TextStyle(color: palette.textTertiary, fontSize: 10.5),
             ),
           ),
         ],
