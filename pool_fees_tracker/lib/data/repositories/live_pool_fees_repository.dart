@@ -376,28 +376,35 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                   'Modo Live v4: o subgraph (chain ${rpcChain.displayName}) '
                   'não encontrou nenhuma posição v4 para esta wallet.';
             } else {
+              // Em paralelo, não uma a seguir à outra: cada posição faz até
+              // 5 pedidos de rede (2 RPC + até 3 ao subgraph), e isso a
+              // sério, em série, com 8-10 posições, facilmente passava de
+              // um minuto em dados móveis — parecia "pendurado" sem ser.
+              // Cada posição apanha o seu próprio erro em vez de deixar
+              // um `Future.wait` abortar tudo ao primeiro falhanço.
+              final results = await Future.wait(
+                tokenPositions.map((raw) async {
+                  try {
+                    final position = await _mapV4Position(
+                      chain: rpcChain,
+                      raw: raw,
+                      posManager: posManager,
+                      v4Client: v4Client,
+                    );
+                    return (position: position, error: null as Object?);
+                  } catch (e) {
+                    return (position: null, error: e);
+                  }
+                }),
+              );
               var v4Mapped = 0;
               Object? lastV4Error;
-              for (final raw in tokenPositions) {
-                // Uma posição individual que falhe (pool ainda não
-                // indexada, tokenId queimado entretanto, etc.) não deve
-                // impedir as restantes de aparecer — mas guarda o último
-                // erro: se NENHUMA posição v4 passar, isso é um sinal de
-                // algo sistemático, não um caso isolado.
-                try {
-                  final position = await _mapV4Position(
-                    chain: rpcChain,
-                    raw: raw,
-                    posManager: posManager,
-                    v4Client: v4Client,
-                  );
-                  if (position != null) {
-                    mapped.add(position);
-                    v4Mapped++;
-                  }
-                } catch (e) {
-                  lastV4Error = e;
-                  continue;
+              for (final result in results) {
+                if (result.position != null) {
+                  mapped.add(result.position!);
+                  v4Mapped++;
+                } else if (result.error != null) {
+                  lastV4Error = result.error;
                 }
               }
               if (v4Mapped == 0) {

@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.5+6 — timeout de 20s em todos os pedidos de rede';
+const String appBuildLabel = 'v1.0.6+7 — posições v4 lidas em paralelo, não uma a uma';
