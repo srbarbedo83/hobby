@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:isar_community/isar.dart';
 
 import '../../core/calc/liquidity_amounts.dart';
@@ -284,10 +285,15 @@ class LivePoolFeesRepository implements PoolFeesRepository {
 
   @override
   Future<void> refreshNow() async {
-    if (_refreshing) return;
+    if (_refreshing) {
+      debugPrint('[v4debug] refreshNow: já estava a correr, saltou este pedido');
+      return;
+    }
     _refreshing = true;
+    debugPrint('[v4debug] refreshNow: a começar');
     try {
       final wallets = await _walletRepository.getAll();
+      debugPrint('[v4debug] wallets encontradas: ${wallets.length}');
       if (wallets.isEmpty) {
         _lastUpdatedAt = DateTime.now();
         _controller.add(List.unmodifiable(_positions));
@@ -342,6 +348,9 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       // silencioso — já tivemos demasiadas rondas de "não aparece nada e
       // não sei porquê" nesta app para repetir o erro aqui.
       final rpcClient = _rpcClient;
+      debugPrint(
+        '[v4debug] _v4Clients: ${_v4Clients.keys}, rpcClient configurado: ${rpcClient != null}',
+      );
       if (_v4Clients.isEmpty) {
         // Nenhuma chain selecionada tem suporte v4 configurado — nem vale
         // a pena mencionar, não é um estado de erro.
@@ -350,30 +359,50 @@ class LivePoolFeesRepository implements PoolFeesRepository {
             'Modo Live v4: sem RPC URL configurado nas Definições — é '
             'sempre necessário para ler posições v4 (ao contrário do v3).';
       } else {
-        final rpcChain = await (_rpcChainFuture ??= rpcClient.detectChain());
+        Chain? rpcChain;
+        try {
+          rpcChain = await (_rpcChainFuture ??= rpcClient.detectChain());
+          debugPrint('[v4debug] detectChain() devolveu: $rpcChain');
+        } catch (e, st) {
+          debugPrint('[v4debug] detectChain() FALHOU: $e\n$st');
+          rethrow;
+        }
         if (rpcChain == null) {
           v4Diagnostic =
               'Modo Live v4: o RPC URL configurado não respondeu com uma '
               'chain reconhecida (confirma que é mesmo Ethereum Mainnet).';
         } else {
-          final v4Client = _v4Clients[rpcChain];
-          final positionManagerAddress = _v4PositionManagerAddresses[rpcChain];
+          final chain = rpcChain;
+          final v4Client = _v4Clients[chain];
+          final positionManagerAddress = _v4PositionManagerAddresses[chain];
+          debugPrint(
+            '[v4debug] v4Client encontrado: ${v4Client != null}, '
+            'positionManagerAddress: $positionManagerAddress',
+          );
           if (v4Client == null || positionManagerAddress == null) {
             v4Diagnostic =
                 'Modo Live v4: o RPC configurado responde pela chain '
-                '${rpcChain.displayName}, que não tem suporte v4 configurado '
+                '${chain.displayName}, que não tem suporte v4 configurado '
                 '(nem id de subgraph nem endereço do PositionManager).';
           } else {
             final posManager = UniswapV4PositionManagerClient(
               rpcClient: rpcClient,
               positionManagerAddress: positionManagerAddress,
             );
-            final tokenPositions = await v4Client.fetchPositionTokenIds(
-              owners,
-            );
+            List<RawV4Position> tokenPositions;
+            try {
+              tokenPositions = await v4Client.fetchPositionTokenIds(owners);
+              debugPrint(
+                '[v4debug] fetchPositionTokenIds devolveu ${tokenPositions.length} '
+                'posições: ${tokenPositions.map((p) => p.tokenId).toList()}',
+              );
+            } catch (e, st) {
+              debugPrint('[v4debug] fetchPositionTokenIds FALHOU: $e\n$st');
+              rethrow;
+            }
             if (tokenPositions.isEmpty) {
               v4Diagnostic =
-                  'Modo Live v4: o subgraph (chain ${rpcChain.displayName}) '
+                  'Modo Live v4: o subgraph (chain ${chain.displayName}) '
                   'não encontrou nenhuma posição v4 para esta wallet.';
             } else {
               // Em paralelo, não uma a seguir à outra: cada posição faz até
@@ -386,13 +415,17 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                 tokenPositions.map((raw) async {
                   try {
                     final position = await _mapV4Position(
-                      chain: rpcChain,
+                      chain: chain,
                       raw: raw,
                       posManager: posManager,
                       v4Client: v4Client,
                     );
+                    debugPrint(
+                      '[v4debug] tokenId ${raw.tokenId}: ${position == null ? "pool não encontrada no subgraph" : "OK"}',
+                    );
                     return (position: position, error: null as Object?);
-                  } catch (e) {
+                  } catch (e, st) {
+                    debugPrint('[v4debug] tokenId ${raw.tokenId} FALHOU: $e\n$st');
                     return (position: null, error: e);
                   }
                 }),
@@ -418,6 +451,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         }
       }
 
+      debugPrint(
+        '[v4debug] refreshNow: a terminar com sucesso. mapped=${mapped.length} '
+        '(v3+v4), v4Diagnostic=$v4Diagnostic',
+      );
       await _isar.writeTxn(() async {
         await _isar.poolPositions.putAll(mapped);
         await _isar.pricePoints.putAll(pricePoints);
@@ -427,14 +464,16 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       _lastUpdatedAt = now;
       _lastError = v4Diagnostic;
       _controller.add(List.unmodifiable(_positions));
-    } catch (e) {
+    } catch (e, st) {
       // Nunca deixa um erro do subgraph/RPC (rede, API key inválida,
       // schema inesperado) rebentar como excepção não apanhada — isso
       // deixava o ecrã silenciosamente sem dados, sem nenhuma pista
       // visível na app (só via logcat). Guarda a mensagem para a UI
       // mostrar um aviso em vez disto.
+      debugPrint('[v4debug] refreshNow: EXCEÇÃO APANHADA: $e\n$st');
       _lastError = e.toString();
     } finally {
+      debugPrint('[v4debug] refreshNow: a terminar (finally), _lastError=$_lastError');
       _refreshing = false;
     }
   }
