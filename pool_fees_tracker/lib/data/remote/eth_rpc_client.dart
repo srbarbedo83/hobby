@@ -76,6 +76,48 @@ class EthRpcClient {
     return chainFromEvmChainId(id);
   }
 
+  /// Último bloco conhecido pela chain — usado para delimitar o intervalo
+  /// de `eth_getLogs` (ver `getLogs`).
+  Future<BigInt> blockNumber() async {
+    final result = await _call('eth_blockNumber', const []);
+    return parseHexBigInt(result['result'] as String?);
+  }
+
+  /// `eth_getLogs` — usado para descobrir, diretamente on-chain, que NFTs
+  /// (`Transfer` ERC-721) uma wallet recebeu de um contrato (ver
+  /// `uniswap_v4_position_manager_client.dart`). Existe porque o subgraph
+  /// v4 tem-se mostrado pouco fiável (ver nota lá) — isto não depende de
+  /// nenhum serviço terceiro, só do próprio nó RPC.
+  Future<List<Map<String, dynamic>>> getLogs({
+    required String address,
+    required List<String?> topics,
+    required BigInt fromBlock,
+    required BigInt toBlock,
+  }) async {
+    final result = await _call('eth_getLogs', [
+      {
+        'address': address,
+        'topics': topics,
+        'fromBlock': '0x${fromBlock.toRadixString(16)}',
+        'toBlock': '0x${toBlock.toRadixString(16)}',
+      },
+    ]);
+    return (result['result'] as List).cast<Map<String, dynamic>>();
+  }
+
+  /// Timestamp (UTC) de um bloco, via `eth_getBlockByNumber` — usado para
+  /// saber quando uma posição v4 foi criada (o `Transfer` de mint é o
+  /// primeiro evento do tokenId).
+  Future<DateTime> getBlockTimestamp(BigInt blockNumber) async {
+    final result = await _call('eth_getBlockByNumber', [
+      '0x${blockNumber.toRadixString(16)}',
+      false,
+    ]);
+    final block = result['result'] as Map<String, dynamic>;
+    final seconds = parseHexBigInt(block['timestamp'] as String?).toInt();
+    return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
+  }
+
   /// Soma `gasUsed × effectiveGasPrice` de várias transações, em wei do
   /// token nativo da chain. Hashes que o RPC não encontrar são ignorados
   /// (ex.: endpoint com histórico truncado) em vez de rebentar a conta toda.

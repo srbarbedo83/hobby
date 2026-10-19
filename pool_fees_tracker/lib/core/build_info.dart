@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.8+9 — erro do v3 já não trava o v4';
+const String appBuildLabel = 'v1.0.9+10 — v4 descobre posições on-chain (sem subgraph)';

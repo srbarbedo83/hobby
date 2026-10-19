@@ -5,28 +5,6 @@ import 'package:http/http.dart' as http;
 import '../local/chain.dart';
 import 'uniswap_subgraph_client.dart' show SubgraphException;
 
-class RawV4Position {
-  final String tokenId;
-  final String owner;
-  final DateTime createdAt;
-
-  RawV4Position({
-    required this.tokenId,
-    required this.owner,
-    required this.createdAt,
-  });
-
-  factory RawV4Position.fromJson(Map<String, dynamic> json) {
-    return RawV4Position(
-      tokenId: json['tokenId'] as String,
-      owner: json['owner'] as String,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-        int.parse(json['createdAtTimestamp'] as String) * 1000,
-      ),
-    );
-  }
-}
-
 class RawV4Token {
   final String symbol;
   final int decimals;
@@ -117,29 +95,6 @@ class UniswapV4SubgraphClient {
       throw SubgraphException(decoded['errors'].toString());
     }
     return decoded['data'] as Map<String, dynamic>;
-  }
-
-  /// Todos os NFTs de posição v4 (tokenId) que um conjunto de endereços
-  /// detém atualmente. Não diz nada sobre o range/liquidez/pool — isso vem
-  /// depois do `PositionManager`, por tokenId.
-  Future<List<RawV4Position>> fetchPositionTokenIds(
-    List<String> owners,
-  ) async {
-    if (owners.isEmpty) return const [];
-    const query = r'''
-      query V4Positions($owners: [String!]!) {
-        positions(where: { owner_in: $owners }, first: 500) {
-          tokenId
-          owner
-          createdAtTimestamp
-        }
-      }
-    ''';
-    final data = await _post(query, {
-      'owners': owners.map((o) => o.toLowerCase()).toList(),
-    });
-    final positions = (data['positions'] as List).cast<Map<String, dynamic>>();
-    return positions.map(RawV4Position.fromJson).toList();
   }
 
   /// Estado atual da pool identificada por `token0/token1/feeTier/hooks`

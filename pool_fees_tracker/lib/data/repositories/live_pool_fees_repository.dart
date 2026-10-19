@@ -404,21 +404,42 @@ class LivePoolFeesRepository implements PoolFeesRepository {
               rpcClient: rpcClient,
               positionManagerAddress: positionManagerAddress,
             );
-            List<RawV4Position> tokenPositions;
+            // Descoberta via eth_getLogs, não via subgraph: o subgraph v4
+            // tem-se mostrado pouco fiável em produção (indexadores sem
+            // atestação, ou schema que nem bate certo com o deployment
+            // configurado) — ver histórico desta sessão. `Transfer`
+            // ERC-721 é um evento standard, não depende de nenhum
+            // indexador terceiro.
+            List<({BigInt tokenId, String owner, DateTime createdAt})>
+            tokenPositions;
             try {
-              tokenPositions = await v4Client.fetchPositionTokenIds(owners);
+              final perOwner = await Future.wait(
+                owners.map((owner) async {
+                  final tokens = await posManager.fetchOwnedTokenIds(owner);
+                  return tokens
+                      .map(
+                        (t) => (
+                          tokenId: t.tokenId,
+                          owner: owner,
+                          createdAt: t.createdAt,
+                        ),
+                      )
+                      .toList();
+                }),
+              );
+              tokenPositions = perOwner.expand((l) => l).toList();
               debugPrint(
-                '[v4debug] fetchPositionTokenIds devolveu ${tokenPositions.length} '
+                '[v4debug] fetchOwnedTokenIds (RPC) devolveu ${tokenPositions.length} '
                 'posições: ${tokenPositions.map((p) => p.tokenId).toList()}',
               );
             } catch (e, st) {
-              debugPrint('[v4debug] fetchPositionTokenIds FALHOU: $e\n$st');
+              debugPrint('[v4debug] fetchOwnedTokenIds FALHOU: $e\n$st');
               rethrow;
             }
             if (tokenPositions.isEmpty) {
               v4Diagnostic =
-                  'Modo Live v4: o subgraph (chain ${chain.displayName}) '
-                  'não encontrou nenhuma posição v4 para esta wallet.';
+                  'Modo Live v4: não foi encontrada nenhuma posição v4 '
+                  '(chain ${chain.displayName}) para esta wallet.';
             } else {
               // Em paralelo, não uma a seguir à outra: cada posição faz até
               // 5 pedidos de rede (2 RPC + até 3 ao subgraph), e isso a
@@ -601,11 +622,11 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   ///   tokenId para somar os recibos).
   Future<PoolPosition?> _mapV4Position({
     required Chain chain,
-    required RawV4Position raw,
+    required ({BigInt tokenId, String owner, DateTime createdAt}) raw,
     required UniswapV4PositionManagerClient posManager,
     required UniswapV4SubgraphClient v4Client,
   }) async {
-    final tokenId = BigInt.parse(raw.tokenId);
+    final tokenId = raw.tokenId;
     final info = await posManager.getPoolAndPositionInfo(tokenId);
     final liquidity = await posManager.getPositionLiquidity(tokenId);
 
@@ -646,7 +667,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       ..positionKey = '${chain.name}:v4:${raw.tokenId}'
       ..chain = chain
       ..walletAddress = raw.owner
-      ..tokenIdOnChain = raw.tokenId
+      ..tokenIdOnChain = raw.tokenId.toString()
       ..token0Symbol = token0.symbol
       ..token1Symbol = token1.symbol
       ..token0Decimals = token0.decimals
