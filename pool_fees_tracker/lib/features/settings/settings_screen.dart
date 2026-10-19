@@ -159,8 +159,10 @@ class SettingsScreen extends ConsumerWidget {
                       style: TextStyle(color: palette.textPrimary),
                     ),
                     subtitle: Text(
-                      'Lê posições reais do subgraph Uniswap v3 + um endpoint RPC. '
-                      'Precisa de uma API key de subgraph abaixo.',
+                      'Lê posições reais do subgraph Uniswap v3/v4 + um endpoint '
+                      'RPC. Precisa de uma API key de subgraph abaixo — v4 '
+                      'precisa também de um RPC URL (ao contrário do v3, onde '
+                      'é opcional).',
                       style: TextStyle(
                         color: palette.textTertiary,
                         fontSize: 11.5,
@@ -244,11 +246,11 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Opcional — só usado para mostrar o custo real de gas (e o gas '
-                  'break-even) no ecrã de detalhe, lendo os recibos das transações '
-                  'desta posição. Tem de apontar para a mesma chain de uma das '
-                  'chains selecionadas acima; deixa vazio para ignorar. Não é usado '
-                  'para mais nada — as posições vêm sempre do subgraph.',
+                  'Obrigatório para ver posições v4 (o subgraph v4 só diz que '
+                  'tokenIds a wallet tem, o resto vem do contrato on-chain). '
+                  'Em v3 é opcional — só para mostrar o custo real de gas (e o '
+                  'gas break-even) no ecrã de detalhe. Tem de apontar para a '
+                  'mesma chain de uma das chains selecionadas acima.',
                   style: TextStyle(color: palette.textTertiary, fontSize: 11),
                 ),
                 const SizedBox(height: 4),

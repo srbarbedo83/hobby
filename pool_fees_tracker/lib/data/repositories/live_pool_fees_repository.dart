@@ -337,52 +337,76 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       // Posições v4: o subgraph v4 não guarda range/liquidez por posição
       // (só o tokenId), por isso é preciso um RPC da MESMA chain para ler
       // isso do contrato `PositionManager` — ver nota no topo do ficheiro
-      // e em `uniswap_v4_subgraph_client.dart`. Sem RPC configurado, ou com
-      // um RPC de outra chain, as posições v4 dessa chain ficam de fora
-      // (silenciosamente — não é um erro, só uma funcionalidade que precisa
-      // de mais configuração).
+      // e em `uniswap_v4_subgraph_client.dart`. Cada passo que não encontra
+      // nada guarda uma mensagem explicando porquê, em vez de ficar
+      // silencioso — já tivemos demasiadas rondas de "não aparece nada e
+      // não sei porquê" nesta app para repetir o erro aqui.
       final rpcClient = _rpcClient;
-      if (rpcClient != null && _v4Clients.isNotEmpty) {
+      if (_v4Clients.isEmpty) {
+        // Nenhuma chain selecionada tem suporte v4 configurado — nem vale
+        // a pena mencionar, não é um estado de erro.
+      } else if (rpcClient == null) {
+        v4Diagnostic =
+            'Modo Live v4: sem RPC URL configurado nas Definições — é '
+            'sempre necessário para ler posições v4 (ao contrário do v3).';
+      } else {
         final rpcChain = await (_rpcChainFuture ??= rpcClient.detectChain());
-        final v4Client = rpcChain == null ? null : _v4Clients[rpcChain];
-        final positionManagerAddress = rpcChain == null
-            ? null
-            : _v4PositionManagerAddresses[rpcChain];
-        if (v4Client != null && positionManagerAddress != null) {
-          final posManager = UniswapV4PositionManagerClient(
-            rpcClient: rpcClient,
-            positionManagerAddress: positionManagerAddress,
-          );
-          final tokenPositions = await v4Client.fetchPositionTokenIds(owners);
-          var v4Mapped = 0;
-          Object? lastV4Error;
-          for (final raw in tokenPositions) {
-            // Uma posição individual que falhe (pool ainda não indexada,
-            // tokenId queimado entretanto, etc.) não deve impedir as
-            // restantes de aparecer — mas guarda o último erro: se NENHUMA
-            // posição v4 passar, isso é um sinal de algo sistemático (ex.:
-            // endereço errado do PositionManager), não um caso isolado, e
-            // precisa de ficar visível em vez de silenciosamente vazio.
-            try {
-              final position = await _mapV4Position(
-                chain: rpcChain!,
-                raw: raw,
-                posManager: posManager,
-                v4Client: v4Client,
-              );
-              if (position != null) {
-                mapped.add(position);
-                v4Mapped++;
-              }
-            } catch (e) {
-              lastV4Error = e;
-              continue;
-            }
-          }
-          if (tokenPositions.isNotEmpty && v4Mapped == 0) {
+        if (rpcChain == null) {
+          v4Diagnostic =
+              'Modo Live v4: o RPC URL configurado não respondeu com uma '
+              'chain reconhecida (confirma que é mesmo Ethereum Mainnet).';
+        } else {
+          final v4Client = _v4Clients[rpcChain];
+          final positionManagerAddress = _v4PositionManagerAddresses[rpcChain];
+          if (v4Client == null || positionManagerAddress == null) {
             v4Diagnostic =
-                'Encontradas ${tokenPositions.length} posições v4 na wallet, '
-                'mas nenhuma pôde ser lida (${lastV4Error ?? "pool ainda não indexada pelo subgraph"}).';
+                'Modo Live v4: o RPC configurado responde pela chain '
+                '${rpcChain.displayName}, que não tem suporte v4 configurado '
+                '(nem id de subgraph nem endereço do PositionManager).';
+          } else {
+            final posManager = UniswapV4PositionManagerClient(
+              rpcClient: rpcClient,
+              positionManagerAddress: positionManagerAddress,
+            );
+            final tokenPositions = await v4Client.fetchPositionTokenIds(
+              owners,
+            );
+            if (tokenPositions.isEmpty) {
+              v4Diagnostic =
+                  'Modo Live v4: o subgraph (chain ${rpcChain.displayName}) '
+                  'não encontrou nenhuma posição v4 para esta wallet.';
+            } else {
+              var v4Mapped = 0;
+              Object? lastV4Error;
+              for (final raw in tokenPositions) {
+                // Uma posição individual que falhe (pool ainda não
+                // indexada, tokenId queimado entretanto, etc.) não deve
+                // impedir as restantes de aparecer — mas guarda o último
+                // erro: se NENHUMA posição v4 passar, isso é um sinal de
+                // algo sistemático, não um caso isolado.
+                try {
+                  final position = await _mapV4Position(
+                    chain: rpcChain,
+                    raw: raw,
+                    posManager: posManager,
+                    v4Client: v4Client,
+                  );
+                  if (position != null) {
+                    mapped.add(position);
+                    v4Mapped++;
+                  }
+                } catch (e) {
+                  lastV4Error = e;
+                  continue;
+                }
+              }
+              if (v4Mapped == 0) {
+                v4Diagnostic =
+                    'Modo Live v4: encontradas ${tokenPositions.length} '
+                    'posições na wallet, mas nenhuma pôde ser lida '
+                    '(${lastV4Error ?? "pool ainda não indexada pelo subgraph"}).';
+              }
+            }
           }
         }
       }
