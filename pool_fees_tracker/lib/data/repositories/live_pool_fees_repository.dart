@@ -298,6 +298,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       final now = DateTime.now();
       final mapped = <PoolPosition>[];
       final pricePoints = <PricePoint>[];
+      String? v4Diagnostic;
 
       for (final entry in _clients.entries) {
         final chain = entry.key;
@@ -353,10 +354,15 @@ class LivePoolFeesRepository implements PoolFeesRepository {
             positionManagerAddress: positionManagerAddress,
           );
           final tokenPositions = await v4Client.fetchPositionTokenIds(owners);
+          var v4Mapped = 0;
+          Object? lastV4Error;
           for (final raw in tokenPositions) {
             // Uma posição individual que falhe (pool ainda não indexada,
             // tokenId queimado entretanto, etc.) não deve impedir as
-            // restantes de aparecer.
+            // restantes de aparecer — mas guarda o último erro: se NENHUMA
+            // posição v4 passar, isso é um sinal de algo sistemático (ex.:
+            // endereço errado do PositionManager), não um caso isolado, e
+            // precisa de ficar visível em vez de silenciosamente vazio.
             try {
               final position = await _mapV4Position(
                 chain: rpcChain!,
@@ -364,10 +370,19 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                 posManager: posManager,
                 v4Client: v4Client,
               );
-              if (position != null) mapped.add(position);
-            } catch (_) {
+              if (position != null) {
+                mapped.add(position);
+                v4Mapped++;
+              }
+            } catch (e) {
+              lastV4Error = e;
               continue;
             }
+          }
+          if (tokenPositions.isNotEmpty && v4Mapped == 0) {
+            v4Diagnostic =
+                'Encontradas ${tokenPositions.length} posições v4 na wallet, '
+                'mas nenhuma pôde ser lida (${lastV4Error ?? "pool ainda não indexada pelo subgraph"}).';
           }
         }
       }
@@ -379,7 +394,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
 
       _positions = mapped;
       _lastUpdatedAt = now;
-      _lastError = null;
+      _lastError = v4Diagnostic;
       _controller.add(List.unmodifiable(_positions));
     } catch (e) {
       // Nunca deixa um erro do subgraph/RPC (rede, API key inválida,
