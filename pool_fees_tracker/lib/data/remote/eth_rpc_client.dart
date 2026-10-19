@@ -30,16 +30,21 @@ class EthRpcClient {
     String method,
     List<dynamic> params,
   ) async {
-    final response = await _httpClient.post(
-      Uri.parse(rpcUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'jsonrpc': '2.0',
-        'method': method,
-        'params': params,
-        'id': 1,
-      }),
-    );
+    final response = await _httpClient
+        .post(
+          Uri.parse(rpcUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'jsonrpc': '2.0',
+            'method': method,
+            'params': params,
+            'id': 1,
+          }),
+        )
+        // Ver nota equivalente em `uniswap_subgraph_client.dart` — um RPC
+        // lento ou pendurado não pode deixar o refresh Live preso para
+        // sempre sem nunca mostrar erro.
+        .timeout(const Duration(seconds: 20));
     if (response.statusCode != 200) {
       throw EthRpcException('HTTP ${response.statusCode}: ${response.body}');
     }

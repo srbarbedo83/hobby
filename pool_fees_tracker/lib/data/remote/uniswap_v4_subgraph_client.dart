@@ -99,11 +99,16 @@ class UniswapV4SubgraphClient {
     String query,
     Map<String, dynamic> variables,
   ) async {
-    final response = await _httpClient.post(
-      _endpoint,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'query': query, 'variables': variables}),
-    );
+    final response = await _httpClient
+        .post(
+          _endpoint,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'query': query, 'variables': variables}),
+        )
+        // Ver nota equivalente em `uniswap_subgraph_client.dart` — sem
+        // isto, um pedido pendurado deixava o refresh v4 preso para
+        // sempre, sem nunca mostrar posições NEM o banner de erro.
+        .timeout(const Duration(seconds: 20));
     if (response.statusCode != 200) {
       throw SubgraphException('HTTP ${response.statusCode}: ${response.body}');
     }

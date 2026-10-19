@@ -276,11 +276,18 @@ class UniswapSubgraphClient {
     String query,
     Map<String, dynamic> variables,
   ) async {
-    final response = await _httpClient.post(
-      _endpoint,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'query': query, 'variables': variables}),
-    );
+    final response = await _httpClient
+        .post(
+          _endpoint,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'query': query, 'variables': variables}),
+        )
+        // Sem timeout, um pedido que nunca responde (nem sucesso nem erro —
+        // acontece com gateways sobrecarregados ou ligações móveis
+        // instáveis) deixava o refresh pendurado para sempre: nunca chegava
+        // a mostrar dados NEM o banner de erro, porque a função nunca
+        // chegava a terminar. Isto garante que falha de forma visível.
+        .timeout(const Duration(seconds: 20));
     if (response.statusCode != 200) {
       throw SubgraphException('HTTP ${response.statusCode}: ${response.body}');
     }
