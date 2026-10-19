@@ -15,6 +15,12 @@ class PoolPosition {
   @Index(unique: true, replace: true)
   late String positionKey;
 
+  /// Uniswap v4 em vez de v3 — arquitetura diferente (singleton + hooks).
+  /// Em modo Live, posições v4 não têm fees não reclamadas calculadas ainda
+  /// (`feesUnclaimedUsd` fica a 0) — ver nota em
+  /// `live_pool_fees_repository.dart`. `false` para registos antigos (v3).
+  bool isV4 = false;
+
   @Enumerated(EnumType.name)
   late Chain chain;
 

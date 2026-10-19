@@ -225,6 +225,25 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 ),
               ],
             ),
+            if (position.isV4) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: palette.accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Posição Uniswap v4 — o valor mostrado é o TVL atual da '
+                  'posição; as taxas não reclamadas ainda não são '
+                  'calculadas para v4 (só v3), por isso aparecem a 0.',
+                  style: TextStyle(color: palette.textSecondary, fontSize: 11),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),

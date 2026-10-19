@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:isar_community/isar.dart';
 
+import '../../core/calc/liquidity_amounts.dart';
 import '../../core/calc/liquidity_profile.dart';
 import '../../core/calc/univ3_fee_math.dart';
 import '../local/chain.dart';
@@ -11,8 +12,12 @@ import '../local/position_event.dart';
 import '../local/price_point.dart';
 import '../remote/eth_rpc_client.dart';
 import '../remote/uniswap_subgraph_client.dart';
+import '../remote/uniswap_v4_position_manager_client.dart';
+import '../remote/uniswap_v4_subgraph_client.dart';
 import 'pool_fees_repository.dart';
 import 'wallet_repository.dart';
+
+const _zeroAddress = '0x0000000000000000000000000000000000000000';
 
 /// Implementação "live": lê posições reais do subgraph Uniswap v3 e
 /// calcula fees não reclamadas com a mesma fórmula do contrato
@@ -73,6 +78,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   final WalletRepository _walletRepository;
   final Isar _isar;
   final Map<Chain, UniswapSubgraphClient> _clients;
+  final Map<Chain, UniswapV4SubgraphClient> _v4Clients;
+  final Map<Chain, String> _v4PositionManagerAddresses;
   final EthRpcClient? _rpcClient;
 
   List<PoolPosition> _positions = [];
@@ -94,7 +101,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     required Isar isar,
     String rpcUrl = '',
     Map<Chain, String> subgraphIdOverrides = const {},
+    Map<Chain, String> v4SubgraphIdOverrides = const {},
+    Map<Chain, String> v4PositionManagerOverrides = const {},
     Map<Chain, UniswapSubgraphClient>? clients,
+    Map<Chain, UniswapV4SubgraphClient>? v4Clients,
     EthRpcClient? rpcClient,
   }) : _walletRepository = walletRepository,
        _isar = isar,
@@ -108,6 +118,29 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                  subgraphIdOverride: subgraphIdOverrides[chain],
                ),
            },
+       // Só para as chains com um id de subgraph v4 conhecido (padrão ou
+       // override) — ver nota em `ChainInfo.uniswapV4SubgraphId`.
+       _v4Clients =
+           v4Clients ??
+           {
+             for (final chain in chains)
+               if (v4SubgraphIdOverrides[chain] != null ||
+                   chain.uniswapV4SubgraphId != null)
+                 chain: UniswapV4SubgraphClient(
+                   chain: chain,
+                   apiKey: apiKey,
+                   subgraphIdOverride: v4SubgraphIdOverrides[chain],
+                 ),
+           },
+       _v4PositionManagerAddresses = {
+         for (final chain in chains)
+           if ((v4PositionManagerOverrides[chain] ??
+                  chain.uniswapV4PositionManagerAddress) !=
+              null)
+             chain:
+                 v4PositionManagerOverrides[chain] ??
+                 chain.uniswapV4PositionManagerAddress!,
+       },
        _rpcClient =
            rpcClient ?? (rpcUrl.isEmpty ? null : EthRpcClient(rpcUrl: rpcUrl)) {
     _loadCachedThenRefresh();
@@ -300,6 +333,45 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         }
       }
 
+      // Posições v4: o subgraph v4 não guarda range/liquidez por posição
+      // (só o tokenId), por isso é preciso um RPC da MESMA chain para ler
+      // isso do contrato `PositionManager` — ver nota no topo do ficheiro
+      // e em `uniswap_v4_subgraph_client.dart`. Sem RPC configurado, ou com
+      // um RPC de outra chain, as posições v4 dessa chain ficam de fora
+      // (silenciosamente — não é um erro, só uma funcionalidade que precisa
+      // de mais configuração).
+      final rpcClient = _rpcClient;
+      if (rpcClient != null && _v4Clients.isNotEmpty) {
+        final rpcChain = await (_rpcChainFuture ??= rpcClient.detectChain());
+        final v4Client = rpcChain == null ? null : _v4Clients[rpcChain];
+        final positionManagerAddress = rpcChain == null
+            ? null
+            : _v4PositionManagerAddresses[rpcChain];
+        if (v4Client != null && positionManagerAddress != null) {
+          final posManager = UniswapV4PositionManagerClient(
+            rpcClient: rpcClient,
+            positionManagerAddress: positionManagerAddress,
+          );
+          final tokenPositions = await v4Client.fetchPositionTokenIds(owners);
+          for (final raw in tokenPositions) {
+            // Uma posição individual que falhe (pool ainda não indexada,
+            // tokenId queimado entretanto, etc.) não deve impedir as
+            // restantes de aparecer.
+            try {
+              final position = await _mapV4Position(
+                chain: rpcChain!,
+                raw: raw,
+                posManager: posManager,
+                v4Client: v4Client,
+              );
+              if (position != null) mapped.add(position);
+            } catch (_) {
+              continue;
+            }
+          }
+        }
+      }
+
       await _isar.writeTxn(() async {
         await _isar.poolPositions.putAll(mapped);
         await _isar.pricePoints.putAll(pricePoints);
@@ -403,6 +475,118 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       ..gasCostUsd = 0
       ..isClosed = raw.isClosed
       ..closedAt = null;
+  }
+
+  /// Equivalente a [_mapPosition], mas para Uniswap v4 — combina o tokenId
+  /// (só isso vem do subgraph v4) com o range/liquidez lido on-chain do
+  /// `PositionManager` e o preço atual da pool (subgraph). `null` quando a
+  /// pool ainda não está indexada pelo subgraph (posição é ignorada nesse
+  /// refresh, não é um erro).
+  ///
+  /// Limitações desta primeira versão (Fase 1 — ver pedido do utilizador):
+  /// - `feesClaimedUsd`/`feesUnclaimedUsd` ficam a 0: calcular isto exige o
+  ///   contrato `StateView` (fee growth on-chain), que ainda não está
+  ///   ligado — o endereço confirmado com menos confiança dos dois usados
+  ///   aqui (ao contrário do `PositionManager`, não foi possível verificar
+  ///   contra uma fonte ao vivo nesta sessão).
+  /// - `initialLiquidityUsd` fica igual ao valor atual (P&L "desde a
+  ///   abertura" mostra 0 em vez de um número errado): o subgraph v4 não
+  ///   liga eventos `ModifyLiquidity` ao dono/tokenId (esse campo foi
+  ///   removido do schema), por isso não há como saber o capital
+  ///   originalmente depositado.
+  /// - `gasCostUsd` fica a 0 pela mesma razão (sem eventos ligados ao
+  ///   tokenId para somar os recibos).
+  Future<PoolPosition?> _mapV4Position({
+    required Chain chain,
+    required RawV4Position raw,
+    required UniswapV4PositionManagerClient posManager,
+    required UniswapV4SubgraphClient v4Client,
+  }) async {
+    final tokenId = BigInt.parse(raw.tokenId);
+    final info = await posManager.getPoolAndPositionInfo(tokenId);
+    final liquidity = await posManager.getPositionLiquidity(tokenId);
+
+    final poolResult = await v4Client.fetchPoolByKey(
+      token0: info.poolKey.currency0,
+      token1: info.poolKey.currency1,
+      feeTier: info.poolKey.fee,
+      hooks: info.poolKey.hooks,
+    );
+    if (poolResult == null) return null;
+    final (pool: pool, ethPriceUsd: ethPriceUsd) = poolResult;
+
+    final token0 = await _resolveV4Token(
+      chain,
+      info.poolKey.currency0,
+      v4Client,
+    );
+    final token1 = await _resolveV4Token(
+      chain,
+      info.poolKey.currency1,
+      v4Client,
+    );
+    final price0 = token0.priceUsd(ethPriceUsd);
+    final price1 = token1.priceUsd(ethPriceUsd);
+
+    final amounts = getAmountsForLiquidity(
+      liquidity: liquidity.toDouble(),
+      tick: pool.tick,
+      tickLower: info.tickLower,
+      tickUpper: info.tickUpper,
+    );
+    final amount0 = amounts.amount0 / _pow10(token0.decimals);
+    final amount1 = amounts.amount1 / _pow10(token1.decimals);
+    final currentUsd = amount0 * price0 + amount1 * price1;
+
+    final isClosed = liquidity == BigInt.zero;
+    return PoolPosition()
+      ..positionKey = '${chain.name}:v4:${raw.tokenId}'
+      ..chain = chain
+      ..walletAddress = raw.owner
+      ..tokenIdOnChain = raw.tokenId
+      ..token0Symbol = token0.symbol
+      ..token1Symbol = token1.symbol
+      ..token0Decimals = token0.decimals
+      ..token1Decimals = token1.decimals
+      ..feeTierBps = info.poolKey.fee
+      ..createdAt = raw.createdAt
+      ..tickLower = info.tickLower
+      ..tickUpper = info.tickUpper
+      ..currentTick = pool.tick
+      ..entryTick = (info.tickLower + info.tickUpper) ~/ 2
+      ..liquidityUsd = isClosed ? 0 : currentUsd
+      ..initialLiquidityUsd = currentUsd
+      ..feesClaimedUsd = 0
+      ..feesUnclaimedUsd = 0
+      ..gasCostUsd = 0
+      ..isClosed = isClosed
+      ..closedAt = null
+      ..isV4 = true;
+  }
+
+  /// ETH nativo numa pool v4 é o endereço zero, não um token ERC-20 — não
+  /// tem entidade `Token` no subgraph. Usa o símbolo nativo da chain e
+  /// assume preço = `ethPriceUsd` do Bundle (correto em todas as chains
+  /// atualmente suportadas em v4, onde o gás nativo é ETH).
+  Future<RawV4Token> _resolveV4Token(
+    Chain chain,
+    String address,
+    UniswapV4SubgraphClient v4Client,
+  ) async {
+    if (address.toLowerCase() == _zeroAddress) {
+      return RawV4Token(symbol: chain.nativeSymbol, decimals: 18, derivedEth: 1.0);
+    }
+    final token = await v4Client.fetchToken(address);
+    return token ??
+        RawV4Token(symbol: '???', decimals: 18, derivedEth: 0);
+  }
+
+  static double _pow10(int decimals) {
+    var result = 1.0;
+    for (var i = 0; i < decimals; i++) {
+      result *= 10;
+    }
+    return result;
   }
 
   Future<void> _refreshHistoryForPosition({

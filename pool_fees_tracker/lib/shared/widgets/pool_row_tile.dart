@@ -109,6 +109,7 @@ class PoolRowTile extends StatelessWidget {
                       RangeStatusPill(status: rangeHealth.status),
                       if (healthScore != null)
                         _HealthScoreBadge(score: healthScore!),
+                      if (position.isV4) const _V4Badge(),
                     ],
                   ),
                 ],
@@ -135,6 +136,34 @@ class PoolRowTile extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Distingue posições Uniswap v4 das v3 — importa porque em v4 as fees
+/// não reclamadas ainda não são calculadas (ver nota em
+/// `live_pool_fees_repository.dart`), por isso o valor mostrado nesta
+/// posição é só o TVL atual, não inclui fees por reclamar.
+class _V4Badge extends StatelessWidget {
+  const _V4Badge();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: palette.accent.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        'v4',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: palette.accent,
         ),
       ),
     );

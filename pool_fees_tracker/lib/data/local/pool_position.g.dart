@@ -79,53 +79,54 @@ const PoolPositionSchema = CollectionSchema(
       type: IsarType.double,
     ),
     r'isClosed': PropertySchema(id: 12, name: r'isClosed', type: IsarType.bool),
+    r'isV4': PropertySchema(id: 13, name: r'isV4', type: IsarType.bool),
     r'liquidityUsd': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'liquidityUsd',
       type: IsarType.double,
     ),
     r'positionKey': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'positionKey',
       type: IsarType.string,
     ),
     r'tickLower': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'tickLower',
       type: IsarType.long,
     ),
     r'tickUpper': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'tickUpper',
       type: IsarType.long,
     ),
     r'token0Decimals': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'token0Decimals',
       type: IsarType.long,
     ),
     r'token0Symbol': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'token0Symbol',
       type: IsarType.string,
     ),
     r'token1Decimals': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'token1Decimals',
       type: IsarType.long,
     ),
     r'token1Symbol': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'token1Symbol',
       type: IsarType.string,
     ),
     r'tokenIdOnChain': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'tokenIdOnChain',
       type: IsarType.string,
     ),
     r'walletAddress': PropertySchema(
-      id: 22,
+      id: 23,
       name: r'walletAddress',
       type: IsarType.string,
     ),
@@ -207,16 +208,17 @@ void _poolPositionSerialize(
   writer.writeDouble(offsets[10], object.gasCostUsd);
   writer.writeDouble(offsets[11], object.initialLiquidityUsd);
   writer.writeBool(offsets[12], object.isClosed);
-  writer.writeDouble(offsets[13], object.liquidityUsd);
-  writer.writeString(offsets[14], object.positionKey);
-  writer.writeLong(offsets[15], object.tickLower);
-  writer.writeLong(offsets[16], object.tickUpper);
-  writer.writeLong(offsets[17], object.token0Decimals);
-  writer.writeString(offsets[18], object.token0Symbol);
-  writer.writeLong(offsets[19], object.token1Decimals);
-  writer.writeString(offsets[20], object.token1Symbol);
-  writer.writeString(offsets[21], object.tokenIdOnChain);
-  writer.writeString(offsets[22], object.walletAddress);
+  writer.writeBool(offsets[13], object.isV4);
+  writer.writeDouble(offsets[14], object.liquidityUsd);
+  writer.writeString(offsets[15], object.positionKey);
+  writer.writeLong(offsets[16], object.tickLower);
+  writer.writeLong(offsets[17], object.tickUpper);
+  writer.writeLong(offsets[18], object.token0Decimals);
+  writer.writeString(offsets[19], object.token0Symbol);
+  writer.writeLong(offsets[20], object.token1Decimals);
+  writer.writeString(offsets[21], object.token1Symbol);
+  writer.writeString(offsets[22], object.tokenIdOnChain);
+  writer.writeString(offsets[23], object.walletAddress);
 }
 
 PoolPosition _poolPositionDeserialize(
@@ -240,16 +242,17 @@ PoolPosition _poolPositionDeserialize(
   object.id = id;
   object.initialLiquidityUsd = reader.readDouble(offsets[11]);
   object.isClosed = reader.readBool(offsets[12]);
-  object.liquidityUsd = reader.readDouble(offsets[13]);
-  object.positionKey = reader.readString(offsets[14]);
-  object.tickLower = reader.readLong(offsets[15]);
-  object.tickUpper = reader.readLong(offsets[16]);
-  object.token0Decimals = reader.readLong(offsets[17]);
-  object.token0Symbol = reader.readString(offsets[18]);
-  object.token1Decimals = reader.readLong(offsets[19]);
-  object.token1Symbol = reader.readString(offsets[20]);
-  object.tokenIdOnChain = reader.readString(offsets[21]);
-  object.walletAddress = reader.readString(offsets[22]);
+  object.isV4 = reader.readBool(offsets[13]);
+  object.liquidityUsd = reader.readDouble(offsets[14]);
+  object.positionKey = reader.readString(offsets[15]);
+  object.tickLower = reader.readLong(offsets[16]);
+  object.tickUpper = reader.readLong(offsets[17]);
+  object.token0Decimals = reader.readLong(offsets[18]);
+  object.token0Symbol = reader.readString(offsets[19]);
+  object.token1Decimals = reader.readLong(offsets[20]);
+  object.token1Symbol = reader.readString(offsets[21]);
+  object.tokenIdOnChain = reader.readString(offsets[22]);
+  object.walletAddress = reader.readString(offsets[23]);
   return object;
 }
 
@@ -289,24 +292,26 @@ P _poolPositionDeserializeProp<P>(
     case 12:
       return (reader.readBool(offset)) as P;
     case 13:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 14:
-      return (reader.readString(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 15:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 16:
       return (reader.readLong(offset)) as P;
     case 17:
       return (reader.readLong(offset)) as P;
     case 18:
-      return (reader.readString(offset)) as P;
-    case 19:
       return (reader.readLong(offset)) as P;
-    case 20:
+    case 19:
       return (reader.readString(offset)) as P;
+    case 20:
+      return (reader.readLong(offset)) as P;
     case 21:
       return (reader.readString(offset)) as P;
     case 22:
+      return (reader.readString(offset)) as P;
+    case 23:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1555,6 +1560,16 @@ extension PoolPositionQueryFilter
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition> isV4EqualTo(
+    bool value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isV4', value: value),
+      );
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
   liquidityUsdEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
@@ -2731,6 +2746,18 @@ extension PoolPositionQuerySortBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByIsV4() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isV4', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByIsV4Desc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isV4', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByLiquidityUsd() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'liquidityUsd', Sort.asc);
@@ -3044,6 +3071,18 @@ extension PoolPositionQuerySortThenBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByIsV4() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isV4', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByIsV4Desc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isV4', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByLiquidityUsd() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'liquidityUsd', Sort.asc);
@@ -3261,6 +3300,12 @@ extension PoolPositionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QDistinct> distinctByIsV4() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isV4');
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QDistinct> distinctByLiquidityUsd() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'liquidityUsd');
@@ -3426,6 +3471,12 @@ extension PoolPositionQueryProperty
   QueryBuilder<PoolPosition, bool, QQueryOperations> isClosedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isClosed');
+    });
+  }
+
+  QueryBuilder<PoolPosition, bool, QQueryOperations> isV4Property() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isV4');
     });
   }
 

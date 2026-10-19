@@ -50,6 +50,19 @@ class EthRpcClient {
     return decoded;
   }
 
+  /// `eth_call` genérico (leitura on-chain, sem gastar gás) — usado para ler
+  /// posições Uniswap v4 diretamente do `PositionManager` (ver
+  /// `uniswap_v4_position_manager_client.dart`), já que o subgraph v4 não
+  /// guarda range/liquidez por posição. Devolve o resultado em hex, com o
+  /// prefixo `0x`.
+  Future<String> ethCall({required String to, required String data}) async {
+    final result = await _call('eth_call', [
+      {'to': to, 'data': data},
+      'latest',
+    ]);
+    return result['result'] as String;
+  }
+
   /// A que [Chain] este endpoint responde, via `eth_chainId` — `null` se
   /// não for uma das chains que a app conhece.
   Future<Chain?> detectChain() async {

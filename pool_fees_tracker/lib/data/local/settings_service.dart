@@ -60,6 +60,15 @@ class AppSettings {
   /// mudam de id ao longo do tempo, e indexadores podem deixar de servir um
   /// id antigo).
   final Map<Chain, String> subgraphIdOverrides;
+
+  /// O mesmo, mas para o subgraph Uniswap v4 — ver
+  /// [ChainInfo.uniswapV4SubgraphId].
+  final Map<Chain, String> v4SubgraphIdOverrides;
+
+  /// Override manual do endereço do contrato `PositionManager` v4 por chain
+  /// — ver [ChainInfo.uniswapV4PositionManagerAddress]. Avançado, normalmente
+  /// vazio.
+  final Map<Chain, String> v4PositionManagerOverrides;
   final String rpcUrl;
   final int refreshIntervalSeconds;
   final String currencyCode;
@@ -79,6 +88,8 @@ class AppSettings {
     this.selectedChains = const {Chain.ethereum},
     this.subgraphApiKey = '',
     this.subgraphIdOverrides = const {},
+    this.v4SubgraphIdOverrides = const {},
+    this.v4PositionManagerOverrides = const {},
     this.rpcUrl = '',
     this.refreshIntervalSeconds = 30,
     this.currencyCode = 'USD',
@@ -98,6 +109,8 @@ class AppSettings {
     Set<Chain>? selectedChains,
     String? subgraphApiKey,
     Map<Chain, String>? subgraphIdOverrides,
+    Map<Chain, String>? v4SubgraphIdOverrides,
+    Map<Chain, String>? v4PositionManagerOverrides,
     String? rpcUrl,
     int? refreshIntervalSeconds,
     String? currencyCode,
@@ -116,6 +129,10 @@ class AppSettings {
       selectedChains: selectedChains ?? this.selectedChains,
       subgraphApiKey: subgraphApiKey ?? this.subgraphApiKey,
       subgraphIdOverrides: subgraphIdOverrides ?? this.subgraphIdOverrides,
+      v4SubgraphIdOverrides:
+          v4SubgraphIdOverrides ?? this.v4SubgraphIdOverrides,
+      v4PositionManagerOverrides:
+          v4PositionManagerOverrides ?? this.v4PositionManagerOverrides,
       rpcUrl: rpcUrl ?? this.rpcUrl,
       refreshIntervalSeconds:
           refreshIntervalSeconds ?? this.refreshIntervalSeconds,
@@ -148,6 +165,9 @@ class SettingsService {
   static const _keySelectedChains = 'selected_chains';
   static const _keySubgraphApiKey = 'subgraph_api_key';
   static const _keySubgraphIdOverrides = 'subgraph_id_overrides';
+  static const _keyV4SubgraphIdOverrides = 'v4_subgraph_id_overrides';
+  static const _keyV4PositionManagerOverrides =
+      'v4_position_manager_overrides';
   static const _keyRpcUrl = 'rpc_url';
   static const _keyRefreshInterval = 'refresh_interval_seconds';
   static const _keyCurrency = 'currency_code';
@@ -195,8 +215,14 @@ class SettingsService {
           ? const {Chain.ethereum}
           : selectedChains,
       subgraphApiKey: _prefs.getString(_keySubgraphApiKey) ?? '',
-      subgraphIdOverrides: _decodeSubgraphIdOverrides(
+      subgraphIdOverrides: _decodeChainStringMap(
         _prefs.getString(_keySubgraphIdOverrides),
+      ),
+      v4SubgraphIdOverrides: _decodeChainStringMap(
+        _prefs.getString(_keyV4SubgraphIdOverrides),
+      ),
+      v4PositionManagerOverrides: _decodeChainStringMap(
+        _prefs.getString(_keyV4PositionManagerOverrides),
       ),
       rpcUrl: _prefs.getString(_keyRpcUrl) ?? '',
       refreshIntervalSeconds: _prefs.getInt(_keyRefreshInterval) ?? 30,
@@ -224,10 +250,15 @@ class SettingsService {
     await _prefs.setString(_keySubgraphApiKey, settings.subgraphApiKey);
     await _prefs.setString(
       _keySubgraphIdOverrides,
-      jsonEncode({
-        for (final entry in settings.subgraphIdOverrides.entries)
-          entry.key.name: entry.value,
-      }),
+      _encodeChainStringMap(settings.subgraphIdOverrides),
+    );
+    await _prefs.setString(
+      _keyV4SubgraphIdOverrides,
+      _encodeChainStringMap(settings.v4SubgraphIdOverrides),
+    );
+    await _prefs.setString(
+      _keyV4PositionManagerOverrides,
+      _encodeChainStringMap(settings.v4PositionManagerOverrides),
     );
     await _prefs.setString(_keyRpcUrl, settings.rpcUrl);
     await _prefs.setInt(_keyRefreshInterval, settings.refreshIntervalSeconds);
@@ -256,7 +287,13 @@ class SettingsService {
     await _prefs.setBool(_keyWeeklyDigestEnabled, settings.weeklyDigestEnabled);
   }
 
-  static Map<Chain, String> _decodeSubgraphIdOverrides(String? raw) {
+  static String _encodeChainStringMap(Map<Chain, String> map) {
+    return jsonEncode({
+      for (final entry in map.entries) entry.key.name: entry.value,
+    });
+  }
+
+  static Map<Chain, String> _decodeChainStringMap(String? raw) {
     if (raw == null || raw.isEmpty) return const {};
     try {
       final decoded = jsonDecode(raw) as Map<String, dynamic>;

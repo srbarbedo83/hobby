@@ -305,6 +305,81 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'O mesmo, mas para posições Uniswap v4 — precisam também do '
+              'endereço do contrato "PositionManager" dessa chain (só '
+              'Ethereum vem com um valor padrão por agora). Sem isto, '
+              'posições v4 só aparecem em chains suportadas de origem.',
+              style: TextStyle(color: palette.textTertiary, fontSize: 11),
+            ),
+          ),
+          _SettingsCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final chain in settings.selectedChains) ...[
+                  Text(
+                    chain.displayName,
+                    style: TextStyle(
+                      color: palette.textSecondary,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    key: ValueKey('v4_subgraph_override_${chain.name}'),
+                    initialValue: settings.v4SubgraphIdOverrides[chain] ?? '',
+                    decoration: InputDecoration(
+                      labelText: 'Id do subgraph v4',
+                      hintText: chain.uniswapV4SubgraphId ?? 'sem valor padrão',
+                    ),
+                    style: const TextStyle(fontSize: 12.5),
+                    onChanged: (v) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update((s) {
+                      final updated = {...s.v4SubgraphIdOverrides};
+                      if (v.isEmpty) {
+                        updated.remove(chain);
+                      } else {
+                        updated[chain] = v;
+                      }
+                      return s.copyWith(v4SubgraphIdOverrides: updated);
+                    }),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    key: ValueKey('v4_posm_override_${chain.name}'),
+                    initialValue:
+                        settings.v4PositionManagerOverrides[chain] ?? '',
+                    decoration: InputDecoration(
+                      labelText: 'Endereço do PositionManager v4',
+                      hintText:
+                          chain.uniswapV4PositionManagerAddress ??
+                          'sem valor padrão',
+                    ),
+                    style: const TextStyle(fontSize: 12.5),
+                    onChanged: (v) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update((s) {
+                      final updated = {...s.v4PositionManagerOverrides};
+                      if (v.isEmpty) {
+                        updated.remove(chain);
+                      } else {
+                        updated[chain] = v;
+                      }
+                      return s.copyWith(v4PositionManagerOverrides: updated);
+                    }),
+                  ),
+                  if (chain != settings.selectedChains.last)
+                    const SizedBox(height: 14),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 24),
           _SectionLabel('Intervalo de atualização'),
           const SizedBox(height: 8),

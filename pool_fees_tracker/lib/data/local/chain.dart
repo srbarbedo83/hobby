@@ -48,6 +48,26 @@ extension ChainInfo on Chain {
     Chain.polygon => '3hCPRGf4z88VC5rsBKU5AA9FBBq5nF3jbKJG7VZCbhjm',
   };
 
+  /// O mesmo para o subgraph Uniswap v4 — protocolo/arquitetura diferente
+  /// (singleton `PoolManager` + hooks), subgraph diferente. Só Ethereum por
+  /// agora (único confirmado); as outras chains ficam `null` até validarmos
+  /// os ids certos.
+  String? get uniswapV4SubgraphId => switch (this) {
+    Chain.ethereum => 'DiYPVdygkfjDWhbxGSqAQxwBKmfKnkWQojqeM2rkLb3G',
+    _ => null,
+  };
+
+  /// Endereço do contrato `PositionManager` da Uniswap v4 — ao contrário do
+  /// v3, o subgraph v4 não guarda range/liquidez por posição (só o
+  /// tokenId), por isso é preciso ler isto on-chain (ver
+  /// `uniswap_v4_position_manager_client.dart`). Por isso o modo Live v4
+  /// precisa sempre de um RPC URL configurado, ao contrário do v3 (onde o
+  /// RPC é só para custo de gás).
+  String? get uniswapV4PositionManagerAddress => switch (this) {
+    Chain.ethereum => '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e',
+    _ => null,
+  };
+
   /// EVM chain id (EIP-155) — usado para confirmar a que chain um RPC URL
   /// responde de facto (`eth_chainId`), já que o utilizador só configura
   /// um URL e pode ter várias chains selecionadas.
