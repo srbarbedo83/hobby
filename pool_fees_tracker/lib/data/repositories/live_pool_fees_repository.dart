@@ -304,12 +304,27 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       final now = DateTime.now();
       final mapped = <PoolPosition>[];
       final pricePoints = <PricePoint>[];
+      String? v3Diagnostic;
       String? v4Diagnostic;
 
       for (final entry in _clients.entries) {
         final chain = entry.key;
         final client = entry.value;
-        final result = await client.fetchPositions(owners);
+        // Uma chain v3 com o subgraph a falhar (schema errado, deployment
+        // sem indexadores, etc.) não pode travar o refresh inteiro — isso
+        // impedia até as OUTRAS chains e o v4 de correrem, já que este
+        // loop vem antes do bloco v4 mais abaixo.
+        ({List<RawPosition> positions, double ethPriceUsd})? result;
+        try {
+          result = await client.fetchPositions(owners);
+          debugPrint(
+            '[v4debug] v3 chain ${chain.name}: ${result.positions.length} posições',
+          );
+        } catch (e) {
+          debugPrint('[v4debug] v3 chain ${chain.name} FALHOU: $e');
+          v3Diagnostic = 'Subgraph v3 (${chain.displayName}): $e';
+          continue;
+        }
         _ethPriceUsdByChain[chain] = result.ethPriceUsd;
 
         for (final raw in result.positions) {
@@ -462,7 +477,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
 
       _positions = mapped;
       _lastUpdatedAt = now;
-      _lastError = v4Diagnostic;
+      // v4 é o que importa mostrar primeiro (é o que falta validar); o v3
+      // só aparece se o v4 estiver tudo bem, para não tapar o aviso mais
+      // relevante com um erro de uma chain que pode nem ter posições.
+      _lastError = v4Diagnostic ?? v3Diagnostic;
       _controller.add(List.unmodifiable(_positions));
     } catch (e, st) {
       // Nunca deixa um erro do subgraph/RPC (rede, API key inválida,
