@@ -65,6 +65,15 @@ class AppSettings {
   /// — ver [ChainInfo.uniswapV4PositionManagerAddress]. Avançado, normalmente
   /// vazio.
   final Map<Chain, String> v4PositionManagerOverrides;
+
+  /// RPC URL por chain — um único endpoint RPC só responde por UMA chain
+  /// (confirmada via `eth_chainId`), por isso uma wallet com posições v4
+  /// em mais do que uma chain precisa de um RPC por cada uma. [rpcUrl]
+  /// (o campo "antigo", de antes de existir mais que uma chain v4
+  /// suportada) continua a funcionar sem mudanças — a chain que o RPC lá
+  /// configurado detetar automaticamente usa esse valor como padrão, se
+  /// não houver aqui um override explícito para essa chain.
+  final Map<Chain, String> v4RpcUrlOverrides;
   final String rpcUrl;
   final int refreshIntervalSeconds;
   final String currencyCode;
@@ -85,6 +94,7 @@ class AppSettings {
     this.subgraphApiKey = '',
     this.subgraphIdOverrides = const {},
     this.v4PositionManagerOverrides = const {},
+    this.v4RpcUrlOverrides = const {},
     this.rpcUrl = '',
     this.refreshIntervalSeconds = 30,
     this.currencyCode = 'USD',
@@ -105,6 +115,7 @@ class AppSettings {
     String? subgraphApiKey,
     Map<Chain, String>? subgraphIdOverrides,
     Map<Chain, String>? v4PositionManagerOverrides,
+    Map<Chain, String>? v4RpcUrlOverrides,
     String? rpcUrl,
     int? refreshIntervalSeconds,
     String? currencyCode,
@@ -125,6 +136,7 @@ class AppSettings {
       subgraphIdOverrides: subgraphIdOverrides ?? this.subgraphIdOverrides,
       v4PositionManagerOverrides:
           v4PositionManagerOverrides ?? this.v4PositionManagerOverrides,
+      v4RpcUrlOverrides: v4RpcUrlOverrides ?? this.v4RpcUrlOverrides,
       rpcUrl: rpcUrl ?? this.rpcUrl,
       refreshIntervalSeconds:
           refreshIntervalSeconds ?? this.refreshIntervalSeconds,
@@ -159,6 +171,7 @@ class SettingsService {
   static const _keySubgraphIdOverrides = 'subgraph_id_overrides';
   static const _keyV4PositionManagerOverrides =
       'v4_position_manager_overrides';
+  static const _keyV4RpcUrlOverrides = 'v4_rpc_url_overrides';
   static const _keyRpcUrl = 'rpc_url';
   static const _keyRefreshInterval = 'refresh_interval_seconds';
   static const _keyCurrency = 'currency_code';
@@ -212,6 +225,9 @@ class SettingsService {
       v4PositionManagerOverrides: _decodeChainStringMap(
         _prefs.getString(_keyV4PositionManagerOverrides),
       ),
+      v4RpcUrlOverrides: _decodeChainStringMap(
+        _prefs.getString(_keyV4RpcUrlOverrides),
+      ),
       rpcUrl: _prefs.getString(_keyRpcUrl) ?? '',
       refreshIntervalSeconds: _prefs.getInt(_keyRefreshInterval) ?? 30,
       currencyCode: _prefs.getString(_keyCurrency) ?? 'USD',
@@ -243,6 +259,10 @@ class SettingsService {
     await _prefs.setString(
       _keyV4PositionManagerOverrides,
       _encodeChainStringMap(settings.v4PositionManagerOverrides),
+    );
+    await _prefs.setString(
+      _keyV4RpcUrlOverrides,
+      _encodeChainStringMap(settings.v4RpcUrlOverrides),
     );
     await _prefs.setString(_keyRpcUrl, settings.rpcUrl);
     await _prefs.setInt(_keyRefreshInterval, settings.refreshIntervalSeconds);

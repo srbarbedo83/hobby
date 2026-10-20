@@ -24,6 +24,7 @@ PoolFeesRepository createPoolFeesRepository({
       rpcUrl: settings.rpcUrl,
       subgraphIdOverrides: settings.subgraphIdOverrides,
       v4PositionManagerOverrides: settings.v4PositionManagerOverrides,
+      v4RpcUrlOverrides: settings.v4RpcUrlOverrides,
     );
   }
   return DemoPoolFeesRepository();

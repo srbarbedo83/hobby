@@ -83,7 +83,14 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   final Map<Chain, UniswapSubgraphClient> _clients;
   final Map<Chain, String> _v4PositionManagerAddresses;
   final Map<Chain, String> _v4StateViewAddresses;
-  final EthRpcClient? _rpcClient;
+  // Um RPC só responde por UMA chain (confirmada via `eth_chainId`) — uma
+  // wallet com posições v4 em mais do que uma chain precisa de um
+  // endpoint por cada. `_legacyRpcClient` é o campo "RPC URL" original
+  // (de antes de existir mais que uma chain v4 suportada): a chain que ele
+  // detetar automaticamente usa-o como padrão, SE não houver aqui um
+  // override explícito para essa chain — ver `_resolveRpcClientsByChain`.
+  final Map<Chain, EthRpcClient> _v4RpcClients;
+  final EthRpcClient? _legacyRpcClient;
   final CoinGeckoPriceClient _priceClient;
 
   List<PoolPosition> _positions = [];
@@ -119,6 +126,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     String rpcUrl = '',
     Map<Chain, String> subgraphIdOverrides = const {},
     Map<Chain, String> v4PositionManagerOverrides = const {},
+    Map<Chain, String> v4RpcUrlOverrides = const {},
     Map<Chain, UniswapSubgraphClient>? clients,
     EthRpcClient? rpcClient,
     CoinGeckoPriceClient? priceClient,
@@ -148,7 +156,12 @@ class LivePoolFeesRepository implements PoolFeesRepository {
            if (chain.uniswapV4StateViewAddress != null)
              chain: chain.uniswapV4StateViewAddress!,
        },
-       _rpcClient =
+       _v4RpcClients = {
+         for (final entry in v4RpcUrlOverrides.entries)
+           if (entry.value.isNotEmpty)
+             entry.key: EthRpcClient(rpcUrl: entry.value),
+       },
+       _legacyRpcClient =
            rpcClient ?? (rpcUrl.isEmpty ? null : EthRpcClient(rpcUrl: rpcUrl)),
        _priceClient = priceClient ?? CoinGeckoPriceClient() {
     _loadCachedThenRefresh();
@@ -262,20 +275,35 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         .toList();
   }
 
+  /// Combina os RPCs explícitos por chain (`v4RpcUrlOverrides`) com o
+  /// campo "RPC URL" legado, que serve de padrão para a chain que
+  /// detetar automaticamente — ver nota nos campos da classe. Memoizado
+  /// através de `_rpcChainFuture` (a deteção só corre uma vez).
+  Future<Map<Chain, EthRpcClient>> _resolveRpcClientsByChain() async {
+    final result = <Chain, EthRpcClient>{..._v4RpcClients};
+    final legacy = _legacyRpcClient;
+    if (legacy != null) {
+      final legacyChain = await (_rpcChainFuture ??= legacy.detectChain());
+      if (legacyChain != null && !result.containsKey(legacyChain)) {
+        result[legacyChain] = legacy;
+      }
+    }
+    return result;
+  }
+
   /// Custo real de gás de uma posição, em USD — `null` quando não há como
-  /// calculá-lo (sem RPC configurado, RPC de outra chain, ou Polygon). Ver
-  /// a nota sobre `gasCostUsd` no topo do ficheiro.
+  /// calculá-lo (sem RPC configurado para a chain da posição, ou Polygon).
+  /// Ver a nota sobre `gasCostUsd` no topo do ficheiro.
   @override
   Future<double?> getGasCostUsd(String positionKey) async {
-    final rpcClient = _rpcClient;
     final positionChain = _chainByPositionKey[positionKey];
-    if (rpcClient == null || positionChain == null) return null;
+    if (positionChain == null) return null;
     // O gás é pago em MATIC em Polygon, não em ETH — não temos uma fonte
     // de preço de MATIC ligada, por isso não arriscamos um número errado.
     if (positionChain == Chain.polygon) return null;
 
-    final rpcChain = await (_rpcChainFuture ??= rpcClient.detectChain());
-    if (rpcChain != positionChain) return null;
+    final rpcClient = (await _resolveRpcClientsByChain())[positionChain];
+    if (rpcClient == null) return null;
 
     final events = await getEvents(positionKey);
     final txHashes = events
@@ -370,44 +398,43 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       // tick atual da pool e preço dos tokens vêm todos do RPC +
       // CoinGecko. Cada passo que não encontra nada guarda uma mensagem
       // explicando porquê, em vez de ficar silencioso.
-      final rpcClient = _rpcClient;
+      final rpcClientsByChain = await _resolveRpcClientsByChain();
       debugPrint(
         '[v4debug] _v4PositionManagerAddresses: ${_v4PositionManagerAddresses.keys}, '
-        'rpcClient configurado: ${rpcClient != null}',
+        'rpcClientsByChain: ${rpcClientsByChain.keys}',
       );
       if (_v4PositionManagerAddresses.isEmpty) {
         // Nenhuma chain selecionada tem suporte v4 configurado — nem vale
         // a pena mencionar, não é um estado de erro.
-      } else if (rpcClient == null) {
+      } else if (rpcClientsByChain.isEmpty) {
         v4Diagnostic =
-            'Modo Live v4: sem RPC URL configurado nas Definições — é '
-            'sempre necessário para ler posições v4 (ao contrário do v3).';
+            'Modo Live v4: sem nenhum RPC URL configurado nas Definições — '
+            'é sempre necessário para ler posições v4 (ao contrário do v3).';
       } else {
-        Chain? rpcChain;
-        try {
-          rpcChain = await (_rpcChainFuture ??= rpcClient.detectChain());
-          debugPrint('[v4debug] detectChain() devolveu: $rpcChain');
-        } catch (e, st) {
-          debugPrint('[v4debug] detectChain() FALHOU: $e\n$st');
-          rethrow;
-        }
-        if (rpcChain == null) {
+        // Uma chain com RPC configurado E suporte v4 conhecido — cada uma
+        // é tentada independentemente (um RPC a falhar não bloqueia as
+        // outras chains, tal como o v3 acima).
+        final v4Chains = _v4PositionManagerAddresses.keys
+            .where((c) => rpcClientsByChain.containsKey(c))
+            .toList();
+        if (v4Chains.isEmpty) {
           v4Diagnostic =
-              'Modo Live v4: o RPC URL configurado não respondeu com uma '
-              'chain reconhecida (confirma que é mesmo Ethereum Mainnet).';
+              'Modo Live v4: nenhuma chain com RPC configurado tem suporte '
+              'v4 (ver Definições → RPC URL por chain).';
         } else {
-          final chain = rpcChain;
-          final positionManagerAddress = _v4PositionManagerAddresses[chain];
-          final stateViewAddress = _v4StateViewAddresses[chain];
-          debugPrint(
-            '[v4debug] positionManagerAddress: $positionManagerAddress, '
-            'stateViewAddress: $stateViewAddress',
-          );
-          if (positionManagerAddress == null || stateViewAddress == null) {
-            v4Diagnostic =
-                'Modo Live v4: o RPC configurado responde pela chain '
-                '${chain.displayName}, que não tem suporte v4 configurado.';
-          } else {
+          var totalTokenPositions = 0;
+          var totalMapped = 0;
+          Object? lastV4Error;
+          for (final chain in v4Chains) {
+            final rpcClient = rpcClientsByChain[chain]!;
+            final positionManagerAddress =
+                _v4PositionManagerAddresses[chain]!;
+            final stateViewAddress = _v4StateViewAddresses[chain];
+            if (stateViewAddress == null) {
+              lastV4Error =
+                  'sem endereço StateView configurado para ${chain.displayName}';
+              continue;
+            }
             final posManager = UniswapV4PositionManagerClient(
               rpcClient: rpcClient,
               positionManagerAddress: positionManagerAddress,
@@ -439,36 +466,45 @@ class LivePoolFeesRepository implements PoolFeesRepository {
               );
               tokenPositions = perOwner.expand((l) => l).toList();
               debugPrint(
-                '[v4debug] fetchOwnedTokenIds (RPC) devolveu ${tokenPositions.length} '
-                'posições: ${tokenPositions.map((p) => p.tokenId).toList()}',
+                '[v4debug] ${chain.name}: fetchOwnedTokenIds (RPC) devolveu '
+                '${tokenPositions.length} posições: '
+                '${tokenPositions.map((p) => p.tokenId).toList()}',
               );
             } catch (e, st) {
-              debugPrint('[v4debug] fetchOwnedTokenIds FALHOU: $e\n$st');
-              rethrow;
-            }
-            if (tokenPositions.isEmpty) {
-              v4Diagnostic =
-                  'Modo Live v4: não foi encontrada nenhuma posição v4 '
-                  '(chain ${chain.displayName}) para esta wallet.';
-            } else {
-              final result = await _mapV4Positions(
-                chain: chain,
-                tokenPositions: tokenPositions,
-                posManager: posManager,
-                poolStateClient: poolStateClient,
-              );
-              mapped.addAll(result.positions);
               debugPrint(
-                '[v4debug] _mapV4Positions: ${result.positions.length}/${tokenPositions.length} '
-                'mapeadas, lastError=${result.lastError}',
+                '[v4debug] ${chain.name}: fetchOwnedTokenIds FALHOU: $e\n$st',
               );
-              if (result.positions.isEmpty) {
-                v4Diagnostic =
-                    'Modo Live v4: encontradas ${tokenPositions.length} '
-                    'posições na wallet, mas nenhuma pôde ser lida '
-                    '(${result.lastError ?? "erro desconhecido"}).';
-              }
+              lastV4Error = e;
+              continue;
             }
+            totalTokenPositions += tokenPositions.length;
+            if (tokenPositions.isEmpty) continue;
+
+            final result = await _mapV4Positions(
+              chain: chain,
+              tokenPositions: tokenPositions,
+              posManager: posManager,
+              poolStateClient: poolStateClient,
+            );
+            mapped.addAll(result.positions);
+            totalMapped += result.positions.length;
+            if (result.lastError != null) lastV4Error = result.lastError;
+            debugPrint(
+              '[v4debug] ${chain.name}: _mapV4Positions '
+              '${result.positions.length}/${tokenPositions.length} mapeadas, '
+              'lastError=${result.lastError}',
+            );
+          }
+          if (totalTokenPositions == 0) {
+            v4Diagnostic =
+                'Modo Live v4: não foi encontrada nenhuma posição v4 para '
+                'esta wallet (chains verificadas: '
+                '${v4Chains.map((c) => c.displayName).join(", ")}).';
+          } else if (totalMapped == 0) {
+            v4Diagnostic =
+                'Modo Live v4: encontradas $totalTokenPositions posições na '
+                'wallet, mas nenhuma pôde ser lida '
+                '(${lastV4Error ?? "erro desconhecido"}).';
           }
         }
       }
@@ -521,7 +557,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     for (final client in _clients.values) {
       client.dispose();
     }
-    _rpcClient?.dispose();
+    for (final client in _v4RpcClients.values) {
+      client.dispose();
+    }
+    _legacyRpcClient?.dispose();
     _priceClient.dispose();
   }
 

@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.12+13 — fix rate limit CoinGecko (preços v4 com cache)';
+const String appBuildLabel = 'v1.0.13+14 — v4 no Arbitrum + RPC URL por chain';

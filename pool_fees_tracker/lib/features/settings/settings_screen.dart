@@ -313,9 +313,14 @@ class SettingsScreen extends ConsumerWidget {
             child: Text(
               'O mesmo, mas para posições Uniswap v4 — lidas diretamente '
               'dos contratos on-chain (sem subgraph, que se mostrou pouco '
-              'fiável para v4). Só Ethereum vem com um valor padrão por '
-              'agora; sem isto, posições v4 só aparecem em chains '
-              'suportadas de origem.',
+              'fiável para v4). Ethereum e Arbitrum já vêm com valores '
+              'padrão; sem isto, posições v4 só aparecem em chains '
+              'suportadas de origem. Cada chain v4 precisa também do seu '
+              'próprio RPC URL — um RPC só responde por UMA chain, por '
+              'isso a wallet que tem posições em mais do que uma chain '
+              'precisa de um endpoint por cada (o campo "RPC URL" acima '
+              'serve como padrão para a chain que ele detetar '
+              'automaticamente; as outras chains precisam de um aqui).',
               style: TextStyle(color: palette.textTertiary, fontSize: 11),
             ),
           ),
@@ -354,6 +359,27 @@ class SettingsScreen extends ConsumerWidget {
                         updated[chain] = v;
                       }
                       return s.copyWith(v4PositionManagerOverrides: updated);
+                    }),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    key: ValueKey('v4_rpc_url_override_${chain.name}'),
+                    initialValue: settings.v4RpcUrlOverrides[chain] ?? '',
+                    decoration: const InputDecoration(
+                      labelText: 'RPC URL desta chain (obrigatório para v4)',
+                      hintText: 'ex.: https://arb-mainnet.g.alchemy.com/v2/...',
+                    ),
+                    style: const TextStyle(fontSize: 12.5),
+                    onChanged: (v) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update((s) {
+                      final updated = {...s.v4RpcUrlOverrides};
+                      if (v.isEmpty) {
+                        updated.remove(chain);
+                      } else {
+                        updated[chain] = v;
+                      }
+                      return s.copyWith(v4RpcUrlOverrides: updated);
                     }),
                   ),
                   if (chain != settings.selectedChains.last)

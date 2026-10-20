@@ -52,21 +52,24 @@ extension ChainInfo on Chain {
   /// v3, não há subgraph fiável para posições v4 (ver nota em
   /// `uniswap_v4_position_manager_client.dart`: mostrou-se globalmente não
   /// fiável nesta sessão), por isso tudo é lido on-chain. Por isso o modo
-  /// Live v4 precisa sempre de um RPC URL configurado, ao contrário do v3
-  /// (onde o RPC é só para custo de gás). Só Ethereum por agora (único
-  /// confirmado); as outras chains ficam `null` até validarmos os
-  /// endereços certos.
+  /// Live v4 precisa sempre de um RPC URL configurado para a MESMA chain
+  /// (ver `AppSettings.v4RpcUrlOverrides`), ao contrário do v3 (onde o RPC
+  /// é só para custo de gás). Confirmado para Ethereum e Arbitrum (via
+  /// Arbiscan + a página oficial de deployments da Uniswap); as outras
+  /// chains ficam `null` até validarmos os endereços certos.
   String? get uniswapV4PositionManagerAddress => switch (this) {
     Chain.ethereum => '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e',
+    Chain.arbitrum => '0xd88f38f930b7952f2db2432cb002e7abbf3dd869',
     _ => null,
   };
 
   /// Endereço do contrato `StateView` da Uniswap v4 — lens on-chain para
   /// ler o estado de uma pool (tick atual, preço) sem precisar de um
-  /// subgraph. Confirmado para Ethereum via a página oficial de
-  /// deployments da Uniswap (https://developers.uniswap.org/docs/protocols/v4/deployments).
+  /// subgraph. Confirmado via a página oficial de deployments da Uniswap
+  /// (https://developers.uniswap.org/docs/protocols/v4/deployments).
   String? get uniswapV4StateViewAddress => switch (this) {
     Chain.ethereum => '0x7ffe42c4a5deea5b0fec41c94c136cf115597227',
+    Chain.arbitrum => '0x76fd297e2d437cd7f76d50f01afe6160f86e9990',
     _ => null,
   };
 
@@ -75,6 +78,7 @@ extension ChainInfo on Chain {
   /// subgraph fiável para isso (ver `uniswapV4PositionManagerAddress`).
   String? get coingeckoPlatformId => switch (this) {
     Chain.ethereum => 'ethereum',
+    Chain.arbitrum => 'arbitrum-one',
     _ => null,
   };
 
