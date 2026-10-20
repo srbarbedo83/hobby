@@ -4,6 +4,24 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Assinatura de release fixa, lida de variáveis de ambiente (nunca de
+// ficheiros no repositório) — o CI decifra o keystore a partir de um GitHub
+// Actions secret para um ficheiro temporário fora do checkout. Sem isto,
+// cada build do CI assinava com uma debug key efémera diferente, e o
+// Android recusa instalar por cima de uma versão assinada com outra chave
+// ("conflito com versão existente"), obrigando a desinstalar sempre antes
+// de atualizar. Sem as variáveis definidas (dev local, fork sem acesso aos
+// secrets), cai de volta para a debug key, como antes.
+val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+val releaseKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+val hasReleaseSigning =
+    !releaseKeystorePath.isNullOrBlank() &&
+        !releaseKeystorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
+
 android {
     namespace = "com.srbarbedo.pool_fees_tracker"
     compileSdk = flutter.compileSdkVersion
@@ -32,11 +50,26 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                // Sem secrets configurados (dev local, fork): mantém o
+                // comportamento antigo para não bloquear `flutter run --release`.
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
