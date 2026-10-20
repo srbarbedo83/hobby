@@ -53,19 +53,6 @@ class UniswapV4PositionManagerClient {
   static const _selectorGetPositionLiquidity = '0x1efeed33';
   static const _selectorOwnerOf = '0x6352211e';
 
-  /// `keccak256("Transfer(address,address,uint256)")` — o mesmo evento
-  /// ERC-721 standard em qualquer NFT, não específico da Uniswap.
-  /// Verificado localmente (não copiado de uma fonte terceira) durante o
-  /// desenvolvimento desta funcionalidade.
-  static const _transferEventTopic =
-      '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-
-  /// Bloco a partir do qual vale a pena procurar — bastante antes do
-  /// lançamento do v4 em mainnet (~janeiro 2025), só para não percorrer a
-  /// chain toda desde o genesis. Sobrestimar não tem custo, só devolve
-  /// blocos vazios mais depressa.
-  static final _searchFromBlock = BigInt.from(21000000);
-
   final EthRpcClient rpcClient;
   final String positionManagerAddress;
 
@@ -74,60 +61,34 @@ class UniswapV4PositionManagerClient {
     required this.positionManagerAddress,
   });
 
-  /// Descobre os NFTs de posição v4 que `owner` detém atualmente,
-  /// diretamente on-chain via `eth_getLogs` — sem depender do subgraph v4
-  /// (ver nota no topo da classe: o subgraph v4 tem-se mostrado pouco
-  /// fiável em produção — deployments sem indexadores saudáveis, ou com o
-  /// schema errado). Mais lento à primeira vez (percorre o histórico de
-  /// blocos em pedaços), mas não depende de nenhum serviço terceiro.
+  /// Descobre os NFTs de posição v4 que `owner` detém atualmente, via
+  /// `alchemy_getAssetTransfers` — sem depender do subgraph v4 (que se
+  /// mostrou pouco fiável: indexadores sem atestação, ou schema errado
+  /// noutro deployment) nem de `eth_getLogs` (o plano gratuito da Alchemy
+  /// limita-o a 10 blocos por pedido, inviável para meses de histórico).
   ///
-  /// Não implementa `ERC721Enumerable` (nem o `PositionManager` o faz —
-  /// ver nota em `Uniswap/v4-sdk`), por isso a única forma de descobrir
-  /// tokenIds sem um indexador é via o histórico de eventos `Transfer`.
+  /// O `PositionManager` não implementa `ERC721Enumerable` (ver nota em
+  /// `Uniswap/v4-sdk`), por isso não há como listar tokenIds sem olhar
+  /// para o histórico de transferências dalguma forma.
   Future<List<V4OwnedToken>> fetchOwnedTokenIds(String owner) async {
-    final latest = await rpcClient.blockNumber();
-    final paddedOwner =
-        '0x${owner.toLowerCase().substring(2).padLeft(64, '0')}';
-
-    // Pedaços em paralelo (não sequenciais) para não demorar minutos numa
-    // chain com ~1-2 anos de histórico desde o lançamento do v4.
-    const chunkBlocks = 100000;
-    final chunks = <({BigInt from, BigInt to})>[];
-    var from = _searchFromBlock;
-    while (from <= latest) {
-      final to = (from + BigInt.from(chunkBlocks)) > latest
-          ? latest
-          : from + BigInt.from(chunkBlocks);
-      chunks.add((from: from, to: to));
-      from = to + BigInt.one;
-    }
-
-    final chunkResults = await Future.wait(
-      chunks.map(
-        (c) => rpcClient.getLogs(
-          address: positionManagerAddress,
-          // [evento, from (qualquer), to (o owner), tokenId (qualquer)]
-          topics: [_transferEventTopic, null, paddedOwner, null],
-          fromBlock: c.from,
-          toBlock: c.to,
-        ),
-      ),
+    final transfers = await rpcClient.getAssetTransfers(
+      toAddress: owner,
+      contractAddresses: [positionManagerAddress],
     );
-    final logs = chunkResults.expand((l) => l).toList();
 
-    // Pode haver mais do que um `Transfer` para o mesmo tokenId (ex.:
-    // comprado em 2ª mão) — fica só o bloco mais antigo em que este
-    // endereço o recebeu, como aproximação da data de "abertura" da
-    // posição (a mesma aproximação que o resto da app já assume quando a
-    // info exata não está disponível).
+    // Pode haver mais do que uma transferência recebida para o mesmo
+    // tokenId (ex.: comprado em 2ª mão) — fica só o bloco mais antigo,
+    // como aproximação da data de "abertura" da posição (a mesma
+    // aproximação que o resto da app já assume quando a info exata não
+    // está disponível).
     final earliestBlockByTokenId = <BigInt, BigInt>{};
-    for (final log in logs) {
-      final topics = (log['topics'] as List).cast<String>();
-      final tokenId = BigInt.parse(topics[3].substring(2), radix: 16);
-      final blockNumber = BigInt.parse(
-        (log['blockNumber'] as String).substring(2),
-        radix: 16,
-      );
+    for (final transfer in transfers) {
+      final tokenIdHex =
+          (transfer['tokenId'] ?? transfer['erc721TokenId']) as String?;
+      final blockNumHex = transfer['blockNum'] as String?;
+      if (tokenIdHex == null || blockNumHex == null) continue;
+      final tokenId = BigInt.parse(tokenIdHex.substring(2), radix: 16);
+      final blockNumber = BigInt.parse(blockNumHex.substring(2), radix: 16);
       final current = earliestBlockByTokenId[tokenId];
       if (current == null || blockNumber < current) {
         earliestBlockByTokenId[tokenId] = blockNumber;

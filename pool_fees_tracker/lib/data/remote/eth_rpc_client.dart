@@ -76,33 +76,38 @@ class EthRpcClient {
     return chainFromEvmChainId(id);
   }
 
-  /// Último bloco conhecido pela chain — usado para delimitar o intervalo
-  /// de `eth_getLogs` (ver `getLogs`).
-  Future<BigInt> blockNumber() async {
-    final result = await _call('eth_blockNumber', const []);
-    return parseHexBigInt(result['result'] as String?);
-  }
-
-  /// `eth_getLogs` — usado para descobrir, diretamente on-chain, que NFTs
-  /// (`Transfer` ERC-721) uma wallet recebeu de um contrato (ver
-  /// `uniswap_v4_position_manager_client.dart`). Existe porque o subgraph
-  /// v4 tem-se mostrado pouco fiável (ver nota lá) — isto não depende de
-  /// nenhum serviço terceiro, só do próprio nó RPC.
-  Future<List<Map<String, dynamic>>> getLogs({
-    required String address,
-    required List<String?> topics,
-    required BigInt fromBlock,
-    required BigInt toBlock,
+  /// `alchemy_getAssetTransfers` — extensão específica da Alchemy (não é
+  /// `eth_getLogs` standard) para descobrir que NFTs uma wallet recebeu de
+  /// um contrato, sem o limite de "10 blocos por pedido" que o plano
+  /// gratuito impõe ao `eth_getLogs` normal (confirmado via logcat —
+  /// `eth_getLogs` falhava sempre com esse erro). Só funciona com um RPC
+  /// da Alchemy; outros fornecedores não têm este método (o pedido falha
+  /// com "method not found", visível no banner de erro como qualquer
+  /// outro). Pagina automaticamente até não haver mais `pageKey`.
+  Future<List<Map<String, dynamic>>> getAssetTransfers({
+    required String toAddress,
+    required List<String> contractAddresses,
   }) async {
-    final result = await _call('eth_getLogs', [
-      {
-        'address': address,
-        'topics': topics,
-        'fromBlock': '0x${fromBlock.toRadixString(16)}',
-        'toBlock': '0x${toBlock.toRadixString(16)}',
-      },
-    ]);
-    return (result['result'] as List).cast<Map<String, dynamic>>();
+    final transfers = <Map<String, dynamic>>[];
+    String? pageKey;
+    do {
+      final params = <String, dynamic>{
+        'fromBlock': '0x0',
+        'toBlock': 'latest',
+        'toAddress': toAddress,
+        'contractAddresses': contractAddresses,
+        'category': ['erc721'],
+        'withMetadata': false,
+        if (pageKey != null) 'pageKey': pageKey,
+      };
+      final result = await _call('alchemy_getAssetTransfers', [params]);
+      final data = result['result'] as Map<String, dynamic>;
+      transfers.addAll(
+        (data['transfers'] as List).cast<Map<String, dynamic>>(),
+      );
+      pageKey = data['pageKey'] as String?;
+    } while (pageKey != null);
+    return transfers;
   }
 
   /// Timestamp (UTC) de um bloco, via `eth_getBlockByNumber` — usado para

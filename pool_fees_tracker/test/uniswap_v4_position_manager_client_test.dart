@@ -99,48 +99,42 @@ void main() {
   group('UniswapV4PositionManagerClient.fetchOwnedTokenIds', () {
     const owner = '0x92142fb74432857e5c1a98bcac1730a277f50b6a';
     const posManagerAddress = '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e';
-    const latestBlockHex = '0x1407134'; // 21000500, acima do searchFromBlock
 
-    Map<String, dynamic> transferLog({
+    Map<String, dynamic> assetTransfer({
       required BigInt tokenId,
       required int blockNumber,
     }) => {
-      'topics': [
-        '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
-        _addrWord('0x0000000000000000000000000000000000000000'),
-        _addrWord(owner),
-        '0x${tokenId.toRadixString(16).padLeft(64, '0')}',
-      ],
-      'blockNumber': '0x${blockNumber.toRadixString(16)}',
+      'tokenId': '0x${tokenId.toRadixString(16)}',
+      'blockNum': '0x${blockNumber.toRadixString(16)}',
     };
 
     test(
-      'descobre tokenIds via Transfer logs e confirma posse atual via ownerOf',
+      'descobre tokenIds via alchemy_getAssetTransfers e confirma posse atual via ownerOf',
       () async {
         final mockClient = MockClient((request) async {
           final body = jsonDecode(request.body) as Map<String, dynamic>;
           final method = body['method'] as String;
           switch (method) {
-            case 'eth_blockNumber':
+            case 'alchemy_getAssetTransfers':
               return http.Response(
                 jsonEncode({
                   'jsonrpc': '2.0',
                   'id': 1,
-                  'result': latestBlockHex,
-                }),
-                200,
-              );
-            case 'eth_getLogs':
-              return http.Response(
-                jsonEncode({
-                  'jsonrpc': '2.0',
-                  'id': 1,
-                  'result': [
-                    transferLog(tokenId: BigInt.from(1), blockNumber: 21000100),
-                    // tokenId 2 foi transferido para fora entretanto — não
-                    // deve aparecer no resultado final.
-                    transferLog(tokenId: BigInt.from(2), blockNumber: 21000200),
-                  ],
+                  'result': {
+                    'transfers': [
+                      assetTransfer(
+                        tokenId: BigInt.from(1),
+                        blockNumber: 21000100,
+                      ),
+                      // tokenId 2 foi transferido para fora entretanto —
+                      // não deve aparecer no resultado final.
+                      assetTransfer(
+                        tokenId: BigInt.from(2),
+                        blockNumber: 21000200,
+                      ),
+                    ],
+                    'pageKey': null,
+                  },
                 }),
                 200,
               );
