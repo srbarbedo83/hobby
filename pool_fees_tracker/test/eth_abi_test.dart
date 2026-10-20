@@ -53,4 +53,46 @@ void main() {
       expect(decodeInt24(word), -1);
     });
   });
+
+  group('hexToBytes / bytesToHex', () {
+    test('ida e volta preserva os bytes', () {
+      final bytes = hexToBytes('0xdeadbeef');
+      expect(bytes, [0xde, 0xad, 0xbe, 0xef]);
+      expect(bytesToHex(bytes), 'deadbeef');
+    });
+  });
+
+  group('encodeAddressWord / encodeUintWord', () {
+    test('endereço fica right-aligned numa palavra de 32 bytes', () {
+      final word = encodeAddressWord(
+        '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e',
+      );
+      expect(word.length, 32);
+      expect(
+        bytesToHex(word),
+        '${'0' * 24}bd216513d74c8cf14cf4747e6aaa6420ff64ee9e',
+      );
+    });
+
+    test('uint fica left-padded numa palavra de 32 bytes', () {
+      final word = encodeUintWord(BigInt.from(3000));
+      expect(word.length, 32);
+      expect(bytesToHex(word).endsWith('bb8'), true);
+    });
+  });
+
+  group('decodeDynamicString', () {
+    test('descodifica uma string curta (ex.: símbolo de token)', () {
+      // offset=0x20, length=4, "USDC" (0x55534443) padded a 32 bytes.
+      final offset = '20'.padLeft(64, '0');
+      final length = '4'.padLeft(64, '0');
+      final data = '55534443'.padRight(64, '0');
+      final result = decodeDynamicString('0x$offset$length$data');
+      expect(result, 'USDC');
+    });
+
+    test('resposta curta demais devolve string vazia', () {
+      expect(decodeDynamicString('0x${'0' * 64}'), '');
+    });
+  });
 }

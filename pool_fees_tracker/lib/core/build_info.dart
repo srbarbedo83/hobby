@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.10+11 — v4 usa alchemy_getAssetTransfers (sem limite de 10 blocos)';
+const String appBuildLabel = 'v1.0.11+12 — v4 100% on-chain + CoinGecko (sem subgraph)';

@@ -11,10 +11,12 @@ import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
 import '../local/position_event.dart';
 import '../local/price_point.dart';
+import '../remote/coingecko_price_client.dart';
+import '../remote/erc20_metadata_client.dart';
 import '../remote/eth_rpc_client.dart';
 import '../remote/uniswap_subgraph_client.dart';
+import '../remote/uniswap_v4_pool_state_client.dart';
 import '../remote/uniswap_v4_position_manager_client.dart';
-import '../remote/uniswap_v4_subgraph_client.dart';
 import 'pool_fees_repository.dart';
 import 'wallet_repository.dart';
 
@@ -79,9 +81,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   final WalletRepository _walletRepository;
   final Isar _isar;
   final Map<Chain, UniswapSubgraphClient> _clients;
-  final Map<Chain, UniswapV4SubgraphClient> _v4Clients;
   final Map<Chain, String> _v4PositionManagerAddresses;
+  final Map<Chain, String> _v4StateViewAddresses;
   final EthRpcClient? _rpcClient;
+  final CoinGeckoPriceClient _priceClient;
 
   List<PoolPosition> _positions = [];
   final Map<String, String> _poolIdByPositionKey = {};
@@ -102,11 +105,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     required Isar isar,
     String rpcUrl = '',
     Map<Chain, String> subgraphIdOverrides = const {},
-    Map<Chain, String> v4SubgraphIdOverrides = const {},
     Map<Chain, String> v4PositionManagerOverrides = const {},
     Map<Chain, UniswapSubgraphClient>? clients,
-    Map<Chain, UniswapV4SubgraphClient>? v4Clients,
     EthRpcClient? rpcClient,
+    CoinGeckoPriceClient? priceClient,
   }) : _walletRepository = walletRepository,
        _isar = isar,
        _clients =
@@ -119,20 +121,6 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                  subgraphIdOverride: subgraphIdOverrides[chain],
                ),
            },
-       // Só para as chains com um id de subgraph v4 conhecido (padrão ou
-       // override) — ver nota em `ChainInfo.uniswapV4SubgraphId`.
-       _v4Clients =
-           v4Clients ??
-           {
-             for (final chain in chains)
-               if (v4SubgraphIdOverrides[chain] != null ||
-                   chain.uniswapV4SubgraphId != null)
-                 chain: UniswapV4SubgraphClient(
-                   chain: chain,
-                   apiKey: apiKey,
-                   subgraphIdOverride: v4SubgraphIdOverrides[chain],
-                 ),
-           },
        _v4PositionManagerAddresses = {
          for (final chain in chains)
            if ((v4PositionManagerOverrides[chain] ??
@@ -142,8 +130,14 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                  v4PositionManagerOverrides[chain] ??
                  chain.uniswapV4PositionManagerAddress!,
        },
+       _v4StateViewAddresses = {
+         for (final chain in chains)
+           if (chain.uniswapV4StateViewAddress != null)
+             chain: chain.uniswapV4StateViewAddress!,
+       },
        _rpcClient =
-           rpcClient ?? (rpcUrl.isEmpty ? null : EthRpcClient(rpcUrl: rpcUrl)) {
+           rpcClient ?? (rpcUrl.isEmpty ? null : EthRpcClient(rpcUrl: rpcUrl)),
+       _priceClient = priceClient ?? CoinGeckoPriceClient() {
     _loadCachedThenRefresh();
   }
 
@@ -355,18 +349,20 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         }
       }
 
-      // Posições v4: o subgraph v4 não guarda range/liquidez por posição
-      // (só o tokenId), por isso é preciso um RPC da MESMA chain para ler
-      // isso do contrato `PositionManager` — ver nota no topo do ficheiro
-      // e em `uniswap_v4_subgraph_client.dart`. Cada passo que não encontra
-      // nada guarda uma mensagem explicando porquê, em vez de ficar
-      // silencioso — já tivemos demasiadas rondas de "não aparece nada e
-      // não sei porquê" nesta app para repetir o erro aqui.
+      // Posições v4: tudo lido on-chain (ver nota no topo do ficheiro) —
+      // o subgraph v4 mostrou-se globalmente não fiável nesta sessão
+      // ("bad indexers" ou timeout, em TODAS as posições testadas da
+      // wallet real do utilizador, não um caso raro), por isso deixou de
+      // ser usado para fosse o que fosse em v4: tokenIds, range/liquidez,
+      // tick atual da pool e preço dos tokens vêm todos do RPC +
+      // CoinGecko. Cada passo que não encontra nada guarda uma mensagem
+      // explicando porquê, em vez de ficar silencioso.
       final rpcClient = _rpcClient;
       debugPrint(
-        '[v4debug] _v4Clients: ${_v4Clients.keys}, rpcClient configurado: ${rpcClient != null}',
+        '[v4debug] _v4PositionManagerAddresses: ${_v4PositionManagerAddresses.keys}, '
+        'rpcClient configurado: ${rpcClient != null}',
       );
-      if (_v4Clients.isEmpty) {
+      if (_v4PositionManagerAddresses.isEmpty) {
         // Nenhuma chain selecionada tem suporte v4 configurado — nem vale
         // a pena mencionar, não é um estado de erro.
       } else if (rpcClient == null) {
@@ -388,28 +384,29 @@ class LivePoolFeesRepository implements PoolFeesRepository {
               'chain reconhecida (confirma que é mesmo Ethereum Mainnet).';
         } else {
           final chain = rpcChain;
-          final v4Client = _v4Clients[chain];
           final positionManagerAddress = _v4PositionManagerAddresses[chain];
+          final stateViewAddress = _v4StateViewAddresses[chain];
           debugPrint(
-            '[v4debug] v4Client encontrado: ${v4Client != null}, '
-            'positionManagerAddress: $positionManagerAddress',
+            '[v4debug] positionManagerAddress: $positionManagerAddress, '
+            'stateViewAddress: $stateViewAddress',
           );
-          if (v4Client == null || positionManagerAddress == null) {
+          if (positionManagerAddress == null || stateViewAddress == null) {
             v4Diagnostic =
                 'Modo Live v4: o RPC configurado responde pela chain '
-                '${chain.displayName}, que não tem suporte v4 configurado '
-                '(nem id de subgraph nem endereço do PositionManager).';
+                '${chain.displayName}, que não tem suporte v4 configurado.';
           } else {
             final posManager = UniswapV4PositionManagerClient(
               rpcClient: rpcClient,
               positionManagerAddress: positionManagerAddress,
             );
-            // Descoberta via eth_getLogs, não via subgraph: o subgraph v4
-            // tem-se mostrado pouco fiável em produção (indexadores sem
-            // atestação, ou schema que nem bate certo com o deployment
-            // configurado) — ver histórico desta sessão. `Transfer`
-            // ERC-721 é um evento standard, não depende de nenhum
-            // indexador terceiro.
+            final poolStateClient = UniswapV4PoolStateClient(
+              rpcClient: rpcClient,
+              stateViewAddress: stateViewAddress,
+            );
+            // Descoberta via `alchemy_getAssetTransfers`, não via subgraph
+            // nem `eth_getLogs` (o plano gratuito da Alchemy limita-o a 10
+            // blocos por pedido) — ver nota em
+            // `uniswap_v4_position_manager_client.dart`.
             List<({BigInt tokenId, String owner, DateTime createdAt})>
             tokenPositions;
             try {
@@ -441,46 +438,22 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                   'Modo Live v4: não foi encontrada nenhuma posição v4 '
                   '(chain ${chain.displayName}) para esta wallet.';
             } else {
-              // Em paralelo, não uma a seguir à outra: cada posição faz até
-              // 5 pedidos de rede (2 RPC + até 3 ao subgraph), e isso a
-              // sério, em série, com 8-10 posições, facilmente passava de
-              // um minuto em dados móveis — parecia "pendurado" sem ser.
-              // Cada posição apanha o seu próprio erro em vez de deixar
-              // um `Future.wait` abortar tudo ao primeiro falhanço.
-              final results = await Future.wait(
-                tokenPositions.map((raw) async {
-                  try {
-                    final position = await _mapV4Position(
-                      chain: chain,
-                      raw: raw,
-                      posManager: posManager,
-                      v4Client: v4Client,
-                    );
-                    debugPrint(
-                      '[v4debug] tokenId ${raw.tokenId}: ${position == null ? "pool não encontrada no subgraph" : "OK"}',
-                    );
-                    return (position: position, error: null as Object?);
-                  } catch (e, st) {
-                    debugPrint('[v4debug] tokenId ${raw.tokenId} FALHOU: $e\n$st');
-                    return (position: null, error: e);
-                  }
-                }),
+              final result = await _mapV4Positions(
+                chain: chain,
+                tokenPositions: tokenPositions,
+                posManager: posManager,
+                poolStateClient: poolStateClient,
               );
-              var v4Mapped = 0;
-              Object? lastV4Error;
-              for (final result in results) {
-                if (result.position != null) {
-                  mapped.add(result.position!);
-                  v4Mapped++;
-                } else if (result.error != null) {
-                  lastV4Error = result.error;
-                }
-              }
-              if (v4Mapped == 0) {
+              mapped.addAll(result.positions);
+              debugPrint(
+                '[v4debug] _mapV4Positions: ${result.positions.length}/${tokenPositions.length} '
+                'mapeadas, lastError=${result.lastError}',
+              );
+              if (result.positions.isEmpty) {
                 v4Diagnostic =
                     'Modo Live v4: encontradas ${tokenPositions.length} '
                     'posições na wallet, mas nenhuma pôde ser lida '
-                    '(${lastV4Error ?? "pool ainda não indexada pelo subgraph"}).';
+                    '(${result.lastError ?? "erro desconhecido"}).';
               }
             }
           }
@@ -536,6 +509,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       client.dispose();
     }
     _rpcClient?.dispose();
+    _priceClient.dispose();
   }
 
   PoolPosition _mapPosition(Chain chain, RawPosition raw, double ethPriceUsd) {
@@ -601,108 +575,226 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       ..closedAt = null;
   }
 
-  /// Equivalente a [_mapPosition], mas para Uniswap v4 — combina o tokenId
-  /// (só isso vem do subgraph v4) com o range/liquidez lido on-chain do
-  /// `PositionManager` e o preço atual da pool (subgraph). `null` quando a
-  /// pool ainda não está indexada pelo subgraph (posição é ignorada nesse
-  /// refresh, não é um erro).
+  /// Equivalente a [_mapPosition], mas para Uniswap v4 — mapeia TODAS as
+  /// posições de uma vez, em duas fases, para não bater no rate limit do
+  /// tier gratuito da CoinGecko (ver nota no topo do ficheiro: o subgraph
+  /// v4 mostrou-se globalmente não fiável, por isso tudo — range,
+  /// liquidez, tick atual, símbolo/decimais e preço dos tokens — passou a
+  /// vir on-chain + CoinGecko):
+  /// 1. Lê cada posição on-chain em paralelo (RPC, sem rate limit prático);
+  ///    uma posição que falhe aqui não bloqueia as outras.
+  /// 2. Com os endereços de token distintos de TODAS as posições que
+  ///    sobreviveram à fase 1, faz UM pedido à CoinGecko para os preços
+  ///    (e um só, condicional, para o preço do ETH nativo) — em vez de um
+  ///    pedido por posição.
   ///
   /// Limitações desta primeira versão (Fase 1 — ver pedido do utilizador):
-  /// - `feesClaimedUsd`/`feesUnclaimedUsd` ficam a 0: calcular isto exige o
-  ///   contrato `StateView` (fee growth on-chain), que ainda não está
-  ///   ligado — o endereço confirmado com menos confiança dos dois usados
-  ///   aqui (ao contrário do `PositionManager`, não foi possível verificar
-  ///   contra uma fonte ao vivo nesta sessão).
+  /// - `feesClaimedUsd`/`feesUnclaimedUsd` ficam a 0: calcular isto exige
+  ///   ler `feeGrowthInside` on-chain e repetir a mesma fórmula do v3
+  ///   (`univ3_fee_math.dart`) para o layout de storage do `PoolManager`
+  ///   v4 — ainda não implementado.
   /// - `initialLiquidityUsd` fica igual ao valor atual (P&L "desde a
-  ///   abertura" mostra 0 em vez de um número errado): o subgraph v4 não
-  ///   liga eventos `ModifyLiquidity` ao dono/tokenId (esse campo foi
-  ///   removido do schema), por isso não há como saber o capital
-  ///   originalmente depositado.
+  ///   abertura" mostra 0 em vez de um número errado): não há como saber
+  ///   on-chain o capital originalmente depositado sem reconstruir todo o
+  ///   histórico de eventos `ModifyLiquidity` do tokenId.
   /// - `gasCostUsd` fica a 0 pela mesma razão (sem eventos ligados ao
   ///   tokenId para somar os recibos).
-  Future<PoolPosition?> _mapV4Position({
+  Future<({List<PoolPosition> positions, Object? lastError})> _mapV4Positions({
     required Chain chain,
-    required ({BigInt tokenId, String owner, DateTime createdAt}) raw,
+    required List<({BigInt tokenId, String owner, DateTime createdAt})>
+    tokenPositions,
     required UniswapV4PositionManagerClient posManager,
-    required UniswapV4SubgraphClient v4Client,
+    required UniswapV4PoolStateClient poolStateClient,
   }) async {
-    final tokenId = raw.tokenId;
-    final info = await posManager.getPoolAndPositionInfo(tokenId);
-    final liquidity = await posManager.getPositionLiquidity(tokenId);
-
-    final poolResult = await v4Client.fetchPoolByKey(
-      token0: info.poolKey.currency0,
-      token1: info.poolKey.currency1,
-      feeTier: info.poolKey.fee,
-      hooks: info.poolKey.hooks,
+    final rawResults = await Future.wait(
+      tokenPositions.map((raw) async {
+        try {
+          final info = await posManager.getPoolAndPositionInfo(raw.tokenId);
+          final liquidity = await posManager.getPositionLiquidity(
+            raw.tokenId,
+          );
+          final tick = await poolStateClient.getCurrentTick(info.poolKey);
+          return (
+            raw: raw,
+            info: info,
+            liquidity: liquidity,
+            tick: tick,
+            error: null as Object?,
+          );
+        } catch (e, st) {
+          debugPrint(
+            '[v4debug] tokenId ${raw.tokenId} FALHOU (fase on-chain): $e\n$st',
+          );
+          return (
+            raw: raw,
+            info: null,
+            liquidity: null,
+            tick: null,
+            error: e,
+          );
+        }
+      }),
     );
-    if (poolResult == null) return null;
-    final (pool: pool, ethPriceUsd: ethPriceUsd) = poolResult;
 
-    final token0 = await _resolveV4Token(
-      chain,
-      info.poolKey.currency0,
-      v4Client,
-    );
-    final token1 = await _resolveV4Token(
-      chain,
-      info.poolKey.currency1,
-      v4Client,
-    );
-    final price0 = token0.priceUsd(ethPriceUsd);
-    final price1 = token1.priceUsd(ethPriceUsd);
+    Object? lastError;
+    final ok = <({
+      ({BigInt tokenId, String owner, DateTime createdAt}) raw,
+      V4PositionInfo info,
+      BigInt liquidity,
+      int tick,
+    })>[];
+    for (final r in rawResults) {
+      if (r.error != null) {
+        lastError = r.error;
+      } else {
+        ok.add((
+          raw: r.raw,
+          info: r.info!,
+          liquidity: r.liquidity!,
+          tick: r.tick!,
+        ));
+      }
+    }
+    if (ok.isEmpty) return (positions: <PoolPosition>[], lastError: lastError);
 
-    final amounts = getAmountsForLiquidity(
-      liquidity: liquidity.toDouble(),
-      tick: pool.tick,
-      tickLower: info.tickLower,
-      tickUpper: info.tickUpper,
-    );
-    final amount0 = amounts.amount0 / _pow10(token0.decimals);
-    final amount1 = amounts.amount1 / _pow10(token1.decimals);
-    final currentUsd = amount0 * price0 + amount1 * price1;
+    final addresses = <String>{};
+    var needsNativeEth = false;
+    for (final r in ok) {
+      for (final currency in [r.info.poolKey.currency0, r.info.poolKey.currency1]) {
+        if (currency.toLowerCase() == _zeroAddress) {
+          needsNativeEth = true;
+        } else {
+          addresses.add(currency.toLowerCase());
+        }
+      }
+    }
 
-    final isClosed = liquidity == BigInt.zero;
-    return PoolPosition()
-      ..positionKey = '${chain.name}:v4:${raw.tokenId}'
-      ..chain = chain
-      ..walletAddress = raw.owner
-      ..tokenIdOnChain = raw.tokenId.toString()
-      ..token0Symbol = token0.symbol
-      ..token1Symbol = token1.symbol
-      ..token0Decimals = token0.decimals
-      ..token1Decimals = token1.decimals
-      ..feeTierBps = info.poolKey.fee
-      ..createdAt = raw.createdAt
-      ..tickLower = info.tickLower
-      ..tickUpper = info.tickUpper
-      ..currentTick = pool.tick
-      ..entryTick = (info.tickLower + info.tickUpper) ~/ 2
-      ..liquidityUsd = isClosed ? 0 : currentUsd
-      ..initialLiquidityUsd = currentUsd
-      ..feesClaimedUsd = 0
-      ..feesUnclaimedUsd = 0
-      ..gasCostUsd = 0
-      ..isClosed = isClosed
-      ..closedAt = null
-      ..isV4 = true;
+    final metadataClient = Erc20MetadataClient(rpcClient: posManager.rpcClient);
+    final metadataEntries = await Future.wait(
+      addresses.map((address) async {
+        try {
+          return (address: address, metadata: await metadataClient.fetch(address));
+        } catch (e) {
+          debugPrint('[v4debug] metadata do token $address FALHOU: $e');
+          return (address: address, metadata: null as Erc20Metadata?);
+        }
+      }),
+    );
+    final metadataByAddress = {
+      for (final entry in metadataEntries)
+        if (entry.metadata != null) entry.address: entry.metadata!,
+    };
+
+    var pricesUsd = <String, double>{};
+    final platformId = chain.coingeckoPlatformId;
+    if (platformId != null && addresses.isNotEmpty) {
+      try {
+        pricesUsd = await _priceClient.fetchTokenPricesUsd(
+          platformId: platformId,
+          contractAddresses: addresses.toList(),
+        );
+      } catch (e) {
+        debugPrint('[v4debug] preços CoinGecko FALHARAM: $e');
+        lastError = e;
+      }
+    }
+    double? nativeEthPriceUsd;
+    if (needsNativeEth) {
+      try {
+        nativeEthPriceUsd = await _priceClient.fetchNativeEthPriceUsd();
+      } catch (e) {
+        debugPrint('[v4debug] preço nativo ETH (CoinGecko) FALHOU: $e');
+        lastError = e;
+      }
+    }
+
+    final mapped = <PoolPosition>[];
+    for (final r in ok) {
+      final token0 = _resolveV4Token(
+        chain,
+        r.info.poolKey.currency0,
+        metadataByAddress,
+        nativeEthPriceUsd,
+        pricesUsd,
+      );
+      final token1 = _resolveV4Token(
+        chain,
+        r.info.poolKey.currency1,
+        metadataByAddress,
+        nativeEthPriceUsd,
+        pricesUsd,
+      );
+      if (token0 == null || token1 == null) {
+        lastError = 'metadata do token não encontrada';
+        continue;
+      }
+
+      final amounts = getAmountsForLiquidity(
+        liquidity: r.liquidity.toDouble(),
+        tick: r.tick,
+        tickLower: r.info.tickLower,
+        tickUpper: r.info.tickUpper,
+      );
+      final amount0 = amounts.amount0 / _pow10(token0.decimals);
+      final amount1 = amounts.amount1 / _pow10(token1.decimals);
+      final currentUsd = amount0 * token0.priceUsd + amount1 * token1.priceUsd;
+      final isClosed = r.liquidity == BigInt.zero;
+
+      mapped.add(
+        PoolPosition()
+          ..positionKey = '${chain.name}:v4:${r.raw.tokenId}'
+          ..chain = chain
+          ..walletAddress = r.raw.owner
+          ..tokenIdOnChain = r.raw.tokenId.toString()
+          ..token0Symbol = token0.symbol
+          ..token1Symbol = token1.symbol
+          ..token0Decimals = token0.decimals
+          ..token1Decimals = token1.decimals
+          ..feeTierBps = r.info.poolKey.fee
+          ..createdAt = r.raw.createdAt
+          ..tickLower = r.info.tickLower
+          ..tickUpper = r.info.tickUpper
+          ..currentTick = r.tick
+          ..entryTick = (r.info.tickLower + r.info.tickUpper) ~/ 2
+          ..liquidityUsd = isClosed ? 0 : currentUsd
+          ..initialLiquidityUsd = currentUsd
+          ..feesClaimedUsd = 0
+          ..feesUnclaimedUsd = 0
+          ..gasCostUsd = 0
+          ..isClosed = isClosed
+          ..closedAt = null
+          ..isV4 = true,
+      );
+    }
+
+    return (positions: mapped, lastError: lastError);
   }
 
   /// ETH nativo numa pool v4 é o endereço zero, não um token ERC-20 — não
-  /// tem entidade `Token` no subgraph. Usa o símbolo nativo da chain e
-  /// assume preço = `ethPriceUsd` do Bundle (correto em todas as chains
-  /// atualmente suportadas em v4, onde o gás nativo é ETH).
-  Future<RawV4Token> _resolveV4Token(
+  /// tem `symbol()`/`decimals()` para chamar. `null` só quando um token
+  /// NÃO nativo não tem metadata conhecida (falhou a leitura on-chain);
+  /// um preço em falta não impede mostrar a posição, só fica a 0.
+  ({String symbol, int decimals, double priceUsd})? _resolveV4Token(
     Chain chain,
     String address,
-    UniswapV4SubgraphClient v4Client,
-  ) async {
+    Map<String, Erc20Metadata> metadataByAddress,
+    double? nativeEthPriceUsd,
+    Map<String, double> pricesUsd,
+  ) {
     if (address.toLowerCase() == _zeroAddress) {
-      return RawV4Token(symbol: chain.nativeSymbol, decimals: 18, derivedEth: 1.0);
+      return (
+        symbol: chain.nativeSymbol,
+        decimals: 18,
+        priceUsd: nativeEthPriceUsd ?? 0,
+      );
     }
-    final token = await v4Client.fetchToken(address);
-    return token ??
-        RawV4Token(symbol: '???', decimals: 18, derivedEth: 0);
+    final metadata = metadataByAddress[address.toLowerCase()];
+    if (metadata == null) return null;
+    return (
+      symbol: metadata.symbol,
+      decimals: metadata.decimals,
+      priceUsd: pricesUsd[address.toLowerCase()] ?? 0,
+    );
   }
 
   static double _pow10(int decimals) {

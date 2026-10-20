@@ -48,23 +48,33 @@ extension ChainInfo on Chain {
     Chain.polygon => '3hCPRGf4z88VC5rsBKU5AA9FBBq5nF3jbKJG7VZCbhjm',
   };
 
-  /// O mesmo para o subgraph Uniswap v4 — protocolo/arquitetura diferente
-  /// (singleton `PoolManager` + hooks), subgraph diferente. Só Ethereum por
-  /// agora (único confirmado); as outras chains ficam `null` até validarmos
-  /// os ids certos.
-  String? get uniswapV4SubgraphId => switch (this) {
-    Chain.ethereum => 'DiYPVdygkfjDWhbxGSqAQxwBKmfKnkWQojqeM2rkLb3G',
+  /// Endereço do contrato `PositionManager` da Uniswap v4 — ao contrário do
+  /// v3, não há subgraph fiável para posições v4 (ver nota em
+  /// `uniswap_v4_position_manager_client.dart`: mostrou-se globalmente não
+  /// fiável nesta sessão), por isso tudo é lido on-chain. Por isso o modo
+  /// Live v4 precisa sempre de um RPC URL configurado, ao contrário do v3
+  /// (onde o RPC é só para custo de gás). Só Ethereum por agora (único
+  /// confirmado); as outras chains ficam `null` até validarmos os
+  /// endereços certos.
+  String? get uniswapV4PositionManagerAddress => switch (this) {
+    Chain.ethereum => '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e',
     _ => null,
   };
 
-  /// Endereço do contrato `PositionManager` da Uniswap v4 — ao contrário do
-  /// v3, o subgraph v4 não guarda range/liquidez por posição (só o
-  /// tokenId), por isso é preciso ler isto on-chain (ver
-  /// `uniswap_v4_position_manager_client.dart`). Por isso o modo Live v4
-  /// precisa sempre de um RPC URL configurado, ao contrário do v3 (onde o
-  /// RPC é só para custo de gás).
-  String? get uniswapV4PositionManagerAddress => switch (this) {
-    Chain.ethereum => '0xbd216513d74c8cf14cf4747e6aaa6420ff64ee9e',
+  /// Endereço do contrato `StateView` da Uniswap v4 — lens on-chain para
+  /// ler o estado de uma pool (tick atual, preço) sem precisar de um
+  /// subgraph. Confirmado para Ethereum via a página oficial de
+  /// deployments da Uniswap (https://developers.uniswap.org/docs/protocols/v4/deployments).
+  String? get uniswapV4StateViewAddress => switch (this) {
+    Chain.ethereum => '0x7ffe42c4a5deea5b0fec41c94c136cf115597227',
+    _ => null,
+  };
+
+  /// Id da plataforma CoinGecko (para o endpoint `/simple/token_price/<id>`)
+  /// — usado para o preço USD dos tokens de posições v4, já que não há
+  /// subgraph fiável para isso (ver `uniswapV4PositionManagerAddress`).
+  String? get coingeckoPlatformId => switch (this) {
+    Chain.ethereum => 'ethereum',
     _ => null,
   };
 

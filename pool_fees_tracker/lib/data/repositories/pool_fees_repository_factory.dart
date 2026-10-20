@@ -23,7 +23,6 @@ PoolFeesRepository createPoolFeesRepository({
       isar: isar,
       rpcUrl: settings.rpcUrl,
       subgraphIdOverrides: settings.subgraphIdOverrides,
-      v4SubgraphIdOverrides: settings.v4SubgraphIdOverrides,
       v4PositionManagerOverrides: settings.v4PositionManagerOverrides,
     );
   }

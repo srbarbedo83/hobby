@@ -42,9 +42,11 @@ class V4OwnedToken {
 }
 
 /// Lê posições Uniswap v4 diretamente do contrato `PositionManager` via
-/// `eth_call` — o subgraph v4 não guarda range/liquidez por posição (ver
-/// nota em `uniswap_v4_subgraph_client.dart`), só o `PositionManager`
-/// on-chain sabe isto. Os selectors e o layout de bits do `PositionInfo`
+/// `eth_call` — não há subgraph fiável para isto (o subgraph v4 mostrou-se
+/// globalmente não fiável nesta sessão, mesmo só para tokenIds: "bad
+/// indexers" ou timeout, para TODAS as posições testadas da wallet real do
+/// utilizador), por isso range/liquidez e a descoberta de tokenIds vêm
+/// todos on-chain. Os selectors e o layout de bits do `PositionInfo`
 /// empacotado vêm diretamente do código-fonte oficial
 /// (`Uniswap/v4-periphery/src/libraries/PositionInfoLibrary.sol` e
 /// `PositionManager.sol`), não de documentação de terceiros.

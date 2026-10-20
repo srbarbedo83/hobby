@@ -311,10 +311,11 @@ class SettingsScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(
-              'O mesmo, mas para posições Uniswap v4 — precisam também do '
-              'endereço do contrato "PositionManager" dessa chain (só '
-              'Ethereum vem com um valor padrão por agora). Sem isto, '
-              'posições v4 só aparecem em chains suportadas de origem.',
+              'O mesmo, mas para posições Uniswap v4 — lidas diretamente '
+              'dos contratos on-chain (sem subgraph, que se mostrou pouco '
+              'fiável para v4). Só Ethereum vem com um valor padrão por '
+              'agora; sem isto, posições v4 só aparecem em chains '
+              'suportadas de origem.',
               style: TextStyle(color: palette.textTertiary, fontSize: 11),
             ),
           ),
@@ -332,27 +333,6 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  TextFormField(
-                    key: ValueKey('v4_subgraph_override_${chain.name}'),
-                    initialValue: settings.v4SubgraphIdOverrides[chain] ?? '',
-                    decoration: InputDecoration(
-                      labelText: 'Id do subgraph v4',
-                      hintText: chain.uniswapV4SubgraphId ?? 'sem valor padrão',
-                    ),
-                    style: const TextStyle(fontSize: 12.5),
-                    onChanged: (v) => ref
-                        .read(appSettingsProvider.notifier)
-                        .update((s) {
-                      final updated = {...s.v4SubgraphIdOverrides};
-                      if (v.isEmpty) {
-                        updated.remove(chain);
-                      } else {
-                        updated[chain] = v;
-                      }
-                      return s.copyWith(v4SubgraphIdOverrides: updated);
-                    }),
-                  ),
-                  const SizedBox(height: 8),
                   TextFormField(
                     key: ValueKey('v4_posm_override_${chain.name}'),
                     initialValue:

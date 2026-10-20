@@ -61,10 +61,6 @@ class AppSettings {
   /// id antigo).
   final Map<Chain, String> subgraphIdOverrides;
 
-  /// O mesmo, mas para o subgraph Uniswap v4 — ver
-  /// [ChainInfo.uniswapV4SubgraphId].
-  final Map<Chain, String> v4SubgraphIdOverrides;
-
   /// Override manual do endereço do contrato `PositionManager` v4 por chain
   /// — ver [ChainInfo.uniswapV4PositionManagerAddress]. Avançado, normalmente
   /// vazio.
@@ -88,7 +84,6 @@ class AppSettings {
     this.selectedChains = const {Chain.ethereum},
     this.subgraphApiKey = '',
     this.subgraphIdOverrides = const {},
-    this.v4SubgraphIdOverrides = const {},
     this.v4PositionManagerOverrides = const {},
     this.rpcUrl = '',
     this.refreshIntervalSeconds = 30,
@@ -109,7 +104,6 @@ class AppSettings {
     Set<Chain>? selectedChains,
     String? subgraphApiKey,
     Map<Chain, String>? subgraphIdOverrides,
-    Map<Chain, String>? v4SubgraphIdOverrides,
     Map<Chain, String>? v4PositionManagerOverrides,
     String? rpcUrl,
     int? refreshIntervalSeconds,
@@ -129,8 +123,6 @@ class AppSettings {
       selectedChains: selectedChains ?? this.selectedChains,
       subgraphApiKey: subgraphApiKey ?? this.subgraphApiKey,
       subgraphIdOverrides: subgraphIdOverrides ?? this.subgraphIdOverrides,
-      v4SubgraphIdOverrides:
-          v4SubgraphIdOverrides ?? this.v4SubgraphIdOverrides,
       v4PositionManagerOverrides:
           v4PositionManagerOverrides ?? this.v4PositionManagerOverrides,
       rpcUrl: rpcUrl ?? this.rpcUrl,
@@ -165,7 +157,6 @@ class SettingsService {
   static const _keySelectedChains = 'selected_chains';
   static const _keySubgraphApiKey = 'subgraph_api_key';
   static const _keySubgraphIdOverrides = 'subgraph_id_overrides';
-  static const _keyV4SubgraphIdOverrides = 'v4_subgraph_id_overrides';
   static const _keyV4PositionManagerOverrides =
       'v4_position_manager_overrides';
   static const _keyRpcUrl = 'rpc_url';
@@ -218,9 +209,6 @@ class SettingsService {
       subgraphIdOverrides: _decodeChainStringMap(
         _prefs.getString(_keySubgraphIdOverrides),
       ),
-      v4SubgraphIdOverrides: _decodeChainStringMap(
-        _prefs.getString(_keyV4SubgraphIdOverrides),
-      ),
       v4PositionManagerOverrides: _decodeChainStringMap(
         _prefs.getString(_keyV4PositionManagerOverrides),
       ),
@@ -251,10 +239,6 @@ class SettingsService {
     await _prefs.setString(
       _keySubgraphIdOverrides,
       _encodeChainStringMap(settings.subgraphIdOverrides),
-    );
-    await _prefs.setString(
-      _keyV4SubgraphIdOverrides,
-      _encodeChainStringMap(settings.v4SubgraphIdOverrides),
     );
     await _prefs.setString(
       _keyV4PositionManagerOverrides,
