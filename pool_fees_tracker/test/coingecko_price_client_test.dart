@@ -43,6 +43,60 @@ void main() {
       );
       expect(prices, isEmpty);
     });
+
+    test(
+      'faz um pedido por endereço (o tier gratuito recusa mais que 1 de cada vez)',
+      () async {
+        final requestedAddresses = <String>[];
+        final mockClient = MockClient((request) async {
+          final address = request.url.queryParameters['contract_addresses']!;
+          requestedAddresses.add(address);
+          return http.Response(
+            jsonEncode({
+              address.toLowerCase(): {'usd': 2.0},
+            }),
+            200,
+          );
+        });
+
+        final client = CoinGeckoPriceClient(httpClient: mockClient);
+        final prices = await client.fetchTokenPricesUsd(
+          platformId: 'ethereum',
+          contractAddresses: ['0xAAA', '0xBBB'],
+        );
+
+        expect(requestedAddresses, ['0xAAA', '0xBBB']);
+        expect(prices['0xaaa'], 2.0);
+        expect(prices['0xbbb'], 2.0);
+      },
+    );
+
+    test(
+      'um endereço que falhe não impede os outros de serem lidos',
+      () async {
+        final mockClient = MockClient((request) async {
+          final address = request.url.queryParameters['contract_addresses']!;
+          if (address == '0xBAD') {
+            return http.Response('rate limited', 429);
+          }
+          return http.Response(
+            jsonEncode({
+              address.toLowerCase(): {'usd': 3.0},
+            }),
+            200,
+          );
+        });
+
+        final client = CoinGeckoPriceClient(httpClient: mockClient);
+        final prices = await client.fetchTokenPricesUsd(
+          platformId: 'ethereum',
+          contractAddresses: ['0xBAD', '0xGOOD'],
+        );
+
+        expect(prices.containsKey('0xbad'), false);
+        expect(prices['0xgood'], 3.0);
+      },
+    );
   });
 
   group('CoinGeckoPriceClient.fetchNativeEthPriceUsd', () {

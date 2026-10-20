@@ -17,9 +17,18 @@ class CoinGeckoPriceException implements Exception {
 /// indexers" ou timeout, em todas as posições testadas da wallet real do
 /// utilizador). Chamada pelo endereço do contrato, funciona para qualquer
 /// ERC-20 — mesmo um que a Uniswap nunca tenha indexado — sem precisar de
-/// API key (tier gratuito, com rate limit; por isso o chamador deve
-/// agrupar todos os endereços de um refresh numa única chamada, não uma
-/// por posição).
+/// API key.
+///
+/// O tier gratuito recusa mais que 1 endereço por pedido ("Number of
+/// contract addresses in the request exceeds the allowed limit of 1
+/// contract address" — confirmado ao vivo, não documentado antecipadamente)
+/// e tem rate limit por minuto, por isso: um pedido por endereço, com um
+/// pequeno atraso entre eles; um endereço que falhe (rate limit, token
+/// desconhecido, rede) não bloqueia os outros, só fica de fora do mapa
+/// devolvido. O chamador deve também cachear os preços durante alguns
+/// minutos (ver `LivePoolFeesRepository`) — sem isso, vários refreshes
+/// seguidos (ex.: pull-to-refresh a seguir ao carregamento inicial) batem
+/// no rate limit com uma rapidez surpreendente.
 class CoinGeckoPriceClient {
   final http.Client _httpClient;
 
@@ -27,34 +36,40 @@ class CoinGeckoPriceClient {
     : _httpClient = httpClient ?? http.Client();
 
   /// Preços em USD de vários ERC-20 na plataforma `platformId` (ex.
-  /// "ethereum") — um endereço sem preço conhecido da CoinGecko fica de
-  /// fora do mapa devolvido (não é um erro).
+  /// "ethereum") — um endereço sem preço conhecido (ou cuja chamada falhe)
+  /// fica de fora do mapa devolvido, não é um erro que aborte os outros.
   Future<Map<String, double>> fetchTokenPricesUsd({
     required String platformId,
     required List<String> contractAddresses,
   }) async {
-    if (contractAddresses.isEmpty) return {};
-    final uri = Uri.https(
-      'api.coingecko.com',
-      '/api/v3/simple/token_price/$platformId',
-      {
-        'contract_addresses': contractAddresses.join(','),
-        'vs_currencies': 'usd',
-      },
-    );
-    final response = await _httpClient
-        .get(uri)
-        .timeout(const Duration(seconds: 20));
-    if (response.statusCode != 200) {
-      throw CoinGeckoPriceException(
-        'HTTP ${response.statusCode}: ${response.body}',
-      );
-    }
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final prices = <String, double>{};
-    for (final entry in decoded.entries) {
-      final usd = (entry.value as Map<String, dynamic>)['usd'];
-      if (usd is num) prices[entry.key.toLowerCase()] = usd.toDouble();
+    for (var i = 0; i < contractAddresses.length; i++) {
+      try {
+        final uri = Uri.https(
+          'api.coingecko.com',
+          '/api/v3/simple/token_price/$platformId',
+          {
+            'contract_addresses': contractAddresses[i],
+            'vs_currencies': 'usd',
+          },
+        );
+        final response = await _httpClient
+            .get(uri)
+            .timeout(const Duration(seconds: 20));
+        if (response.statusCode == 200) {
+          final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+          for (final entry in decoded.entries) {
+            final usd = (entry.value as Map<String, dynamic>)['usd'];
+            if (usd is num) prices[entry.key.toLowerCase()] = usd.toDouble();
+          }
+        }
+      } catch (_) {
+        // Ver nota da classe — um endereço de cada vez, nenhum bloqueia
+        // os outros.
+      }
+      if (i != contractAddresses.length - 1) {
+        await Future.delayed(const Duration(milliseconds: 350));
+      }
     }
     return prices;
   }

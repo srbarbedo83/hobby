@@ -98,6 +98,19 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   bool _refreshing = false;
   Future<Chain?>? _rpcChainFuture;
 
+  // Cache de preços v4 (CoinGecko) — o tier gratuito tem rate limit por
+  // minuto e recusa mais que 1 endereço por pedido (ver
+  // `coingecko_price_client.dart`); sem isto, só o carregamento inicial +
+  // um pull-to-refresh já chegam a disparar vários refreshes seguidos
+  // (confirmado via logcat) e esgotam o limite em segundos. Preços de
+  // tokens não mudam o suficiente num intervalo de minutos para a
+  // precisão perder-se por usar um valor com alguns minutos.
+  static const _priceCacheTtl = Duration(minutes: 5);
+  final Map<String, double> _tokenPriceCache = {};
+  final Map<String, DateTime> _tokenPriceCachedAt = {};
+  double? _nativeEthPriceCache;
+  DateTime? _nativeEthPriceCachedAt;
+
   LivePoolFeesRepository({
     required List<Chain> chains,
     required String apiKey,
@@ -685,23 +698,45 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         if (entry.metadata != null) entry.address: entry.metadata!,
     };
 
-    var pricesUsd = <String, double>{};
+    final now = DateTime.now();
     final platformId = chain.coingeckoPlatformId;
-    if (platformId != null && addresses.isNotEmpty) {
+    final staleAddresses = addresses.where((a) {
+      final cachedAt = _tokenPriceCachedAt[a];
+      return cachedAt == null || now.difference(cachedAt) > _priceCacheTtl;
+    }).toList();
+    if (platformId != null && staleAddresses.isNotEmpty) {
       try {
-        pricesUsd = await _priceClient.fetchTokenPricesUsd(
+        final fetched = await _priceClient.fetchTokenPricesUsd(
           platformId: platformId,
-          contractAddresses: addresses.toList(),
+          contractAddresses: staleAddresses,
         );
+        for (final entry in fetched.entries) {
+          _tokenPriceCache[entry.key] = entry.value;
+          _tokenPriceCachedAt[entry.key] = now;
+        }
       } catch (e) {
         debugPrint('[v4debug] preços CoinGecko FALHARAM: $e');
         lastError = e;
       }
     }
-    double? nativeEthPriceUsd;
-    if (needsNativeEth) {
+    final pricesUsd = {
+      for (final a in addresses)
+        if (_tokenPriceCache.containsKey(a)) a: _tokenPriceCache[a]!,
+    };
+
+    double? nativeEthPriceUsd = _nativeEthPriceCache;
+    final nativeEthCachedAt = _nativeEthPriceCachedAt;
+    final nativeEthIsStale =
+        nativeEthCachedAt == null ||
+        now.difference(nativeEthCachedAt) > _priceCacheTtl;
+    if (needsNativeEth && nativeEthIsStale) {
       try {
-        nativeEthPriceUsd = await _priceClient.fetchNativeEthPriceUsd();
+        final fetched = await _priceClient.fetchNativeEthPriceUsd();
+        if (fetched != null) {
+          _nativeEthPriceCache = fetched;
+          _nativeEthPriceCachedAt = now;
+          nativeEthPriceUsd = fetched;
+        }
       } catch (e) {
         debugPrint('[v4debug] preço nativo ETH (CoinGecko) FALHOU: $e');
         lastError = e;
