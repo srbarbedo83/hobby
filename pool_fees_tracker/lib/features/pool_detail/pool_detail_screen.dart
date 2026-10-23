@@ -18,6 +18,7 @@ import '../../data/local/pool_position.dart';
 import '../../data/local/position_event.dart';
 import '../../data/services/export_service.dart';
 import '../../shared/widgets/animated_usd_number.dart';
+import '../../shared/widgets/info_sheet.dart';
 import '../../shared/widgets/live_badge.dart';
 import '../../shared/widgets/range_status_badge.dart';
 import '../../shared/widgets/segmented_pill_control.dart';
@@ -344,60 +345,76 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               ),
             ],
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile(
-                    label: 'APR (7d)',
-                    value: '${metrics.realizedAprPct.toStringAsFixed(1)}%',
-                    valueColor: metrics.realizedAprPct >= 0
-                        ? palette.positive
-                        : palette.negative,
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: StatTile(
+                      label: 'APR (7d)',
+                      value: '${metrics.realizedAprPct.toStringAsFixed(1)}%',
+                      valueColor: metrics.realizedAprPct >= 0
+                          ? palette.positive
+                          : palette.negative,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: StatTile(
-                    label: 'Valor da posição',
-                    value: formatter.format(position.liquidityUsd),
-                    caption: 'incl. taxas não reclamadas',
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: StatTile(
+                      label: 'Valor da posição',
+                      value: formatter.format(position.liquidityUsd),
+                      caption: 'incl. taxas não reclamadas',
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile(
-                    label: 'Gas break-even',
-                    value: metrics.gasBreakEven.reached
-                        ? 'Pago'
-                        : formatter.format(metrics.gasBreakEven.remainingUsd),
-                    valueColor: metrics.gasBreakEven.reached
-                        ? palette.positive
-                        : palette.textPrimary,
-                    caption:
-                        (metrics.gasBreakEven.reached
-                            ? 'taxas > custo de gas'
-                            : metrics.gasBreakEven.estimatedDaysRemaining !=
-                                  null
-                            ? '~${metrics.gasBreakEven.estimatedDaysRemaining}d restantes à taxa atual'
-                            : 'para cobrir o gas') +
-                        (gasCostUsd != null ? ' · on-chain' : ''),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: StatTile(
-                    label: 'Proj. este mês',
-                    value: formatter.format(
-                      metrics.projection.projectedEndOfMonthUsd,
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: StatTile(
+                      label: 'Gas break-even',
+                      value: metrics.gasBreakEven.reached
+                          ? 'Pago'
+                          : formatter.format(metrics.gasBreakEven.remainingUsd),
+                      valueColor: metrics.gasBreakEven.reached
+                          ? palette.positive
+                          : palette.textPrimary,
+                      caption:
+                          (metrics.gasBreakEven.reached
+                              ? 'taxas > custo de gas'
+                              : metrics.gasBreakEven.estimatedDaysRemaining !=
+                                    null
+                              ? '~${metrics.gasBreakEven.estimatedDaysRemaining}d restantes à taxa atual'
+                              : 'para cobrir o gas') +
+                          (gasCostUsd != null ? ' · on-chain' : ''),
                     ),
-                    caption: 'à taxa diária atual',
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: StatTile(
+                      label: 'Proj. este mês',
+                      value: formatter.format(
+                        metrics.projection.projectedEndOfMonthUsd,
+                      ),
+                      caption: 'à taxa diária dos últimos 7 dias',
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Projeção deste mês/ano',
+                        body: const InfoSheetText(
+                          'Pega na taxa diária média dos últimos 7 dias e '
+                          'estende até ao fim do mês/ano — é uma tendência, '
+                          'não uma garantia (preços e liquidez mudam).\n\n'
+                          'Numa posição v4 acabada de adicionar ainda não '
+                          'há 7 dias de histórico — o número só fica '
+                          'fiável depois de uma semana de refreshes.',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             StatTile(
@@ -406,32 +423,53 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               caption: 'à taxa diária atual — tendência, não garantia',
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile(
-                    label: 'Impermanent loss',
-                    value: metrics.impermanentLoss.lossPct > -0.01
-                        ? '~0%'
-                        : '${metrics.impermanentLoss.lossPct.toStringAsFixed(2)}%',
-                    valueColor: metrics.impermanentLoss.lossPct < -0.01
-                        ? palette.negative
-                        : palette.textPrimary,
-                    caption: 'vs. só guardar os tokens — estimativa',
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: StatTile(
+                      label: 'Impermanent loss',
+                      value: metrics.impermanentLoss.lossPct > -0.01
+                          ? '~0%'
+                          : '${metrics.impermanentLoss.lossPct.toStringAsFixed(2)}%',
+                      valueColor: metrics.impermanentLoss.lossPct < -0.01
+                          ? palette.negative
+                          : palette.textPrimary,
+                      caption: 'vs. só guardar os tokens — estimativa',
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Impermanent loss',
+                        body: const _ImpermanentLossExplainer(),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: StatTile(
-                    label: 'Net vs. HODL',
-                    value: formatter.format(metrics.netVsHoldUsd),
-                    valueColor: metrics.netVsHoldUsd >= 0
-                        ? palette.positive
-                        : palette.negative,
-                    caption: 'taxas geradas menos IL',
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: StatTile(
+                      label: 'Net vs. HODL',
+                      value: formatter.format(metrics.netVsHoldUsd),
+                      valueColor: metrics.netVsHoldUsd >= 0
+                          ? palette.positive
+                          : palette.negative,
+                      caption: 'taxas geradas menos IL',
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Net vs. HODL',
+                        body: const InfoSheetText(
+                          'Compara o que ganhaste a fornecer liquidez com '
+                          'o que terias se só tivesses guardado os dois '
+                          'tokens na carteira, sem fazer nada.\n\n'
+                          'Net vs. HODL = taxas geradas − impermanent loss.\n\n'
+                          'Positivo: compensou fornecer liquidez. '
+                          'Negativo: terias saído a ganhar só a guardar '
+                          'os tokens (o IL comeu mais do que as taxas '
+                          'deram).',
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             StatTile(
@@ -615,13 +653,48 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Simulador de largura de range',
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                      color: palette.textPrimary,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        'Simulador de largura de range',
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                          color: palette.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () => showInfoSheet(
+                          context,
+                          title: 'Simulador de largura de range',
+                          body: const InfoSheetText(
+                            'Testa larguras de range diferentes (0.5×, 1×, '
+                            '2×, ...) contra o histórico de preço já '
+                            'gravado desta posição, e mostra duas coisas '
+                            'por largura:\n\n'
+                            '"% em range" — quanto tempo o preço passou '
+                            'dentro desse range, no período gravado.\n\n'
+                            '"×" — o score relativo de fees: um range mais '
+                            'estreito concentra a mesma liquidez numa faixa '
+                            'de preço menor, por isso ganha mais fees '
+                            'ENQUANTO está em range (score > 1×), mas fica '
+                            'fora do range mais vezes. Um range mais largo '
+                            'é o contrário: menos fees quando está em '
+                            'range, mas fica em range mais tempo.\n\n'
+                            'É uma estimativa (assume que a tua parte da '
+                            'liquidez da pool seria igual com outra '
+                            'largura, o que na prática não é bem assim), '
+                            'não uma previsão.',
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 13,
+                          color: palette.textTertiary,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   RangeSimulatorSection(
@@ -670,6 +743,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
             _ActivitySection(
               positionKey: widget.positionKey,
               formatter: formatter,
+              isV4: position.isV4,
             ),
           ],
         ),
@@ -752,11 +826,152 @@ class _UnclaimedFeesChip extends StatelessWidget {
   }
 }
 
+/// Explicação do impermanent loss com um exemplo numérico concreto —
+/// pedido do utilizador ("com exemplo visual"). Usa o caso clássico de o
+/// preço duplicar, porque é o mais citado e fácil de verificar: ≈5.7% de
+/// IL é o número que aparece em qualquer calculadora de IL para r=2.
+class _ImpermanentLossExplainer extends StatelessWidget {
+  const _ImpermanentLossExplainer();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Fornecer liquidez obriga o teu capital a seguir a pool: quando o '
+          'preço de um dos tokens sobe, a pool vende-o automaticamente a '
+          'troco do outro — acabas com menos do token que subiu do que se '
+          'tivesses só guardado os dois na carteira. Essa diferença é o '
+          'impermanent loss. Quanto mais o preço se mover (em qualquer '
+          'direção), maior o IL — e volta a 0% se o preço voltar ao sítio '
+          'onde abriste a posição.',
+          style: TextStyle(
+            fontSize: 13,
+            color: palette.textSecondary,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: palette.surfaceAlt,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Exemplo: investes \$1000 (50/50) e o preço de um dos '
+                'tokens duplica',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: palette.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _ComparisonBar(
+                label: 'Se tivesses guardado (HODL)',
+                valueLabel: '\$1118',
+                fraction: 1.0,
+                color: palette.textSecondary,
+                palette: palette,
+              ),
+              const SizedBox(height: 8),
+              _ComparisonBar(
+                label: 'Fornecendo liquidez (sem contar as taxas)',
+                valueLabel: '\$1054',
+                fraction: 1054 / 1118,
+                color: palette.warning,
+                palette: palette,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '≈ 5.7% de impermanent loss — é por isto que as taxas '
+                'geradas precisam de compensar esta diferença para a '
+                'posição valer a pena.',
+                style: TextStyle(fontSize: 11, color: palette.textTertiary),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ComparisonBar extends StatelessWidget {
+  final String label;
+  final String valueLabel;
+  final double fraction;
+  final Color color;
+  final AppPalette palette;
+
+  const _ComparisonBar({
+    required this.label,
+    required this.valueLabel,
+    required this.fraction,
+    required this.color,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 11, color: palette.textSecondary),
+              ),
+            ),
+            Text(
+              valueLabel,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: palette.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: fraction.clamp(0, 1),
+            minHeight: 6,
+            backgroundColor: palette.border,
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ActivitySection extends ConsumerWidget {
   final String positionKey;
   final CurrencyFormatter formatter;
 
-  const _ActivitySection({required this.positionKey, required this.formatter});
+  /// Para v4 isto fica SEMPRE vazio (não há subgraph a dar o histórico de
+  /// mint/add/remove/collect, ver nota em `live_pool_fees_repository.dart`)
+  /// — por isso o texto do estado vazio é diferente de v3, onde "ainda sem
+  /// eventos" é genuíno (pode vir a preencher-se).
+  final bool isV4;
+
+  const _ActivitySection({
+    required this.positionKey,
+    required this.formatter,
+    required this.isV4,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -773,19 +988,48 @@ class _ActivitySection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Atividade',
-            style: TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-              color: palette.textPrimary,
-            ),
+          Row(
+            children: [
+              Text(
+                'Atividade',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: palette.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: () => showInfoSheet(
+                  context,
+                  title: 'Atividade',
+                  body: const InfoSheetText(
+                    'Histórico de mints, aumentos/diminuições de liquidez '
+                    'e collects desta posição, com o hash da transação — '
+                    'útil para confirmar quando e quanto foi depositado '
+                    'ou retirado.\n\n'
+                    'Só disponível para posições v3 (vem do subgraph). '
+                    'Para v4 fica sempre vazio, não por falta de '
+                    'eventos — não há uma fonte fiável para reconstruir '
+                    'esse histórico sem arriscar números errados (ver '
+                    'limitações do v4 nas Definições → Glossário).',
+                  ),
+                ),
+                child: Icon(
+                  Icons.info_outline,
+                  size: 13,
+                  color: palette.textTertiary,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           eventsAsync.when(
             data: (events) => events.isEmpty
                 ? Text(
-                    'Ainda sem eventos',
+                    isV4
+                        ? 'Não disponível para posições v4 (ver o ⓘ acima)'
+                        : 'Ainda sem eventos',
                     style: TextStyle(fontSize: 12, color: palette.textTertiary),
                   )
                 : Column(

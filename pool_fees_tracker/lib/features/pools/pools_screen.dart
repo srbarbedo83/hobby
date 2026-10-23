@@ -55,11 +55,16 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
               .where((p) => p.walletAddress == _selectedWalletAddress)
               .toList();
     final positions = allPositions.where((p) => !p.isClosed).toList();
-    final closedPositions = allPositions.where((p) => p.isClosed).toList()
-      ..sort(
-        (a, b) =>
-            (b.closedAt ?? b.createdAt).compareTo(a.closedAt ?? a.createdAt),
-      );
+    // v4 fechadas não têm informação útil nenhuma para mostrar: sem
+    // subgraph, não há como saber quando fecharam nem quanto geraram no
+    // total (uma vez a liquidez a 0, o cálculo on-chain das fees também
+    // vai sempre a 0) — aparecer na lista só como "Fechada · $0,00" não
+    // ajuda em nada (pedido do utilizador), por isso ficam de fora.
+    final closedPositions =
+        allPositions.where((p) => p.isClosed && !p.isV4).toList()..sort(
+          (a, b) =>
+              (b.closedAt ?? b.createdAt).compareTo(a.closedAt ?? a.createdAt),
+        );
     final snapshots =
         snapshotsAsync.value ?? const <String, List<FeeSnapshot>>{};
     final formatter = CurrencyFormatter(settings.currencyCode);

@@ -9,6 +9,7 @@ import '../../data/local/chain.dart';
 import '../../data/local/settings_service.dart';
 import '../../data/services/export_service.dart';
 import 'add_wallet_dialog.dart';
+import 'glossary_screen.dart';
 import 'restore_backup_dialog.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -33,6 +34,27 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
+          const _SectionLabel('Ajuda'),
+          const SizedBox(height: 8),
+          _SettingsCard(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.menu_book_outlined, color: palette.accent),
+              title: Text(
+                'Glossário',
+                style: TextStyle(color: palette.textPrimary),
+              ),
+              subtitle: Text(
+                'O que significam os números e ecrãs da app',
+                style: TextStyle(color: palette.textTertiary, fontSize: 11),
+              ),
+              trailing: Icon(Icons.chevron_right, color: palette.textTertiary),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const GlossaryScreen())),
+            ),
+          ),
+          const SizedBox(height: 24),
           const _SectionLabel('Aparência'),
           const SizedBox(height: 8),
           _SettingsCard(
@@ -289,17 +311,16 @@ class SettingsScreen extends ConsumerWidget {
                       hintText: chain.uniswapV3SubgraphId,
                     ),
                     style: const TextStyle(fontSize: 12.5),
-                    onChanged: (v) => ref
-                        .read(appSettingsProvider.notifier)
-                        .update((s) {
-                      final updated = {...s.subgraphIdOverrides};
-                      if (v.isEmpty) {
-                        updated.remove(chain);
-                      } else {
-                        updated[chain] = v;
-                      }
-                      return s.copyWith(subgraphIdOverrides: updated);
-                    }),
+                    onChanged: (v) =>
+                        ref.read(appSettingsProvider.notifier).update((s) {
+                          final updated = {...s.subgraphIdOverrides};
+                          if (v.isEmpty) {
+                            updated.remove(chain);
+                          } else {
+                            updated[chain] = v;
+                          }
+                          return s.copyWith(subgraphIdOverrides: updated);
+                        }),
                   ),
                   if (chain != settings.selectedChains.last)
                     const SizedBox(height: 12),
@@ -349,17 +370,18 @@ class SettingsScreen extends ConsumerWidget {
                           'sem valor padrão',
                     ),
                     style: const TextStyle(fontSize: 12.5),
-                    onChanged: (v) => ref
-                        .read(appSettingsProvider.notifier)
-                        .update((s) {
-                      final updated = {...s.v4PositionManagerOverrides};
-                      if (v.isEmpty) {
-                        updated.remove(chain);
-                      } else {
-                        updated[chain] = v;
-                      }
-                      return s.copyWith(v4PositionManagerOverrides: updated);
-                    }),
+                    onChanged: (v) =>
+                        ref.read(appSettingsProvider.notifier).update((s) {
+                          final updated = {...s.v4PositionManagerOverrides};
+                          if (v.isEmpty) {
+                            updated.remove(chain);
+                          } else {
+                            updated[chain] = v;
+                          }
+                          return s.copyWith(
+                            v4PositionManagerOverrides: updated,
+                          );
+                        }),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -370,17 +392,16 @@ class SettingsScreen extends ConsumerWidget {
                       hintText: 'ex.: https://arb-mainnet.g.alchemy.com/v2/...',
                     ),
                     style: const TextStyle(fontSize: 12.5),
-                    onChanged: (v) => ref
-                        .read(appSettingsProvider.notifier)
-                        .update((s) {
-                      final updated = {...s.v4RpcUrlOverrides};
-                      if (v.isEmpty) {
-                        updated.remove(chain);
-                      } else {
-                        updated[chain] = v;
-                      }
-                      return s.copyWith(v4RpcUrlOverrides: updated);
-                    }),
+                    onChanged: (v) =>
+                        ref.read(appSettingsProvider.notifier).update((s) {
+                          final updated = {...s.v4RpcUrlOverrides};
+                          if (v.isEmpty) {
+                            updated.remove(chain);
+                          } else {
+                            updated[chain] = v;
+                          }
+                          return s.copyWith(v4RpcUrlOverrides: updated);
+                        }),
                   ),
                   if (chain != settings.selectedChains.last)
                     const SizedBox(height: 14),

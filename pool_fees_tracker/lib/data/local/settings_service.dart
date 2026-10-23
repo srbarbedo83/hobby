@@ -8,13 +8,14 @@ enum DataSourceMode { demo, live }
 
 /// Tema da app — `system` segue o tema do telemóvel (via
 /// `MediaQuery.platformBrightness`), `light`/`dark` fixam-no.
-enum AppThemeMode { system, light, dark }
+enum AppThemeMode { system, light, dark, extraDark }
 
 extension AppThemeModeLabel on AppThemeMode {
   String get label => switch (this) {
     AppThemeMode.system => 'Sistema',
     AppThemeMode.light => 'Claro',
     AppThemeMode.dark => 'Escuro',
+    AppThemeMode.extraDark => 'Escuro extra (degradê)',
   };
 }
 
@@ -169,8 +170,7 @@ class SettingsService {
   static const _keySelectedChains = 'selected_chains';
   static const _keySubgraphApiKey = 'subgraph_api_key';
   static const _keySubgraphIdOverrides = 'subgraph_id_overrides';
-  static const _keyV4PositionManagerOverrides =
-      'v4_position_manager_overrides';
+  static const _keyV4PositionManagerOverrides = 'v4_position_manager_overrides';
   static const _keyV4RpcUrlOverrides = 'v4_rpc_url_overrides';
   static const _keyRpcUrl = 'rpc_url';
   static const _keyRefreshInterval = 'refresh_interval_seconds';

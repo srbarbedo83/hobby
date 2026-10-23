@@ -13,6 +13,7 @@ import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/local/fee_snapshot.dart';
 import '../../shared/widgets/animated_usd_number.dart';
+import '../../shared/widgets/info_sheet.dart';
 import '../../shared/widgets/live_badge.dart';
 import '../../shared/widgets/pool_row_tile.dart';
 import '../../shared/widgets/segmented_pill_control.dart';
@@ -97,7 +98,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         if (aOut != bOut) return aOut ? 1 : -1;
         return b.createdAt.compareTo(a.createdAt);
       });
-    final closedCount = positions.length - openPositions.length;
+    // v4 fechadas não aparecem no separador Pools (sem info relevante,
+    // ver nota em `pools_screen.dart`) — por consistência, não as conta
+    // aqui também.
+    final closedCount = positions.where((p) => p.isClosed && !p.isV4).length;
     final walletLabel = walletsAsync.value?.isNotEmpty == true
         ? walletsAsync.value!.first.label
         : '0x7a3f…9c21 (demo)';
@@ -185,30 +189,53 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile(
-                    label: 'Impermanent loss',
-                    value: formatter.format(metrics.ilUsd),
-                    valueColor: metrics.ilUsd < -0.01
-                        ? palette.negative
-                        : palette.textPrimary,
-                    caption: 'todas as pools — estimativa',
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: StatTile(
+                      label: 'Impermanent loss',
+                      value: formatter.format(metrics.ilUsd),
+                      valueColor: metrics.ilUsd < -0.01
+                          ? palette.negative
+                          : palette.textPrimary,
+                      caption: 'todas as pools — estimativa',
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Impermanent loss',
+                        body: const InfoSheetText(
+                          'A diferença entre o que tens fornecendo liquidez '
+                          'e o que terias se só tivesses guardado os dois '
+                          'tokens na carteira — soma de todas as pools. '
+                          'Vê o detalhe de uma pool para um exemplo '
+                          'numérico.',
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: StatTile(
-                    label: 'Net vs. HODL',
-                    value: formatter.format(metrics.netVsHoldUsd),
-                    valueColor: metrics.netVsHoldUsd >= 0
-                        ? palette.positive
-                        : palette.negative,
-                    caption: 'taxas geradas menos IL',
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: StatTile(
+                      label: 'Net vs. HODL',
+                      value: formatter.format(metrics.netVsHoldUsd),
+                      valueColor: metrics.netVsHoldUsd >= 0
+                          ? palette.positive
+                          : palette.negative,
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Net vs. HODL',
+                        body: const InfoSheetText(
+                          'Taxas geradas menos o impermanent loss, somado em '
+                          'todas as pools. Positivo: compensou fornecer '
+                          'liquidez. Negativo: terias saído a ganhar só a '
+                          'guardar os tokens.',
+                        ),
+                      ),
+                      caption: 'taxas geradas menos IL',
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 14),
             Container(
@@ -232,7 +259,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const SizedBox(height: 2),
                   Text(
                     'Todas as pools somadas',
-                    style: TextStyle(fontSize: 10.5, color: palette.textTertiary),
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      color: palette.textTertiary,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   SegmentedPillControl<ChartRange>(

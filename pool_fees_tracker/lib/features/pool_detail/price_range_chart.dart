@@ -121,10 +121,25 @@ class PriceRangeChart extends StatelessWidget {
               ],
               isCurved: true,
               curveSmoothness: 0.2,
-              color: accentColor,
-              barWidth: 2,
+              // Pedido do utilizador: degradê em vez de uma cor sólida —
+              // a linha vai do accent (mais vivo) a mais transparente, e
+              // a área preenchida por baixo reforça a mesma direção.
+              gradient: LinearGradient(
+                colors: [accentColor, accentColor.withValues(alpha: 0.4)],
+              ),
+              barWidth: 2.5,
               dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    accentColor.withValues(alpha: 0.22),
+                    accentColor.withValues(alpha: 0.0),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

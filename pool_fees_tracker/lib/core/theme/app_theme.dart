@@ -65,6 +65,35 @@ class AppPalette extends ThemeExtension<AppPalette> {
     warning: Color(0xFFB8740A),
   );
 
+  /// Variante do tema escuro pedida pelo utilizador: "algo moderno", com
+  /// degradê de cima para baixo. `background` fica transparente de
+  /// propósito — o degradê real é pintado uma só vez, por trás de toda a
+  /// app, em `PoolFeesTrackerApp` (ver `extraDarkBackgroundGradient`
+  /// abaixo); se `background` fosse uma cor sólida aqui, o Scaffold do
+  /// ecrã de detalhe (e o tema dos AppBars) pintava por cima e escondia-o.
+  factory AppPalette.extraDark() => const AppPalette(
+    background: Colors.transparent,
+    surface: Color(0xFF191225),
+    surfaceAlt: Color(0xFF221A33),
+    border: Color(0xFF2E2440),
+    textPrimary: Color(0xFFF2F0F8),
+    textSecondary: Color(0xFF9D94B5),
+    textTertiary: Color(0xFF6B6285),
+    accent: Color(0xFFFF4FA3),
+    positive: Color(0xFF33D17A),
+    negative: Color(0xFFFF5C5C),
+    warning: Color(0xFFFFB020),
+  );
+
+  /// Degradê pintado por trás de toda a app quando o tema é
+  /// `AppThemeMode.extraDark` — do roxo quase preto no topo a um preto
+  /// puro no fundo, "algo moderno" em vez de uma cor lisa.
+  static const extraDarkBackgroundGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF130E1C), Color(0xFF07060A)],
+  );
+
   static AppPalette of(BuildContext context) =>
       Theme.of(context).extension<AppPalette>() ?? AppPalette.dark();
 
@@ -120,6 +149,9 @@ class AppTheme {
   static ThemeData dark() => _build(AppPalette.dark(), Brightness.dark);
 
   static ThemeData light() => _build(AppPalette.light(), Brightness.light);
+
+  static ThemeData extraDark() =>
+      _build(AppPalette.extraDark(), Brightness.dark);
 
   static ThemeData _build(AppPalette palette, Brightness brightness) {
     final scheme = ColorScheme.fromSeed(

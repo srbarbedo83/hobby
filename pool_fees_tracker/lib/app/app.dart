@@ -17,6 +17,9 @@ extension on AppThemeMode {
     AppThemeMode.system => ThemeMode.system,
     AppThemeMode.light => ThemeMode.light,
     AppThemeMode.dark => ThemeMode.dark,
+    // Flutter só tem claro/escuro — "extra escuro" é só outra ThemeData
+    // escolhida à parte (ver `darkTheme:` abaixo), não um ThemeMode novo.
+    AppThemeMode.extraDark => ThemeMode.dark,
   };
 }
 
@@ -26,12 +29,26 @@ class PoolFeesTrackerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(appSettingsProvider).themeMode;
+    final isExtraDark = themeMode == AppThemeMode.extraDark;
     return MaterialApp(
       title: 'Pool Fees Tracker',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      darkTheme: isExtraDark ? AppTheme.extraDark() : AppTheme.dark(),
       themeMode: themeMode.flutterThemeMode,
+      // `AppPalette.extraDark().background` é transparente de propósito —
+      // o degradê real só existe aqui, pintado uma única vez por trás de
+      // toda a app (Dashboard, Pools, Definições e o ecrã de detalhe da
+      // pool, que é outra rota empilhada por cima), em vez de em cada
+      // Scaffold individual.
+      builder: (context, child) => isExtraDark
+          ? DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: AppPalette.extraDarkBackgroundGradient,
+              ),
+              child: child,
+            )
+          : child ?? const SizedBox.shrink(),
       home: const _RootNavigation(),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import 'info_sheet.dart';
 
 /// Pequeno indicador "● LIVE" com o ponto a pulsar, para sinalizar que um
 /// número está a atualizar-se em tempo real (não é um screenshot estático).
@@ -45,32 +46,51 @@ class _LiveBadgeState extends State<LiveBadge>
       height: 6,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
-    return Container(
-      padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+    return GestureDetector(
+      onTap: () => showInfoSheet(
+        context,
+        title: widget.isStale ? 'Sem atualizar' : 'Live',
+        body: InfoSheetText(
           widget.isStale
-              ? dot
-              : FadeTransition(
-                  opacity: _controller.drive(Tween(begin: 0.35, end: 1.0)),
-                  child: dot,
-                ),
-          const SizedBox(width: 5),
-          Text(
-            widget.isStale ? 'SEM ATUALIZAR' : 'LIVE',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: color,
+              ? 'O último refresh automático foi há demasiado tempo '
+                    '(mais do que 3× o intervalo configurado nas '
+                    'Definições) — normalmente sinal de sem rede, RPC em '
+                    'baixo, ou a app ter estado em background há muito '
+                    'tempo. Os números na página podem estar desatualizados. '
+                    'Puxa para atualizar ou tenta de novo mais tarde.'
+              : 'Os números nesta página atualizam-se automaticamente, ao '
+                    'ritmo definido em Definições → Intervalo de refresh. O '
+                    'ponto a pulsar confirma que o último refresh correu '
+                    'sem erros.',
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            widget.isStale
+                ? dot
+                : FadeTransition(
+                    opacity: _controller.drive(Tween(begin: 0.35, end: 1.0)),
+                    child: dot,
+                  ),
+            const SizedBox(width: 5),
+            Text(
+              widget.isStale ? 'SEM ATUALIZAR' : 'LIVE',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+                color: color,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
