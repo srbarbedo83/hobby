@@ -351,8 +351,16 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       final owners = wallets.map((w) => w.address).toList();
 
       final now = DateTime.now();
+      // Posições v4 não têm subgraph para dar histórico (ver nota mais
+      // abaixo) — o "antes" deste refresh é a única base possível para
+      // começar a construir um histórico de fees prospetivo, um ponto por
+      // refresh, tal como já se faz com `pricePoints` para o tick.
+      final oldFeesTotalUsdByKey = {
+        for (final p in _positions) p.positionKey: p.feesTotalUsd,
+      };
       final mapped = <PoolPosition>[];
       final pricePoints = <PricePoint>[];
+      final v4FeeSnapshots = <FeeSnapshot>[];
       String? v3Diagnostic;
       String? v4Diagnostic;
 
@@ -457,6 +465,24 @@ class LivePoolFeesRepository implements PoolFeesRepository {
             totalMapped += r.positions.length;
             mapped.addAll(r.positions);
             if (r.error != null) lastV4Error = r.error;
+            // Um ponto de fees por refresh, só prospetivo (mesma ideia do
+            // `pricePoints` acima): sem subgraph v4, o delta entre este
+            // refresh e o anterior é a única fonte de histórico possível.
+            // Na primeira vez que se vê o tokenId não há "anterior" — fica
+            // delta 0 em vez de atribuir tudo o que já se acumulou (talvez
+            // há meses) a este instante.
+            for (final position in r.positions) {
+              if (position.isClosed) continue;
+              final previousTotal = oldFeesTotalUsdByKey[position.positionKey];
+              v4FeeSnapshots.add(
+                FeeSnapshot()
+                  ..positionKey = position.positionKey
+                  ..timestamp = now
+                  ..feesUsdDelta = previousTotal == null
+                      ? 0
+                      : position.feesTotalUsd - previousTotal,
+              );
+            }
           }
           if (totalTokenPositions == 0) {
             v4Diagnostic =
@@ -479,6 +505,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       await _isar.writeTxn(() async {
         await _isar.poolPositions.putAll(mapped);
         await _isar.pricePoints.putAll(pricePoints);
+        await _isar.feeSnapshots.putAll(v4FeeSnapshots);
       });
 
       _positions = mapped;
