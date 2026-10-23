@@ -128,6 +128,20 @@ class PoolRowTile extends StatelessWidget {
                     color: palette.textPrimary,
                   ),
                 ),
+                const SizedBox(height: 2),
+                // Valor alocado na posição — pedido do utilizador: entre
+                // várias pools, as taxas por si só (sobretudo quando
+                // pequenas ou a zero numa posição v4 nova) não bastam para
+                // distinguir rapidamente qual é qual; o valor costuma ser
+                // o sinal mais reconhecível.
+                Text(
+                  formatter.format(position.liquidityUsd),
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: palette.textTertiary,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Sparkline(
                   values: sparklineValues,
