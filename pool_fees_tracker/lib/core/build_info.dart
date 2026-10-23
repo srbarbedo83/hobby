@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.17+18 — v4 Fase 2: taxas não reclamadas reais';
+const String appBuildLabel = 'v1.0.18+19 — chains v4 em paralelo + fix erro de rede preso';

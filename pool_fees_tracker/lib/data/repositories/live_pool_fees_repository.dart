@@ -279,14 +279,27 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   /// Combina os RPCs explícitos por chain (`v4RpcUrlOverrides`) com o
   /// campo "RPC URL" legado, que serve de padrão para a chain que
   /// detetar automaticamente — ver nota nos campos da classe. Memoizado
-  /// através de `_rpcChainFuture` (a deteção só corre uma vez).
+  /// através de `_rpcChainFuture` (a deteção só corre uma vez) — MAS só
+  /// enquanto tiver sucesso: uma falha de rede momentânea (confirmado ao
+  /// vivo: "Failed host lookup" durante uma quebra breve de rede no
+  /// telemóvel) não pode ficar guardada em cache para sempre, senão todos
+  /// os refreshes seguintes repetem o mesmo erro indefinidamente mesmo
+  /// depois da rede recuperar — e, pior, sem isto isolado aqui, essa
+  /// falha abortava o refresh inteiro antes de sequer tentar as chains
+  /// com RPC próprio (ex.: Arbitrum), que não deviam ser afetadas por um
+  /// problema só no RPC "antigo" do Ethereum.
   Future<Map<Chain, EthRpcClient>> _resolveRpcClientsByChain() async {
     final result = <Chain, EthRpcClient>{..._v4RpcClients};
     final legacy = _legacyRpcClient;
     if (legacy != null) {
-      final legacyChain = await (_rpcChainFuture ??= legacy.detectChain());
-      if (legacyChain != null && !result.containsKey(legacyChain)) {
-        result[legacyChain] = legacy;
+      try {
+        final legacyChain = await (_rpcChainFuture ??= legacy.detectChain());
+        if (legacyChain != null && !result.containsKey(legacyChain)) {
+          result[legacyChain] = legacy;
+        }
+      } catch (e) {
+        debugPrint('[v4debug] detectChain() do RPC legado FALHOU: $e');
+        _rpcChainFuture = null;
       }
     }
     return result;
@@ -423,78 +436,27 @@ class LivePoolFeesRepository implements PoolFeesRepository {
               'Modo Live v4: nenhuma chain com RPC configurado tem suporte '
               'v4 (ver Definições → RPC URL por chain).';
         } else {
+          // Uma chain de cada vez seria o dobro do tempo sem motivo: cada
+          // chain usa o seu próprio RPC/conta (Ethereum e Arbitrum nunca
+          // partilham quota), por isso correm em paralelo.
+          final perChainResults = await Future.wait(
+            v4Chains.map(
+              (chain) => _refreshV4Chain(
+                chain: chain,
+                rpcClient: rpcClientsByChain[chain]!,
+                owners: owners,
+              ),
+            ),
+          );
+
           var totalTokenPositions = 0;
           var totalMapped = 0;
           Object? lastV4Error;
-          for (final chain in v4Chains) {
-            final rpcClient = rpcClientsByChain[chain]!;
-            final positionManagerAddress =
-                _v4PositionManagerAddresses[chain]!;
-            final stateViewAddress = _v4StateViewAddresses[chain];
-            if (stateViewAddress == null) {
-              lastV4Error =
-                  'sem endereço StateView configurado para ${chain.displayName}';
-              continue;
-            }
-            final posManager = UniswapV4PositionManagerClient(
-              rpcClient: rpcClient,
-              positionManagerAddress: positionManagerAddress,
-            );
-            final poolStateClient = UniswapV4PoolStateClient(
-              rpcClient: rpcClient,
-              stateViewAddress: stateViewAddress,
-            );
-            // Descoberta via `alchemy_getAssetTransfers`, não via subgraph
-            // nem `eth_getLogs` (o plano gratuito da Alchemy limita-o a 10
-            // blocos por pedido) — ver nota em
-            // `uniswap_v4_position_manager_client.dart`.
-            List<({BigInt tokenId, String owner, DateTime createdAt})>
-            tokenPositions;
-            try {
-              final perOwner = await Future.wait(
-                owners.map((owner) async {
-                  final tokens = await posManager.fetchOwnedTokenIds(owner);
-                  return tokens
-                      .map(
-                        (t) => (
-                          tokenId: t.tokenId,
-                          owner: owner,
-                          createdAt: t.createdAt,
-                        ),
-                      )
-                      .toList();
-                }),
-              );
-              tokenPositions = perOwner.expand((l) => l).toList();
-              debugPrint(
-                '[v4debug] ${chain.name}: fetchOwnedTokenIds (RPC) devolveu '
-                '${tokenPositions.length} posições: '
-                '${tokenPositions.map((p) => p.tokenId).toList()}',
-              );
-            } catch (e, st) {
-              debugPrint(
-                '[v4debug] ${chain.name}: fetchOwnedTokenIds FALHOU: $e\n$st',
-              );
-              lastV4Error = e;
-              continue;
-            }
-            totalTokenPositions += tokenPositions.length;
-            if (tokenPositions.isEmpty) continue;
-
-            final result = await _mapV4Positions(
-              chain: chain,
-              tokenPositions: tokenPositions,
-              posManager: posManager,
-              poolStateClient: poolStateClient,
-            );
-            mapped.addAll(result.positions);
-            totalMapped += result.positions.length;
-            if (result.lastError != null) lastV4Error = result.lastError;
-            debugPrint(
-              '[v4debug] ${chain.name}: _mapV4Positions '
-              '${result.positions.length}/${tokenPositions.length} mapeadas, '
-              'lastError=${result.lastError}',
-            );
+          for (final r in perChainResults) {
+            totalTokenPositions += r.tokenPositionCount;
+            totalMapped += r.positions.length;
+            mapped.addAll(r.positions);
+            if (r.error != null) lastV4Error = r.error;
           }
           if (totalTokenPositions == 0) {
             v4Diagnostic =
@@ -538,6 +500,85 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       debugPrint('[v4debug] refreshNow: a terminar (finally), _lastError=$_lastError');
       _refreshing = false;
     }
+  }
+
+  /// Descobre e mapeia as posições v4 de UMA chain — extraído para correr
+  /// em paralelo com as outras chains selecionadas (`Future.wait` em
+  /// `refreshNow`), já que cada uma usa o seu próprio RPC/conta e nunca
+  /// partilha rate limit com as outras.
+  Future<({int tokenPositionCount, List<PoolPosition> positions, Object? error})>
+  _refreshV4Chain({
+    required Chain chain,
+    required EthRpcClient rpcClient,
+    required List<String> owners,
+  }) async {
+    final positionManagerAddress = _v4PositionManagerAddresses[chain]!;
+    final stateViewAddress = _v4StateViewAddresses[chain];
+    if (stateViewAddress == null) {
+      return (
+        tokenPositionCount: 0,
+        positions: const <PoolPosition>[],
+        error: 'sem endereço StateView configurado para ${chain.displayName}',
+      );
+    }
+    final posManager = UniswapV4PositionManagerClient(
+      rpcClient: rpcClient,
+      positionManagerAddress: positionManagerAddress,
+    );
+    final poolStateClient = UniswapV4PoolStateClient(
+      rpcClient: rpcClient,
+      stateViewAddress: stateViewAddress,
+    );
+
+    // Descoberta via `alchemy_getAssetTransfers`, não via subgraph nem
+    // `eth_getLogs` (o plano gratuito da Alchemy limita-o a 10 blocos por
+    // pedido) — ver nota em `uniswap_v4_position_manager_client.dart`.
+    List<({BigInt tokenId, String owner, DateTime createdAt})> tokenPositions;
+    try {
+      final perOwner = await Future.wait(
+        owners.map((owner) async {
+          final tokens = await posManager.fetchOwnedTokenIds(owner);
+          return tokens
+              .map(
+                (t) => (
+                  tokenId: t.tokenId,
+                  owner: owner,
+                  createdAt: t.createdAt,
+                ),
+              )
+              .toList();
+        }),
+      );
+      tokenPositions = perOwner.expand((l) => l).toList();
+      debugPrint(
+        '[v4debug] ${chain.name}: fetchOwnedTokenIds (RPC) devolveu '
+        '${tokenPositions.length} posições: '
+        '${tokenPositions.map((p) => p.tokenId).toList()}',
+      );
+    } catch (e, st) {
+      debugPrint('[v4debug] ${chain.name}: fetchOwnedTokenIds FALHOU: $e\n$st');
+      return (tokenPositionCount: 0, positions: const <PoolPosition>[], error: e);
+    }
+    if (tokenPositions.isEmpty) {
+      return (tokenPositionCount: 0, positions: const <PoolPosition>[], error: null);
+    }
+
+    final result = await _mapV4Positions(
+      chain: chain,
+      tokenPositions: tokenPositions,
+      posManager: posManager,
+      poolStateClient: poolStateClient,
+    );
+    debugPrint(
+      '[v4debug] ${chain.name}: _mapV4Positions '
+      '${result.positions.length}/${tokenPositions.length} mapeadas, '
+      'lastError=${result.lastError}',
+    );
+    return (
+      tokenPositionCount: tokenPositions.length,
+      positions: result.positions,
+      error: result.lastError,
+    );
   }
 
   @override
