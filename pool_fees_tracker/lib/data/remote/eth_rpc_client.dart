@@ -26,33 +26,54 @@ class EthRpcClient {
   EthRpcClient({required this.rpcUrl, http.Client? httpClient})
     : _httpClient = httpClient ?? http.Client();
 
+  // Atraso antes de cada nova tentativa num HTTP 429 — a própria mensagem
+  // de erro da Alchemy recomenda isto ("If you have retries enabled, you
+  // can safely ignore this message"), confirmado ao vivo: mesmo com a
+  // concorrência já limitada (ver `mapWithConcurrency`), uma wallet nova
+  // no plano gratuito ainda pode ver um pedido isolado (ex.:
+  // `alchemy_getAssetTransfers`, que custa mais "compute units" do que um
+  // `eth_call` simples) ser recusado por rate limit.
+  static const _retryDelays = [
+    Duration(milliseconds: 500),
+    Duration(milliseconds: 1500),
+    Duration(seconds: 3),
+  ];
+
   Future<Map<String, dynamic>> _call(
     String method,
     List<dynamic> params,
   ) async {
-    final response = await _httpClient
-        .post(
-          Uri.parse(rpcUrl),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'jsonrpc': '2.0',
-            'method': method,
-            'params': params,
-            'id': 1,
-          }),
-        )
-        // Ver nota equivalente em `uniswap_subgraph_client.dart` — um RPC
-        // lento ou pendurado não pode deixar o refresh Live preso para
-        // sempre sem nunca mostrar erro.
-        .timeout(const Duration(seconds: 20));
-    if (response.statusCode != 200) {
-      throw EthRpcException('HTTP ${response.statusCode}: ${response.body}');
+    for (var attempt = 0; ; attempt++) {
+      final response = await _httpClient
+          .post(
+            Uri.parse(rpcUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'jsonrpc': '2.0',
+              'method': method,
+              'params': params,
+              'id': 1,
+            }),
+          )
+          // Ver nota equivalente em `uniswap_subgraph_client.dart` — um
+          // RPC lento ou pendurado não pode deixar o refresh Live preso
+          // para sempre sem nunca mostrar erro.
+          .timeout(const Duration(seconds: 20));
+      if (response.statusCode == 429 && attempt < _retryDelays.length) {
+        await Future.delayed(_retryDelays[attempt]);
+        continue;
+      }
+      if (response.statusCode != 200) {
+        throw EthRpcException(
+          'HTTP ${response.statusCode}: ${response.body}',
+        );
+      }
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      if (decoded['error'] != null) {
+        throw EthRpcException(decoded['error'].toString());
+      }
+      return decoded;
     }
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    if (decoded['error'] != null) {
-      throw EthRpcException(decoded['error'].toString());
-    }
-    return decoded;
   }
 
   /// `eth_call` genérico (leitura on-chain, sem gastar gás) — usado para ler
