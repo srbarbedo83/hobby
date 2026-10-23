@@ -25,12 +25,16 @@ class StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    // `height: double.infinity` + o `IntrinsicHeight` dos Rows que usam
-    // este tile (dashboard/detalhe) — sem isto, duas caixas lado a lado
-    // só ficam da mesma altura por acaso, quando nenhuma tem `caption`
-    // (pedido do utilizador: ficavam visivelmente assimétricas).
+    // A altura igual entre caixas lado a lado vem de fora: o Row que usa
+    // este tile fica dentro de um `IntrinsicHeight` com
+    // `crossAxisAlignment: CrossAxisAlignment.stretch` — NÃO declarar
+    // `height: double.infinity` aqui. Já tentei isso e partiu o layout a
+    // sério: um `Container` com altura infinita dentro de uma lista (que
+    // dá altura solta/ilimitada aos seus itens) faz o Flutter rebentar
+    // com "BoxConstraints forces an infinite height", o que apagava tudo
+    // o que vinha a seguir no ecrã (confirmado pelo utilizador: os
+    // gráficos do Dashboard desapareceram depois desta alteração).
     return Container(
-      height: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
         color: palette.surface,

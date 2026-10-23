@@ -347,6 +347,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
             const SizedBox(height: 14),
             IntrinsicHeight(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
                     child: StatTile(
@@ -371,6 +372,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
             const SizedBox(height: 10),
             IntrinsicHeight(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
                     child: StatTile(
@@ -425,6 +427,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
             const SizedBox(height: 10),
             IntrinsicHeight(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
                     child: StatTile(
