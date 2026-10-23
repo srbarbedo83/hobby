@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -28,22 +29,50 @@ class EthRpcClient {
 
   // Atraso antes de cada nova tentativa num HTTP 429 — a própria mensagem
   // de erro da Alchemy recomenda isto ("If you have retries enabled, you
-  // can safely ignore this message"), confirmado ao vivo: mesmo com a
-  // concorrência já limitada (ver `mapWithConcurrency`), uma wallet nova
-  // no plano gratuito ainda pode ver um pedido isolado (ex.:
-  // `alchemy_getAssetTransfers`, que custa mais "compute units" do que um
-  // `eth_call` simples) ser recusado por rate limit.
+  // can safely ignore this message"). Sozinho não chegou (confirmado ao
+  // vivo): o problema real não é "muitos pedidos ao mesmo tempo", é
+  // "muitos pedidos por segundo" — limitar a concorrência (ver
+  // `mapWithConcurrency`) continuava a mandar rajadas que excediam o
+  // limite da Alchemy. Daí `_waitForTurn`, abaixo, espaçar os pedidos no
+  // tempo, não só limitar quantos correm ao mesmo tempo.
   static const _retryDelays = [
     Duration(milliseconds: 500),
     Duration(milliseconds: 1500),
     Duration(seconds: 3),
   ];
 
+  // Espaçamento mínimo entre o INÍCIO de pedidos consecutivos deste
+  // cliente (uma instância por chain — ver `LivePoolFeesRepository`, por
+  // isso não interfere com o RPC de outra chain). `_rateGate` serializa só
+  // o cálculo do "turno" de cada chamada (não a chamada em si): cada
+  // chamada marca o seu lugar na fila antes de a anterior sequer começar
+  // a esperar, para não haver condições de corrida a decidir o mesmo slot
+  // duas vezes.
+  static const _minRequestSpacing = Duration(milliseconds: 300);
+  DateTime? _nextAllowedAt;
+  Future<void> _rateGate = Future.value();
+
+  Future<void> _waitForTurn() {
+    final myTurn = _rateGate;
+    final completer = Completer<void>();
+    _rateGate = completer.future;
+    return myTurn.then((_) async {
+      final now = DateTime.now();
+      final next = _nextAllowedAt;
+      final waitUntil = (next != null && next.isAfter(now)) ? next : now;
+      _nextAllowedAt = waitUntil.add(_minRequestSpacing);
+      final delay = waitUntil.difference(now);
+      if (delay > Duration.zero) await Future.delayed(delay);
+      completer.complete();
+    });
+  }
+
   Future<Map<String, dynamic>> _call(
     String method,
     List<dynamic> params,
   ) async {
     for (var attempt = 0; ; attempt++) {
+      await _waitForTurn();
       final response = await _httpClient
           .post(
             Uri.parse(rpcUrl),

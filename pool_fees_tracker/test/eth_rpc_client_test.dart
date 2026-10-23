@@ -49,4 +49,44 @@ void main() {
       expect(attempts, 1);
     });
   });
+
+  group('EthRpcClient espaçamento mínimo entre pedidos', () {
+    test(
+      'pedidos concorrentes saem espaçados no tempo, não todos de uma vez '
+      '(ver nota: limitar só a concorrência não chegou para o rate limit '
+      'da Alchemy, confirmado ao vivo)',
+      () async {
+        final requestTimes = <DateTime>[];
+        final mockClient = MockClient((request) async {
+          requestTimes.add(DateTime.now());
+          return http.Response(
+            jsonEncode({'jsonrpc': '2.0', 'id': 1, 'result': '0x1'}),
+            200,
+          );
+        });
+
+        final client = EthRpcClient(
+          rpcUrl: 'https://example.invalid/rpc',
+          httpClient: mockClient,
+        );
+
+        await Future.wait([
+          client.ethCall(to: '0xa', data: '0x1'),
+          client.ethCall(to: '0xb', data: '0x2'),
+          client.ethCall(to: '0xc', data: '0x3'),
+        ]);
+
+        expect(requestTimes.length, 3);
+        requestTimes.sort();
+        expect(
+          requestTimes[1].difference(requestTimes[0]).inMilliseconds,
+          greaterThanOrEqualTo(250),
+        );
+        expect(
+          requestTimes[2].difference(requestTimes[1]).inMilliseconds,
+          greaterThanOrEqualTo(250),
+        );
+      },
+    );
+  });
 }

@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.15+16 — RPC repete automaticamente em HTTP 429';
+const String appBuildLabel = 'v1.0.16+17 — RPC espaçado no tempo (fix rate limit Arbitrum)';
