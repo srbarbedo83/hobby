@@ -15,15 +15,43 @@ import '../../data/local/fee_snapshot.dart';
 import '../../shared/widgets/animated_usd_number.dart';
 import '../../shared/widgets/live_badge.dart';
 import '../../shared/widgets/pool_row_tile.dart';
+import '../../shared/widgets/segmented_pill_control.dart';
 import '../../shared/widgets/stat_tile.dart';
+import '../pool_detail/fee_bar_chart.dart';
 import '../pool_detail/pool_detail_screen.dart';
 import 'portfolio_composition_card.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  ChartRange _range = ChartRange.last7d;
+  ChartGroupBy _groupBy = ChartGroupBy.day;
+  int? _selectedBarIndex;
+
+  void _onRangeSelected(ChartRange range) {
+    setState(() {
+      _range = range;
+      if (!range.allowedGroupBys.contains(_groupBy)) {
+        _groupBy = range.defaultGroupBy;
+      }
+      _selectedBarIndex = null;
+    });
+  }
+
+  void _onGroupBySelected(ChartGroupBy groupBy) {
+    setState(() {
+      _groupBy = groupBy;
+      _selectedBarIndex = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final settings = ref.watch(appSettingsProvider);
     final positionsAsync = ref.watch(positionsStreamProvider);
@@ -76,6 +104,19 @@ class DashboardScreen extends ConsumerWidget {
     final repository = ref.watch(poolFeesRepositoryProvider);
     final updatedAt = repository.lastUpdatedAt;
     final lastError = repository.lastError;
+    // Soma os deltas de todas as posições (abertas e fechadas, como no
+    // total do Hero) num só histórico, para o gráfico abaixo mostrar as
+    // taxas geradas pelo portefólio inteiro, não só de uma pool.
+    final allSnapshots = [for (final list in snapshots.values) ...list];
+    final bars = aggregateFeeSnapshots(
+      snapshots: allSnapshots,
+      range: _range,
+      groupBy: _groupBy,
+    );
+    final selectedBar =
+        _selectedBarIndex != null && _selectedBarIndex! < bars.length
+        ? bars[_selectedBarIndex!]
+        : (bars.isNotEmpty ? bars.last : null);
 
     return SafeArea(
       child: RefreshIndicator(
@@ -142,6 +183,79 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: palette.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Taxas ao longo do tempo',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: palette.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Todas as pools somadas',
+                    style: TextStyle(fontSize: 10.5, color: palette.textTertiary),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedPillControl<ChartRange>(
+                    options: ChartRange.values,
+                    selected: _range,
+                    labelBuilder: (r) => r.label,
+                    onSelected: _onRangeSelected,
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedPillControl<ChartGroupBy>(
+                    options: _range.allowedGroupBys,
+                    selected: _groupBy,
+                    labelBuilder: (g) => g.label,
+                    onSelected: _onGroupBySelected,
+                  ),
+                  const SizedBox(height: 14),
+                  if (selectedBar != null)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          formatter.format(selectedBar.valueUsd),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: palette.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          '${selectedBar.label} · ${_range.label}',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: palette.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 10),
+                  FeeBarChart(
+                    bars: bars,
+                    selectedIndex:
+                        _selectedBarIndex ??
+                        (bars.isEmpty ? null : bars.length - 1),
+                    accentColor: palette.accent,
+                    onBarSelected: (index) =>
+                        setState(() => _selectedBarIndex = index),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 14),
             PortfolioCompositionCard(
