@@ -1,6 +1,7 @@
 import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
 import 'apr_calculator.dart';
+import 'impermanent_loss.dart';
 import 'projection_calculator.dart';
 
 class DashboardMetrics {
@@ -14,6 +15,15 @@ class DashboardMetrics {
   final double avgAprPct;
   final double unclaimedUsd;
 
+  /// Soma do impermanent loss (em USD) de todas as posições — ao contrário
+  /// do ecrã de detalhe (que mostra IL em %), aqui soma-se em USD porque
+  /// uma % média entre pools com capitais diferentes não diria nada de útil.
+  final double ilUsd;
+
+  /// Taxas geradas menos o IL acima — resposta direta a "no total, valeu
+  /// mais a pena do que só ter guardado os tokens?".
+  final double netVsHoldUsd;
+
   /// Soma da projeção de cada posição (mesmo cálculo do ecrã de detalhe,
   /// agregado) — para a resposta "quanto vou ganhar este mês/ano" não
   /// precisar de abrir pool a pool.
@@ -25,6 +35,8 @@ class DashboardMetrics {
     required this.pctChangeVsPrevWeek,
     required this.avgAprPct,
     required this.unclaimedUsd,
+    required this.ilUsd,
+    required this.netVsHoldUsd,
     required this.projection,
   });
 }
@@ -52,10 +64,16 @@ DashboardMetrics computeDashboardMetrics({
   double totalAvgDailyFeeUsd = 0;
   double earnedThisMonth = 0;
   double earnedThisYear = 0;
+  double ilUsd = 0;
 
   for (final position in positions) {
     totalFeesUsd += position.feesTotalUsd;
     unclaimedUsd += position.feesUnclaimedUsd;
+    ilUsd += computeImpermanentLoss(
+      entryTick: position.entryTick,
+      currentTick: position.currentTick,
+      initialLiquidityUsd: position.initialLiquidityUsd,
+    ).lossUsd;
 
     final snapshots = snapshotsByKey[position.positionKey] ?? const [];
     var feesInLast7d = 0.0;
@@ -90,6 +108,8 @@ DashboardMetrics computeDashboardMetrics({
         : null,
     avgAprPct: aprCount > 0 ? aprSum / aprCount : 0,
     unclaimedUsd: unclaimedUsd,
+    ilUsd: ilUsd,
+    netVsHoldUsd: totalFeesUsd + ilUsd,
     projection: projectFromDailyRate(
       alreadyEarnedThisMonthUsd: earnedThisMonth,
       alreadyEarnedThisYearUsd: earnedThisYear,

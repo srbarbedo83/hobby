@@ -184,6 +184,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: StatTile(
+                    label: 'Impermanent loss',
+                    value: formatter.format(metrics.ilUsd),
+                    valueColor: metrics.ilUsd < -0.01
+                        ? palette.negative
+                        : palette.textPrimary,
+                    caption: 'todas as pools — estimativa',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: StatTile(
+                    label: 'Net vs. HODL',
+                    value: formatter.format(metrics.netVsHoldUsd),
+                    valueColor: metrics.netVsHoldUsd >= 0
+                        ? palette.positive
+                        : palette.negative,
+                    caption: 'taxas geradas menos IL',
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.all(18),
