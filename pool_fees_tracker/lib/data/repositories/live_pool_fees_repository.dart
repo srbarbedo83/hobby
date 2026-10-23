@@ -6,6 +6,7 @@ import 'package:isar_community/isar.dart';
 import '../../core/calc/liquidity_amounts.dart';
 import '../../core/calc/liquidity_profile.dart';
 import '../../core/calc/univ3_fee_math.dart';
+import '../../core/concurrency.dart';
 import '../local/chain.dart';
 import '../local/fee_snapshot.dart';
 import '../local/pool_position.dart';
@@ -658,35 +659,29 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     required UniswapV4PositionManagerClient posManager,
     required UniswapV4PoolStateClient poolStateClient,
   }) async {
-    final rawResults = await Future.wait(
-      tokenPositions.map((raw) async {
-        try {
-          final info = await posManager.getPoolAndPositionInfo(raw.tokenId);
-          final liquidity = await posManager.getPositionLiquidity(
-            raw.tokenId,
-          );
-          final tick = await poolStateClient.getCurrentTick(info.poolKey);
-          return (
-            raw: raw,
-            info: info,
-            liquidity: liquidity,
-            tick: tick,
-            error: null as Object?,
-          );
-        } catch (e, st) {
-          debugPrint(
-            '[v4debug] tokenId ${raw.tokenId} FALHOU (fase on-chain): $e\n$st',
-          );
-          return (
-            raw: raw,
-            info: null,
-            liquidity: null,
-            tick: null,
-            error: e,
-          );
-        }
-      }),
-    );
+    // Concorrência limitada (ver `mapWithConcurrency`) — cada posição faz
+    // 3 pedidos RPC, e uma wallet com muitas posições (confirmado ao vivo
+    // com 81 no Arbitrum) disparava quase 250 de uma vez num `Future.wait`
+    // normal, o que a Alchemy (plano gratuito) recusa com HTTP 429.
+    final rawResults = await mapWithConcurrency(tokenPositions, (raw) async {
+      try {
+        final info = await posManager.getPoolAndPositionInfo(raw.tokenId);
+        final liquidity = await posManager.getPositionLiquidity(raw.tokenId);
+        final tick = await poolStateClient.getCurrentTick(info.poolKey);
+        return (
+          raw: raw,
+          info: info,
+          liquidity: liquidity,
+          tick: tick,
+          error: null as Object?,
+        );
+      } catch (e, st) {
+        debugPrint(
+          '[v4debug] tokenId ${raw.tokenId} FALHOU (fase on-chain): $e\n$st',
+        );
+        return (raw: raw, info: null, liquidity: null, tick: null, error: e);
+      }
+    });
 
     Object? lastError;
     final ok = <({
@@ -722,16 +717,16 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     }
 
     final metadataClient = Erc20MetadataClient(rpcClient: posManager.rpcClient);
-    final metadataEntries = await Future.wait(
-      addresses.map((address) async {
-        try {
-          return (address: address, metadata: await metadataClient.fetch(address));
-        } catch (e) {
-          debugPrint('[v4debug] metadata do token $address FALHOU: $e');
-          return (address: address, metadata: null as Erc20Metadata?);
-        }
-      }),
-    );
+    final metadataEntries = await mapWithConcurrency(addresses.toList(), (
+      address,
+    ) async {
+      try {
+        return (address: address, metadata: await metadataClient.fetch(address));
+      } catch (e) {
+        debugPrint('[v4debug] metadata do token $address FALHOU: $e');
+        return (address: address, metadata: null as Erc20Metadata?);
+      }
+    });
     final metadataByAddress = {
       for (final entry in metadataEntries)
         if (entry.metadata != null) entry.address: entry.metadata!,

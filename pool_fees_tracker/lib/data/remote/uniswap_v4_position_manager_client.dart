@@ -1,3 +1,4 @@
+import '../../core/concurrency.dart';
 import 'eth_abi.dart';
 import 'eth_rpc_client.dart';
 
@@ -98,14 +99,20 @@ class UniswapV4PositionManagerClient {
     }
 
     // Um token recebido pode ter sido transferido para fora entretanto —
-    // confirma a posse atual (e obtém a data) em paralelo, por tokenId.
-    final verified = await Future.wait(
-      earliestBlockByTokenId.entries.map((entry) async {
+    // confirma a posse atual (e obtém a data) em paralelo, por tokenId. Com
+    // concorrência limitada: uma wallet com muitas posições (confirmado ao
+    // vivo com 81 no Arbitrum) dispararia centenas de pedidos de uma vez
+    // num `Future.wait` normal, o que a Alchemy (plano gratuito) recusa
+    // com HTTP 429 ("compute units per second" excedido) — ver
+    // `mapWithConcurrency`.
+    final verified = await mapWithConcurrency(
+      earliestBlockByTokenId.entries.toList(),
+      (entry) async {
         final currentOwner = await _ownerOf(entry.key);
         if (currentOwner.toLowerCase() != owner.toLowerCase()) return null;
         final createdAt = await rpcClient.getBlockTimestamp(entry.value);
         return V4OwnedToken(tokenId: entry.key, createdAt: createdAt);
-      }),
+      },
     );
     return verified.whereType<V4OwnedToken>().toList();
   }
