@@ -237,9 +237,10 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Posição Uniswap v4 — o valor mostrado é o TVL atual da '
-                  'posição; as taxas não reclamadas ainda não são '
-                  'calculadas para v4 (só v3), por isso aparecem a 0.',
+                  'Posição Uniswap v4 — as taxas não reclamadas já são '
+                  'reais (lidas on-chain). O lucro/perda "desde a '
+                  'abertura" e o custo de gás ainda não estão disponíveis '
+                  'para v4 (só v3), por isso aparecem a 0.',
                   style: TextStyle(color: palette.textSecondary, fontSize: 11),
                 ),
               ),

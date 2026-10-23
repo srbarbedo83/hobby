@@ -6,6 +6,10 @@ import 'keccak.dart';
 import 'uniswap_v4_position_manager_client.dart' show V4PoolKey;
 
 const _selectorGetSlot0 = '0xc815641c'; // getSlot0(bytes32), confirmado via keccak256 local
+const _selectorGetFeeGrowthInside =
+    '0x53e9c1fb'; // getFeeGrowthInside(bytes32,int24,int24), idem
+const _selectorGetPositionInfo =
+    '0xdacf1d2f'; // getPositionInfo(bytes32,address,int24,int24,bytes32), idem
 
 /// Lê o tick atual de uma pool v4 diretamente do contrato `StateView` da
 /// Uniswap — substitui por completo o subgraph v4 para isto (ver nota em
@@ -45,6 +49,73 @@ class UniswapV4PoolStateClient {
       );
     }
     return decodeInt24(words[1]);
+  }
+
+  /// `feeGrowthInside` ATUAL do range `[tickLower, tickUpper]` — o mesmo
+  /// conceito que o v3 deriva de `feeGrowthGlobal`/`feeGrowthOutside`
+  /// (`univ3_fee_math.dart`), mas o `StateView` já faz essa derivação
+  /// on-chain, por isso basta ler o resultado em vez de reimplementar a
+  /// fórmula para o layout de armazenamento do v4.
+  Future<({BigInt inside0, BigInt inside1})> getFeeGrowthInside(
+    V4PoolKey poolKey, {
+    required int tickLower,
+    required int tickUpper,
+  }) async {
+    final poolId = computePoolId(poolKey);
+    final data = await rpcClient.ethCall(
+      to: stateViewAddress,
+      data: encodeCall(_selectorGetFeeGrowthInside, [
+        encodeUintWord(poolId),
+        encodeUintWord(BigInt.from(tickLower)),
+        encodeUintWord(BigInt.from(tickUpper)),
+      ]),
+    );
+    final words = splitAbiWords(data);
+    if (words.length < 2) {
+      throw FormatException(
+        'getFeeGrowthInside: resposta curta demais (${words.length} palavras)',
+      );
+    }
+    return (inside0: decodeUint(words[0]), inside1: decodeUint(words[1]));
+  }
+
+  /// Liquidez e `feeGrowthInside...Last` (o snapshot da posição na última
+  /// vez que foi modificada/colhida) — `owner` é sempre o endereço do
+  /// `PositionManager` (não o dono do NFT) e `salt` é o tokenId, a mesma
+  /// convenção usada pelo `PositionManager` ao chamar `modifyLiquidity`
+  /// (confirmado em `Uniswap/v4-periphery/src/PositionManager.sol`:
+  /// `Position.calculatePositionKey(address(this), tickLower, tickUpper,
+  /// bytes32(tokenId))`).
+  Future<({BigInt liquidity, BigInt feeGrowthInside0Last, BigInt feeGrowthInside1Last})>
+  getPositionInfo({
+    required V4PoolKey poolKey,
+    required String owner,
+    required int tickLower,
+    required int tickUpper,
+    required BigInt salt,
+  }) async {
+    final poolId = computePoolId(poolKey);
+    final data = await rpcClient.ethCall(
+      to: stateViewAddress,
+      data: encodeCall(_selectorGetPositionInfo, [
+        encodeUintWord(poolId),
+        encodeAddressWord(owner),
+        encodeUintWord(BigInt.from(tickLower)),
+        encodeUintWord(BigInt.from(tickUpper)),
+        encodeUintWord(salt),
+      ]),
+    );
+    final words = splitAbiWords(data);
+    if (words.length < 3) {
+      throw FormatException(
+        'getPositionInfo: resposta curta demais (${words.length} palavras)',
+      );
+    }
+    return (
+      liquidity: decodeUint(words[0]),
+      feeGrowthInside0Last: decodeUint(words[1]),
+      feeGrowthInside1Last: decodeUint(words[2]),
+    );
   }
 
   static BigInt computePoolId(V4PoolKey key) {

@@ -68,9 +68,25 @@ Uint8List encodeAddressWord(String address) => Uint8List.fromList([
   ...hexToBytes(address),
 ]);
 
-/// Um valor não-negativo codificado em ABI como uma palavra de 32 bytes.
+/// Um valor codificado em ABI como uma palavra de 32 bytes — `toUnsigned`
+/// trata um valor negativo (ex.: um `int24` como um tick abaixo de 0) com o
+/// mesmo complemento-de-2 de 256 bits que a ABI usa para tipos `int`
+/// assinados (confirmado contra Python antes de confiar nisto para ticks
+/// negativos reais).
 Uint8List encodeUintWord(BigInt value) =>
     hexToBytes(value.toUnsigned(256).toRadixString(16).padLeft(64, '0'));
+
+/// Concatena o selector com várias palavras de 32 bytes — para chamadas
+/// com mais do que um argumento (ex.: `getFeeGrowthInside(poolId,
+/// tickLower, tickUpper)`), em vez do caso especial de um único `uint256`
+/// que [encodeUint256Call] já cobria.
+String encodeCall(String selector, List<List<int>> words) {
+  final buffer = StringBuffer(selector);
+  for (final word in words) {
+    buffer.write(bytesToHex(word));
+  }
+  return buffer.toString();
+}
 
 /// Descodifica o retorno ABI de uma função que devolve um único `string`
 /// dinâmico (ex.: `symbol()` de um ERC-20) — a 1ª palavra é o offset

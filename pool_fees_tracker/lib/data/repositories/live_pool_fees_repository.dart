@@ -641,11 +641,13 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   ///    (e um só, condicional, para o preço do ETH nativo) — em vez de um
   ///    pedido por posição.
   ///
-  /// Limitações desta primeira versão (Fase 1 — ver pedido do utilizador):
-  /// - `feesClaimedUsd`/`feesUnclaimedUsd` ficam a 0: calcular isto exige
-  ///   ler `feeGrowthInside` on-chain e repetir a mesma fórmula do v3
-  ///   (`univ3_fee_math.dart`) para o layout de storage do `PoolManager`
-  ///   v4 — ainda não implementado.
+  /// Limitações desta versão (Fase 2 adicionou `feesUnclaimedUsd` — ver
+  /// pedido do utilizador; o resto fica para mais tarde):
+  /// - `feesClaimedUsd` fica a 0: não há como saber on-chain quanto já foi
+  ///   `collect()`ado no passado sem reconstruir todo o histórico de
+  ///   eventos do tokenId (ao contrário do unclaimed atual, que o
+  ///   `StateView` dá diretamente via `getFeeGrowthInside`/
+  ///   `getPositionInfo` — ver `UniswapV4PoolStateClient`).
   /// - `initialLiquidityUsd` fica igual ao valor atual (P&L "desde a
   ///   abertura" mostra 0 em vez de um número errado): não há como saber
   ///   on-chain o capital originalmente depositado sem reconstruir todo o
@@ -659,27 +661,55 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     required UniswapV4PositionManagerClient posManager,
     required UniswapV4PoolStateClient poolStateClient,
   }) async {
-    // Concorrência limitada (ver `mapWithConcurrency`) — cada posição faz
-    // 3 pedidos RPC, e uma wallet com muitas posições (confirmado ao vivo
-    // com 81 no Arbitrum) disparava quase 250 de uma vez num `Future.wait`
-    // normal, o que a Alchemy (plano gratuito) recusa com HTTP 429.
+    // Concorrência limitada (ver `mapWithConcurrency`) e espaçada no tempo
+    // (ver `EthRpcClient._waitForTurn`) — cada posição faz 4 pedidos RPC, e
+    // uma wallet com muitas posições (confirmado ao vivo com 81 no
+    // Arbitrum) excedia o rate limit da Alchemy (plano gratuito) sem isto.
     final rawResults = await mapWithConcurrency(tokenPositions, (raw) async {
       try {
         final info = await posManager.getPoolAndPositionInfo(raw.tokenId);
-        final liquidity = await posManager.getPositionLiquidity(raw.tokenId);
         final tick = await poolStateClient.getCurrentTick(info.poolKey);
+        // `getPositionInfo` já devolve a liquidez (o mesmo valor de
+        // `posManager.getPositionLiquidity`, lido do mesmo sítio) — poupa
+        // um pedido RPC por posição não o chamar à parte.
+        final positionInfo = await poolStateClient.getPositionInfo(
+          poolKey: info.poolKey,
+          owner: posManager.positionManagerAddress,
+          tickLower: info.tickLower,
+          tickUpper: info.tickUpper,
+          salt: raw.tokenId,
+        );
+        final feeGrowthInside = await poolStateClient.getFeeGrowthInside(
+          info.poolKey,
+          tickLower: info.tickLower,
+          tickUpper: info.tickUpper,
+        );
         return (
           raw: raw,
           info: info,
-          liquidity: liquidity,
+          liquidity: positionInfo.liquidity,
           tick: tick,
+          feeGrowthInside0: feeGrowthInside.inside0,
+          feeGrowthInside1: feeGrowthInside.inside1,
+          feeGrowthInside0Last: positionInfo.feeGrowthInside0Last,
+          feeGrowthInside1Last: positionInfo.feeGrowthInside1Last,
           error: null as Object?,
         );
       } catch (e, st) {
         debugPrint(
           '[v4debug] tokenId ${raw.tokenId} FALHOU (fase on-chain): $e\n$st',
         );
-        return (raw: raw, info: null, liquidity: null, tick: null, error: e);
+        return (
+          raw: raw,
+          info: null,
+          liquidity: null,
+          tick: null,
+          feeGrowthInside0: null,
+          feeGrowthInside1: null,
+          feeGrowthInside0Last: null,
+          feeGrowthInside1Last: null,
+          error: e,
+        );
       }
     });
 
@@ -689,6 +719,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       V4PositionInfo info,
       BigInt liquidity,
       int tick,
+      BigInt feeGrowthInside0,
+      BigInt feeGrowthInside1,
+      BigInt feeGrowthInside0Last,
+      BigInt feeGrowthInside1Last,
     })>[];
     for (final r in rawResults) {
       if (r.error != null) {
@@ -699,6 +733,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           info: r.info!,
           liquidity: r.liquidity!,
           tick: r.tick!,
+          feeGrowthInside0: r.feeGrowthInside0!,
+          feeGrowthInside1: r.feeGrowthInside1!,
+          feeGrowthInside0Last: r.feeGrowthInside0Last!,
+          feeGrowthInside1Last: r.feeGrowthInside1Last!,
         ));
       }
     }
@@ -809,6 +847,25 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       final currentUsd = amount0 * token0.priceUsd + amount1 * token1.priceUsd;
       final isClosed = r.liquidity == BigInt.zero;
 
+      // Mesma fórmula do v3 (`tokensOwed`), só que o `feeGrowthInside`
+      // ATUAL vem já calculado do `StateView` (ver
+      // `UniswapV4PoolStateClient.getFeeGrowthInside`) em vez de ter de
+      // ser derivado de `feeGrowthGlobal`/`feeGrowthOutside` — o v4 faz
+      // essa derivação por nós.
+      final owed0 = tokensOwed(
+        feeGrowthInsideX128: r.feeGrowthInside0,
+        feeGrowthInsideLastX128: r.feeGrowthInside0Last,
+        liquidity: r.liquidity,
+      );
+      final owed1 = tokensOwed(
+        feeGrowthInsideX128: r.feeGrowthInside1,
+        feeGrowthInsideLastX128: r.feeGrowthInside1Last,
+        liquidity: r.liquidity,
+      );
+      final unclaimedUsd =
+          tokenAmountToDouble(owed0, token0.decimals) * token0.priceUsd +
+          tokenAmountToDouble(owed1, token1.decimals) * token1.priceUsd;
+
       mapped.add(
         PoolPosition()
           ..positionKey = '${chain.name}:v4:${r.raw.tokenId}'
@@ -828,7 +885,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           ..liquidityUsd = isClosed ? 0 : currentUsd
           ..initialLiquidityUsd = currentUsd
           ..feesClaimedUsd = 0
-          ..feesUnclaimedUsd = 0
+          ..feesUnclaimedUsd = unclaimedUsd
           ..gasCostUsd = 0
           ..isClosed = isClosed
           ..closedAt = null
