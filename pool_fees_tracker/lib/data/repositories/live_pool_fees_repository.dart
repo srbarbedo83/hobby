@@ -533,7 +533,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     // Descoberta via `alchemy_getAssetTransfers`, não via subgraph nem
     // `eth_getLogs` (o plano gratuito da Alchemy limita-o a 10 blocos por
     // pedido) — ver nota em `uniswap_v4_position_manager_client.dart`.
-    List<({BigInt tokenId, String owner, DateTime createdAt})> tokenPositions;
+    List<({BigInt tokenId, String owner, DateTime createdAt, String? mintTxHash})>
+    tokenPositions;
     try {
       final perOwner = await Future.wait(
         owners.map((owner) async {
@@ -544,6 +545,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                   tokenId: t.tokenId,
                   owner: owner,
                   createdAt: t.createdAt,
+                  mintTxHash: t.mintTxHash,
                 ),
               )
               .toList();
@@ -693,18 +695,23 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   ///   abertura" mostra 0 em vez de um número errado): não há como saber
   ///   on-chain o capital originalmente depositado sem reconstruir todo o
   ///   histórico de eventos `ModifyLiquidity` do tokenId.
-  /// - `gasCostUsd` fica a 0 pela mesma razão (sem eventos ligados ao
-  ///   tokenId para somar os recibos).
+  /// - `gasCostUsd` já é real quando a Alchemy devolveu o hash da tx de
+  ///   mint (`V4OwnedToken.mintTxHash`): lê-se o recibo dessa UMA
+  ///   transação (`eth_getTransactionReceipt`, sem o limite de blocos do
+  ///   `eth_getLogs`) e soma-se `gasUsed × effectiveGasPrice`. Só cobre o
+  ///   mint — increases/decreases/collects posteriores ao mesmo tokenId
+  ///   não são somados (precisariam do histórico completo de eventos, que
+  ///   continua indisponível) — fica a 0 quando o hash não veio na resposta.
   Future<({List<PoolPosition> positions, Object? lastError})> _mapV4Positions({
     required Chain chain,
-    required List<({BigInt tokenId, String owner, DateTime createdAt})>
+    required List<({BigInt tokenId, String owner, DateTime createdAt, String? mintTxHash})>
     tokenPositions,
     required UniswapV4PositionManagerClient posManager,
     required UniswapV4PoolStateClient poolStateClient,
   }) async {
     // Concorrência limitada (ver `mapWithConcurrency`) e espaçada no tempo
-    // (ver `EthRpcClient._waitForTurn`) — cada posição faz 4 pedidos RPC, e
-    // uma wallet com muitas posições (confirmado ao vivo com 81 no
+    // (ver `EthRpcClient._waitForTurn`) — cada posição faz 4-5 pedidos RPC,
+    // e uma wallet com muitas posições (confirmado ao vivo com 81 no
     // Arbitrum) excedia o rate limit da Alchemy (plano gratuito) sem isto.
     final rawResults = await mapWithConcurrency(tokenPositions, (raw) async {
       try {
@@ -725,6 +732,19 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           tickLower: info.tickLower,
           tickUpper: info.tickUpper,
         );
+        // Falhar a ler o recibo de gás não deve invalidar a posição
+        // inteira (fees/range continuam válidos sem isto) — fica a 0.
+        var gasWei = BigInt.zero;
+        final mintTxHash = raw.mintTxHash;
+        if (mintTxHash != null) {
+          try {
+            gasWei = await posManager.rpcClient.fetchGasCostWei([mintTxHash]);
+          } catch (e) {
+            debugPrint(
+              '[v4debug] tokenId ${raw.tokenId}: recibo de gás FALHOU: $e',
+            );
+          }
+        }
         return (
           raw: raw,
           info: info,
@@ -734,6 +754,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           feeGrowthInside1: feeGrowthInside.inside1,
           feeGrowthInside0Last: positionInfo.feeGrowthInside0Last,
           feeGrowthInside1Last: positionInfo.feeGrowthInside1Last,
+          gasWei: gasWei,
           error: null as Object?,
         );
       } catch (e, st) {
@@ -749,6 +770,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           feeGrowthInside1: null,
           feeGrowthInside0Last: null,
           feeGrowthInside1Last: null,
+          gasWei: BigInt.zero,
           error: e,
         );
       }
@@ -756,7 +778,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
 
     Object? lastError;
     final ok = <({
-      ({BigInt tokenId, String owner, DateTime createdAt}) raw,
+      ({BigInt tokenId, String owner, DateTime createdAt, String? mintTxHash}) raw,
       V4PositionInfo info,
       BigInt liquidity,
       int tick,
@@ -764,6 +786,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       BigInt feeGrowthInside1,
       BigInt feeGrowthInside0Last,
       BigInt feeGrowthInside1Last,
+      BigInt gasWei,
     })>[];
     for (final r in rawResults) {
       if (r.error != null) {
@@ -778,13 +801,17 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           feeGrowthInside1: r.feeGrowthInside1!,
           feeGrowthInside0Last: r.feeGrowthInside0Last!,
           feeGrowthInside1Last: r.feeGrowthInside1Last!,
+          gasWei: r.gasWei,
         ));
       }
     }
     if (ok.isEmpty) return (positions: <PoolPosition>[], lastError: lastError);
 
     final addresses = <String>{};
-    var needsNativeEth = false;
+    // Gás é sempre pago em ETH nativo nestas chains (Ethereum/Arbitrum),
+    // independentemente dos tokens da pool — por isso também força a
+    // buscar o preço nativo quando há algum recibo de gás para converter.
+    var needsNativeEth = ok.any((r) => r.gasWei > BigInt.zero);
     for (final r in ok) {
       for (final currency in [r.info.poolKey.currency0, r.info.poolKey.currency1]) {
         if (currency.toLowerCase() == _zeroAddress) {
@@ -906,6 +933,9 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       final unclaimedUsd =
           tokenAmountToDouble(owed0, token0.decimals) * token0.priceUsd +
           tokenAmountToDouble(owed1, token1.decimals) * token1.priceUsd;
+      final gasCostUsd = nativeEthPriceUsd == null
+          ? 0.0
+          : tokenAmountToDouble(r.gasWei, 18) * nativeEthPriceUsd;
 
       mapped.add(
         PoolPosition()
@@ -927,7 +957,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           ..initialLiquidityUsd = currentUsd
           ..feesClaimedUsd = 0
           ..feesUnclaimedUsd = unclaimedUsd
-          ..gasCostUsd = 0
+          ..gasCostUsd = gasCostUsd
           ..isClosed = isClosed
           ..closedAt = null
           ..isV4 = true,

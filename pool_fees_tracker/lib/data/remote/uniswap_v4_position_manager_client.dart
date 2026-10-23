@@ -39,7 +39,18 @@ class V4OwnedToken {
   final BigInt tokenId;
   final DateTime createdAt;
 
-  V4OwnedToken({required this.tokenId, required this.createdAt});
+  /// Hash da transação de mint (a transferência mais antiga encontrada
+  /// para este tokenId) — permite ler o recibo (`eth_getTransactionReceipt`)
+  /// e somar `gasUsed × effectiveGasPrice` sem precisar de `eth_getLogs`
+  /// (que o plano gratuito da Alchemy limita a 10 blocos por pedido). Vem a
+  /// `null` quando a resposta da Alchemy não trouxe o campo `hash`.
+  final String? mintTxHash;
+
+  V4OwnedToken({
+    required this.tokenId,
+    required this.createdAt,
+    this.mintTxHash,
+  });
 }
 
 /// Lê posições Uniswap v4 diretamente do contrato `PositionManager` via
@@ -84,7 +95,7 @@ class UniswapV4PositionManagerClient {
     // como aproximação da data de "abertura" da posição (a mesma
     // aproximação que o resto da app já assume quando a info exata não
     // está disponível).
-    final earliestBlockByTokenId = <BigInt, BigInt>{};
+    final earliestByTokenId = <BigInt, ({BigInt blockNumber, String? hash})>{};
     for (final transfer in transfers) {
       final tokenIdHex =
           (transfer['tokenId'] ?? transfer['erc721TokenId']) as String?;
@@ -92,9 +103,12 @@ class UniswapV4PositionManagerClient {
       if (tokenIdHex == null || blockNumHex == null) continue;
       final tokenId = BigInt.parse(tokenIdHex.substring(2), radix: 16);
       final blockNumber = BigInt.parse(blockNumHex.substring(2), radix: 16);
-      final current = earliestBlockByTokenId[tokenId];
-      if (current == null || blockNumber < current) {
-        earliestBlockByTokenId[tokenId] = blockNumber;
+      final current = earliestByTokenId[tokenId];
+      if (current == null || blockNumber < current.blockNumber) {
+        earliestByTokenId[tokenId] = (
+          blockNumber: blockNumber,
+          hash: transfer['hash'] as String?,
+        );
       }
     }
 
@@ -106,12 +120,18 @@ class UniswapV4PositionManagerClient {
     // com HTTP 429 ("compute units per second" excedido) — ver
     // `mapWithConcurrency`.
     final verified = await mapWithConcurrency(
-      earliestBlockByTokenId.entries.toList(),
+      earliestByTokenId.entries.toList(),
       (entry) async {
         final currentOwner = await _ownerOf(entry.key);
         if (currentOwner.toLowerCase() != owner.toLowerCase()) return null;
-        final createdAt = await rpcClient.getBlockTimestamp(entry.value);
-        return V4OwnedToken(tokenId: entry.key, createdAt: createdAt);
+        final createdAt = await rpcClient.getBlockTimestamp(
+          entry.value.blockNumber,
+        );
+        return V4OwnedToken(
+          tokenId: entry.key,
+          createdAt: createdAt,
+          mintTxHash: entry.value.hash,
+        );
       },
     );
     return verified.whereType<V4OwnedToken>().toList();

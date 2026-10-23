@@ -103,9 +103,11 @@ void main() {
     Map<String, dynamic> assetTransfer({
       required BigInt tokenId,
       required int blockNumber,
+      String? hash,
     }) => {
       'tokenId': '0x${tokenId.toRadixString(16)}',
       'blockNum': '0x${blockNumber.toRadixString(16)}',
+      if (hash != null) 'hash': hash,
     };
 
     test(
@@ -125,6 +127,7 @@ void main() {
                       assetTransfer(
                         tokenId: BigInt.from(1),
                         blockNumber: 21000100,
+                        hash: '0xmint1',
                       ),
                       // tokenId 2 foi transferido para fora entretanto —
                       // não deve aparecer no resultado final.
@@ -180,8 +183,63 @@ void main() {
 
         expect(owned.length, 1);
         expect(owned.single.tokenId, BigInt.from(1));
+        expect(owned.single.mintTxHash, '0xmint1');
       },
     );
+
+    test('mintTxHash fica null quando a Alchemy não devolve "hash"', () async {
+      final mockClient = MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final method = body['method'] as String;
+        switch (method) {
+          case 'alchemy_getAssetTransfers':
+            return http.Response(
+              jsonEncode({
+                'jsonrpc': '2.0',
+                'id': 1,
+                'result': {
+                  'transfers': [
+                    assetTransfer(tokenId: BigInt.from(1), blockNumber: 1),
+                  ],
+                  'pageKey': null,
+                },
+              }),
+              200,
+            );
+          case 'eth_call':
+            return http.Response(
+              jsonEncode({
+                'jsonrpc': '2.0',
+                'id': 1,
+                'result': '0x${_addrWord(owner)}',
+              }),
+              200,
+            );
+          case 'eth_getBlockByNumber':
+            return http.Response(
+              jsonEncode({
+                'jsonrpc': '2.0',
+                'id': 1,
+                'result': {'timestamp': '0x68ab8f80'},
+              }),
+              200,
+            );
+          default:
+            throw StateError('método inesperado: $method');
+        }
+      });
+
+      final client = UniswapV4PositionManagerClient(
+        rpcClient: EthRpcClient(
+          rpcUrl: 'https://example.invalid/rpc',
+          httpClient: mockClient,
+        ),
+        positionManagerAddress: posManagerAddress,
+      );
+
+      final owned = await client.fetchOwnedTokenIds(owner);
+      expect(owned.single.mintTxHash, isNull);
+    });
   });
 
   group('UniswapV4PositionManagerClient.getPositionLiquidity', () {

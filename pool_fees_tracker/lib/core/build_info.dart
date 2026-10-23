@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.22+23 — IL e Net vs. HODL agregados no Dashboard';
+const String appBuildLabel = 'v1.0.23+24 — custo de gás real (mint) para posições v4';

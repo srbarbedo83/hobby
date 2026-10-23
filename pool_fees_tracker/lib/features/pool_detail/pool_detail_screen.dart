@@ -238,9 +238,11 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 ),
                 child: Text(
                   'Posição Uniswap v4 — as taxas não reclamadas já são '
-                  'reais (lidas on-chain). O lucro/perda "desde a '
-                  'abertura" e o custo de gás ainda não estão disponíveis '
-                  'para v4 (só v3), por isso aparecem a 0.',
+                  'reais (lidas on-chain), e o custo de gás cobre o mint '
+                  'da posição (recibo da transação). O lucro/perda "desde '
+                  'a abertura" e o gás de increases/collects posteriores '
+                  'ainda não estão disponíveis para v4 (só v3), por isso '
+                  'aparecem a 0.',
                   style: TextStyle(color: palette.textSecondary, fontSize: 11),
                 ),
               ),
