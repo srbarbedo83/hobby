@@ -17,7 +17,7 @@
         android:textSize="10sp"
         android:letterSpacing="0.08"
         android:textStyle="bold"
-        tools:text="TOTAL DE TAXAS GANHAS" />
+        tools:text="TOTAL DE TAXAS GERADAS" />
 
     <TextView
         android:id="@+id/widget_total_fees"

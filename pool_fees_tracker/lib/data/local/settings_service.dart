@@ -24,7 +24,7 @@ enum WidgetMetric { totalFees, fees24h, unclaimed }
 
 extension WidgetMetricLabel on WidgetMetric {
   String get label => switch (this) {
-    WidgetMetric.totalFees => 'Total de taxas ganhas',
+    WidgetMetric.totalFees => 'Total de taxas geradas',
     WidgetMetric.fees24h => 'Taxas 24h',
     WidgetMetric.unclaimed => 'Taxas não reclamadas',
   };
@@ -32,7 +32,7 @@ extension WidgetMetricLabel on WidgetMetric {
   /// Título mostrado no widget acima do número (maiúsculas, como no
   /// layout atual).
   String get widgetTitle => switch (this) {
-    WidgetMetric.totalFees => 'TOTAL DE TAXAS GANHAS',
+    WidgetMetric.totalFees => 'TOTAL DE TAXAS GERADAS',
     WidgetMetric.fees24h => 'TAXAS 24H',
     WidgetMetric.unclaimed => 'TAXAS NÃO RECLAMADAS',
   };

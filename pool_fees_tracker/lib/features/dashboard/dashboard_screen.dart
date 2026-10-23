@@ -44,7 +44,31 @@ class DashboardScreen extends ConsumerWidget {
       positions: positions,
       snapshotsByKey: snapshots,
     );
-    final openPositions = positions.where((p) => !p.isClosed).toList();
+    final openPositions = positions.where((p) => !p.isClosed).toList()
+      ..sort((a, b) {
+        // Pedido do utilizador: pools dentro do range primeiro, as fora
+        // do range (precisam de atenção) depois. Dentro de cada grupo,
+        // a mais recente primeiro — um proxy para "mais nova no range",
+        // já que medir o tempo exato contínuo dentro do range exigiria
+        // carregar o histórico de preço de cada posição (ainda não é
+        // feito em lote no Dashboard, só o de fees).
+        final aOut =
+            computeRangeHealth(
+              tickLower: a.tickLower,
+              tickUpper: a.tickUpper,
+              currentTick: a.currentTick,
+            ).status ==
+            RangeStatus.outOfRange;
+        final bOut =
+            computeRangeHealth(
+              tickLower: b.tickLower,
+              tickUpper: b.tickUpper,
+              currentTick: b.currentTick,
+            ).status ==
+            RangeStatus.outOfRange;
+        if (aOut != bOut) return aOut ? 1 : -1;
+        return b.createdAt.compareTo(a.createdAt);
+      });
     final closedCount = positions.length - openPositions.length;
     final walletLabel = walletsAsync.value?.isNotEmpty == true
         ? walletsAsync.value!.first.label
@@ -59,11 +83,7 @@ class DashboardScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
           children: [
-            _TopBar(walletLabel: walletLabel),
-            if (lastError != null) ...[
-              const SizedBox(height: 12),
-              _LiveErrorBanner(message: lastError),
-            ],
+            _TopBar(walletLabel: walletLabel, errorMessage: lastError),
             const SizedBox(height: 18),
             _HeroCard(
               totalFeesUsd: metrics.totalFeesUsd,
@@ -172,7 +192,7 @@ class DashboardScreen extends ConsumerWidget {
                     currentTick: position.currentTick,
                     initialLiquidityUsd: position.initialLiquidityUsd,
                   ).lossPct,
-                ).score,
+                ),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) =>
@@ -207,71 +227,68 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-/// Aviso visível quando o último [PoolFeesRepository.refreshNow] falhou em
-/// modo Live (rede, API key inválida, schema do subgraph inesperado) — sem
-/// isto, um erro ficava só no logcat e o utilizador via o dashboard
-/// silenciosamente vazio, sem nenhuma pista do que se passou.
-class _LiveErrorBanner extends ConsumerWidget {
-  final String message;
+class _TopBar extends ConsumerWidget {
+  final String walletLabel;
+  final String? errorMessage;
 
-  const _LiveErrorBanner({required this.message});
+  const _TopBar({required this.walletLabel, this.errorMessage});
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final palette = AppPalette.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: palette.negative.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: palette.negative.withValues(alpha: 0.4)),
+  /// Em vez do banner grande de antes (sempre visível, ocupava a largura
+  /// toda mesmo quando as posições já apareciam na lista), o erro do último
+  /// refresh fica resumido a um sino pequeno no canto — só quem quiser
+  /// detalhe toca nele.
+  void _showDetail(BuildContext context, WidgetRef ref, AppPalette palette) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: palette.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.error_outline, color: palette.negative, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
               children: [
+                Icon(Icons.error_outline, color: palette.negative, size: 18),
+                const SizedBox(width: 8),
                 Text(
                   'Não foi possível atualizar as posições',
                   style: TextStyle(
-                    color: palette.negative,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    fontSize: 12.5,
+                    color: palette.textPrimary,
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  message,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: palette.textSecondary, fontSize: 11),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 6),
-          IconButton(
-            icon: Icon(Icons.refresh, color: palette.textSecondary, size: 18),
-            tooltip: 'Tentar novamente',
-            onPressed: () => ref.read(poolFeesRepositoryProvider).refreshNow(),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Text(
+              errorMessage ?? '',
+              style: TextStyle(color: palette.textSecondary, fontSize: 12.5),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tentar novamente'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  ref.read(poolFeesRepositoryProvider).refreshNow();
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
-}
-
-class _TopBar extends StatelessWidget {
-  final String walletLabel;
-
-  const _TopBar({required this.walletLabel});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final palette = AppPalette.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -284,33 +301,57 @@ class _TopBar extends StatelessWidget {
             color: palette.textPrimary,
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(
-            color: palette.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: palette.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [palette.accent, const Color(0xFF7B61FF)],
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (errorMessage != null) ...[
+              GestureDetector(
+                onTap: () => _showDetail(context, ref, palette),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: palette.negative.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
                   ),
-                  shape: BoxShape.circle,
+                  child: Icon(
+                    Icons.notifications_active_outlined,
+                    color: palette.negative,
+                    size: 16,
+                  ),
                 ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                walletLabel,
-                style: TextStyle(fontSize: 12, color: palette.textPrimary),
-              ),
+              const SizedBox(width: 8),
             ],
-          ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: palette.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [palette.accent, const Color(0xFF7B61FF)],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    walletLabel,
+                    style: TextStyle(fontSize: 12, color: palette.textPrimary),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -351,7 +392,7 @@ class _HeroCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'TOTAL DE TAXAS GANHAS',
+                'TOTAL DE TAXAS GERADAS',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,

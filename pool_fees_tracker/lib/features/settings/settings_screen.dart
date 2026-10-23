@@ -567,7 +567,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ),
                     subtitle: Text(
-                      'Uma notificação por semana com as taxas ganhas, a APR '
+                      'Uma notificação por semana com as taxas geradas, a APR '
                       'média e a melhor pool — não precisas de abrir a app.',
                       style: TextStyle(
                         color: palette.textTertiary,

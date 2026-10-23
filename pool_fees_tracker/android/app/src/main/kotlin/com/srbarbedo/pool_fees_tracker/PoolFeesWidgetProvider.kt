@@ -31,7 +31,7 @@ class PoolFeesWidgetProvider : HomeWidgetProvider() {
 
             setTextViewText(
                 R.id.widget_title,
-                widgetData.getString("widget_title", null) ?: "TOTAL DE TAXAS GANHAS",
+                widgetData.getString("widget_title", null) ?: "TOTAL DE TAXAS GERADAS",
             )
             setTextViewText(
                 R.id.widget_total_fees,

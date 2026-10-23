@@ -260,7 +260,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'TAXAS GANHAS',
+                        'TAXAS GERADAS',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -293,6 +293,14 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  if (position.feesUnclaimedUsd > 0.009) ...[
+                    const SizedBox(height: 10),
+                    _UnclaimedFeesChip(
+                      valueUsd: position.feesUnclaimedUsd,
+                      formatter: formatter,
+                      palette: palette,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -418,7 +426,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     valueColor: metrics.netVsHoldUsd >= 0
                         ? palette.positive
                         : palette.negative,
-                    caption: 'taxas ganhas menos IL',
+                    caption: 'taxas geradas menos IL',
                   ),
                 ),
               ],
@@ -689,6 +697,57 @@ extension on PositionEventType {
     PositionEventType.decreaseLiquidity => palette.warning,
     PositionEventType.collect => palette.positive,
   };
+}
+
+/// Destaque visual para as taxas por reclamar — pedido do utilizador: o
+/// valor ficava "escondido" dentro do total de taxas geradas (que inclui as
+/// já reclamadas), por isso ganha aqui cor mais chamativa e um glow para
+/// saltar à vista.
+class _UnclaimedFeesChip extends StatelessWidget {
+  final double valueUsd;
+  final CurrencyFormatter formatter;
+  final AppPalette palette;
+
+  const _UnclaimedFeesChip({
+    required this.valueUsd,
+    required this.formatter,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = palette.warning;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.35),
+            blurRadius: 14,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.bolt, color: color, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            '${formatter.format(valueUsd)} não reclamadas',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ActivitySection extends ConsumerWidget {

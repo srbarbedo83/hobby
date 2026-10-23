@@ -188,7 +188,7 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                                 initialLiquidityUsd:
                                     position.initialLiquidityUsd,
                               ).lossPct,
-                            ).score,
+                            ),
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => PoolDetailScreen(

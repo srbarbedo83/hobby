@@ -16,7 +16,7 @@ String buildPositionSummaryText({
     RangeStatus.outOfRange => 'fora do range',
   };
   return '${position.token0Symbol}/${position.token1Symbol} no Pool Fees Tracker\n'
-      '${formatter.format(position.feesTotalUsd)} em taxas ganhas '
+      '${formatter.format(position.feesTotalUsd)} em taxas geradas '
       '(${metrics.sinceOpen.daysOpen}d aberta)\n'
       'APR (7d): ${metrics.realizedAprPct.toStringAsFixed(1)}%\n'
       'Atualmente $rangeLabel';
