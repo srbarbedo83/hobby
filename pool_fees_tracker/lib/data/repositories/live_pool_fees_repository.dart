@@ -355,12 +355,21 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       // abaixo) — o "antes" deste refresh é a única base possível para
       // começar a construir um histórico de fees prospetivo, um ponto por
       // refresh, tal como já se faz com `pricePoints` para o tick.
+      final previousByKey = {
+        for (final p in _positions) p.positionKey: p,
+      };
       final oldFeesTotalUsdByKey = {
-        for (final p in _positions) p.positionKey: p.feesTotalUsd,
+        for (final entry in previousByKey.entries) entry.key: entry.value.feesTotalUsd,
       };
       final mapped = <PoolPosition>[];
       final pricePoints = <PricePoint>[];
       final v4FeeSnapshots = <FeeSnapshot>[];
+      // Pedido do utilizador ("às vezes tem as pools, às vezes não, é
+      // aleatório"): uma chain que falhou POR COMPLETO este ciclo (rede,
+      // rate limit, RPC em baixo) não deve apagar as posições dessa chain
+      // que já se sabiam de ciclos anteriores — ficam "congeladas" na
+      // última versão boa em vez de desaparecerem até ao próximo sucesso.
+      final failedChains = <Chain>{};
       String? v3Diagnostic;
       String? v4Diagnostic;
 
@@ -380,6 +389,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         } catch (e) {
           debugPrint('[v4debug] v3 chain ${chain.name} FALHOU: $e');
           v3Diagnostic = 'Subgraph v3 (${chain.displayName}): $e';
+          failedChains.add(chain);
           continue;
         }
         _ethPriceUsdByChain[chain] = result.ethPriceUsd;
@@ -453,6 +463,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                 chain: chain,
                 rpcClient: rpcClientsByChain[chain]!,
                 owners: owners,
+                previousByKey: previousByKey,
               ),
             ),
           );
@@ -460,11 +471,20 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           var totalTokenPositions = 0;
           var totalMapped = 0;
           Object? lastV4Error;
-          for (final r in perChainResults) {
+          for (var i = 0; i < perChainResults.length; i++) {
+            final chain = v4Chains[i];
+            final r = perChainResults[i];
             totalTokenPositions += r.tokenPositionCount;
             totalMapped += r.positions.length;
             mapped.addAll(r.positions);
             if (r.error != null) lastV4Error = r.error;
+            // Chain que não contribuiu NENHUMA posição fresca este ciclo,
+            // apesar de haver trabalho para fazer (erro, ou tokenIds
+            // descobertos mas nenhum lido com sucesso) — ver nota em
+            // `failedChains` acima.
+            if (r.positions.isEmpty && (r.error != null || r.tokenPositionCount > 0)) {
+              failedChains.add(chain);
+            }
             // Um ponto de fees por refresh, só prospetivo (mesma ideia do
             // `pricePoints` acima): sem subgraph v4, o delta entre este
             // refresh e o anterior é a única fonte de histórico possível.
@@ -495,6 +515,18 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                 'wallet, mas nenhuma pôde ser lida '
                 '(${lastV4Error ?? "erro desconhecido"}).';
           }
+        }
+      }
+
+      // Última rede de segurança: qualquer posição antiga cuja chain
+      // falhou por completo este ciclo e que não tenha sido já recuperada
+      // (fallback por posição, dentro de `_mapV4Positions`) continua
+      // "congelada" na última versão boa, em vez de desaparecer da lista.
+      if (failedChains.isNotEmpty) {
+        final mappedKeys = mapped.map((p) => p.positionKey).toSet();
+        for (final old in previousByKey.values) {
+          if (mappedKeys.contains(old.positionKey)) continue;
+          if (failedChains.contains(old.chain)) mapped.add(old);
         }
       }
 
@@ -538,6 +570,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     required Chain chain,
     required EthRpcClient rpcClient,
     required List<String> owners,
+    required Map<String, PoolPosition> previousByKey,
   }) async {
     final positionManagerAddress = _v4PositionManagerAddresses[chain]!;
     final stateViewAddress = _v4StateViewAddresses[chain];
@@ -597,6 +630,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       tokenPositions: tokenPositions,
       posManager: posManager,
       poolStateClient: poolStateClient,
+      previousByKey: previousByKey,
     );
     debugPrint(
       '[v4debug] ${chain.name}: _mapV4Positions '
@@ -735,6 +769,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     tokenPositions,
     required UniswapV4PositionManagerClient posManager,
     required UniswapV4PoolStateClient poolStateClient,
+    required Map<String, PoolPosition> previousByKey,
   }) async {
     // Concorrência limitada (ver `mapWithConcurrency`) e espaçada no tempo
     // (ver `EthRpcClient._waitForTurn`) — cada posição faz 4-5 pedidos RPC,
@@ -815,9 +850,18 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       BigInt feeGrowthInside1Last,
       BigInt gasWei,
     })>[];
+    // Pedido do utilizador ("às vezes tem as pools, às vezes não, é
+    // aleatório"): uma posição que continua confirmadamente dele
+    // (apareceu em `tokenPositions`, ou seja a Alchemy confirmou a posse)
+    // mas falhou só a leitura on-chain NESTE refresh (rate limit, timeout
+    // pontual) não deve desaparecer da lista — mostra-se a última versão
+    // conhecida, em vez de nada, até o próximo refresh ter sucesso.
+    final staleFallbacks = <PoolPosition>[];
     for (final r in rawResults) {
       if (r.error != null) {
         lastError = r.error;
+        final stale = previousByKey['${chain.name}:v4:${r.raw.tokenId}'];
+        if (stale != null && !stale.isClosed) staleFallbacks.add(stale);
       } else {
         ok.add((
           raw: r.raw,
@@ -832,7 +876,9 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         ));
       }
     }
-    if (ok.isEmpty) return (positions: <PoolPosition>[], lastError: lastError);
+    if (ok.isEmpty) {
+      return (positions: staleFallbacks, lastError: lastError);
+    }
 
     final addresses = <String>{};
     // Gás é sempre pago em ETH nativo nestas chains (Ethereum/Arbitrum),
@@ -991,7 +1037,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       );
     }
 
-    return (positions: mapped, lastError: lastError);
+    return (positions: [...mapped, ...staleFallbacks], lastError: lastError);
   }
 
   /// ETH nativo numa pool v4 é o endereço zero, não um token ERC-20 — não
