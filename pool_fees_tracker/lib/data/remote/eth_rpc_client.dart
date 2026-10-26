@@ -73,21 +73,43 @@ class EthRpcClient {
   ) async {
     for (var attempt = 0; ; attempt++) {
       await _waitForTurn();
-      final response = await _httpClient
-          .post(
-            Uri.parse(rpcUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'jsonrpc': '2.0',
-              'method': method,
-              'params': params,
-              'id': 1,
-            }),
-          )
-          // Ver nota equivalente em `uniswap_subgraph_client.dart` — um
-          // RPC lento ou pendurado não pode deixar o refresh Live preso
-          // para sempre sem nunca mostrar erro.
-          .timeout(const Duration(seconds: 20));
+      http.Response response;
+      try {
+        response = await _httpClient
+            .post(
+              Uri.parse(rpcUrl),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'jsonrpc': '2.0',
+                'method': method,
+                'params': params,
+                'id': 1,
+              }),
+            )
+            // Ver nota equivalente em `uniswap_subgraph_client.dart` — um
+            // RPC lento ou pendurado não pode deixar o refresh Live preso
+            // para sempre sem nunca mostrar erro.
+            .timeout(const Duration(seconds: 20));
+      } on http.ClientException catch (e) {
+        // Confirmado ao vivo (logcat): "Software caused connection abort"
+        // no `alchemy_getAssetTransfers` do Arbitrum (muito mais histórico
+        // de transferências para paginar do que o Ethereum, por ter mais
+        // posições) — uma quebra de ligação a meio do pedido, não um HTTP
+        // 429, por isso não entrava no retry já existente (só olhava para
+        // o status code). Sem isto, UM pedido falhado abortava a
+        // descoberta de tokenIds inteira dessa chain.
+        if (attempt < _retryDelays.length) {
+          await Future.delayed(_retryDelays[attempt]);
+          continue;
+        }
+        throw EthRpcException('ligação falhou: $e');
+      } on TimeoutException {
+        if (attempt < _retryDelays.length) {
+          await Future.delayed(_retryDelays[attempt]);
+          continue;
+        }
+        throw EthRpcException('pedido excedeu o tempo limite (20s)');
+      }
       if (response.statusCode == 429 && attempt < _retryDelays.length) {
         await Future.delayed(_retryDelays[attempt]);
         continue;

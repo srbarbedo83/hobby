@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.28+29 — custo de gás v4 só é lido uma vez por posição';
+const String appBuildLabel = 'v1.0.29+30 — RPC repete em quebras de ligação, não só em 429';
