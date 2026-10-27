@@ -67,10 +67,21 @@ class PriceRangeChart extends StatelessWidget {
           borderData: FlBorderData(show: false),
           rangeAnnotations: RangeAnnotations(
             horizontalRangeAnnotations: [
+              // Pedido do utilizador: a banda do range era uma cor sólida
+              // — passa a um degradê ligeiro (mais viva no meio do range,
+              // esbatendo nas margens) em vez de plana.
               HorizontalRangeAnnotation(
                 y1: priceLower,
                 y2: priceUpper,
-                color: palette.positive.withValues(alpha: 0.1),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    palette.positive.withValues(alpha: 0.04),
+                    palette.positive.withValues(alpha: 0.14),
+                    palette.positive.withValues(alpha: 0.04),
+                  ],
+                ),
               ),
             ],
           ),

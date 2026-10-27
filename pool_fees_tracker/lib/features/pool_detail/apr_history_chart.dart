@@ -36,19 +36,39 @@ class AprHistoryChart extends StatelessWidget {
     final dataMin = values.reduce((a, b) => a < b ? a : b);
     final dataMax = values.reduce((a, b) => a > b ? a : b);
     final pad = (dataMax - dataMin) * 0.1 + (dataMax - dataMin == 0 ? 1 : 0);
+    final chartMinY = (dataMin - pad).clamp(0, double.infinity).toDouble();
+    final chartMaxY = dataMax + pad;
 
     return SizedBox(
       height: 150,
       child: LineChart(
         LineChartData(
-          minY: (dataMin - pad).clamp(0, double.infinity),
-          maxY: dataMax + pad,
+          minY: chartMinY,
+          maxY: chartMaxY,
           gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
             show: true,
-            leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+            // Pedido do utilizador: faltava escala no eixo da APR.
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 36,
+                interval: (chartMaxY - chartMinY) / 2,
+                getTitlesWidget: (value, meta) {
+                  if (value == meta.max) return const SizedBox.shrink();
+                  return SideTitleWidget(
+                    meta: meta,
+                    child: Text(
+                      '${value.toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: palette.textTertiary,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
             rightTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),

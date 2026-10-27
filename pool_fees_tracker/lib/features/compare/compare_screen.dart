@@ -114,6 +114,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
                         border: Border.all(color: palette.border),
                       ),
                       child: _ComparisonChart(
+                        formatter: formatter,
                         series: buildComparisonSeries(
                           snapshotsA:
                               snapshots[positionA.positionKey] ?? const [],
@@ -202,11 +203,13 @@ class _ComparisonChart extends StatelessWidget {
   final List<ComparisonPoint> series;
   final Color colorA;
   final Color colorB;
+  final CurrencyFormatter formatter;
 
   const _ComparisonChart({
     required this.series,
     required this.colorA,
     required this.colorB,
+    required this.formatter,
   });
 
   @override
@@ -239,8 +242,25 @@ class _ComparisonChart extends StatelessWidget {
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
             show: true,
-            leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 42,
+                interval: maxY / 2,
+                getTitlesWidget: (value, meta) {
+                  if (value == meta.max) return const SizedBox.shrink();
+                  return SideTitleWidget(
+                    meta: meta,
+                    child: Text(
+                      formatter.formatCompact(value),
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: palette.textTertiary,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
             rightTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),

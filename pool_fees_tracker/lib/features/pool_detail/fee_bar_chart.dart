@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/calc/bar_aggregator.dart';
+import '../../core/format/currency_formatter.dart';
 import '../../core/theme/app_theme.dart';
 
 /// Gráfico de barras das fees geradas, agregadas por [BarPoint]. Tocar numa
@@ -12,6 +13,7 @@ class FeeBarChart extends StatelessWidget {
   final int? selectedIndex;
   final Color accentColor;
   final ValueChanged<int?> onBarSelected;
+  final CurrencyFormatter formatter;
 
   const FeeBarChart({
     super.key,
@@ -19,6 +21,7 @@ class FeeBarChart extends StatelessWidget {
     required this.selectedIndex,
     required this.accentColor,
     required this.onBarSelected,
+    required this.formatter,
   });
 
   @override
@@ -63,8 +66,28 @@ class FeeBarChart extends StatelessWidget {
           ),
           titlesData: FlTitlesData(
             show: true,
-            leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
+            // Pedido do utilizador: o gráfico não tinha escala nenhuma no
+            // eixo dos valores, só as barras — 3 marcas (0, meio, topo)
+            // já dão contexto sem poluir um gráfico pequeno.
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 42,
+                interval: maxY / 2,
+                getTitlesWidget: (value, meta) {
+                  if (value == meta.max) return const SizedBox.shrink();
+                  return SideTitleWidget(
+                    meta: meta,
+                    child: Text(
+                      formatter.formatCompact(value),
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: palette.textTertiary,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
             rightTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),

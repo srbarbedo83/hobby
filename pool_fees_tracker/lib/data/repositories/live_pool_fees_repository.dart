@@ -103,7 +103,19 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   DateTime? _lastUpdatedAt;
   String? _lastError;
   Timer? _autoRefreshTimer;
-  bool _refreshing = false;
+  // Era um `bool`: um pedido concorrente via-se só com um "já estava a
+  // correr, saltou este pedido" e devolvia de imediato, SEM esperar pelo
+  // refresh em curso. Isso é uma corrida real: `runBackgroundSync` (ver
+  // `background_sync_worker.dart`) cria o repositório e, no mesmo
+  // instante, o construtor já disparou o seu próprio `refreshNow()`
+  // (via `_loadCachedThenRefresh`) em segundo plano — ler
+  // `watchPositions().first` imediatamente a seguir apanhava quase
+  // sempre o valor ANTIGO (cache ou vazio), nunca o resultado do
+  // refresh que estava mesmo a acontecer, porque não havia como esperar
+  // por ele. Um `Future` partilhado resolve isto: todos os chamadores
+  // concorrentes esperam pelo MESMO refresh em vez de um deles ficar
+  // sem garantia nenhuma.
+  Future<void>? _refreshFuture;
   Future<Chain?>? _rpcChainFuture;
 
   // Cache de preços v4 (CoinGecko) — o tier gratuito tem rate limit por
@@ -146,8 +158,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
        _v4PositionManagerAddresses = {
          for (final chain in chains)
            if ((v4PositionManagerOverrides[chain] ??
-                  chain.uniswapV4PositionManagerAddress) !=
-              null)
+                   chain.uniswapV4PositionManagerAddress) !=
+               null)
              chain:
                  v4PositionManagerOverrides[chain] ??
                  chain.uniswapV4PositionManagerAddress!,
@@ -333,12 +345,19 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   }
 
   @override
-  Future<void> refreshNow() async {
-    if (_refreshing) {
-      debugPrint('[v4debug] refreshNow: já estava a correr, saltou este pedido');
-      return;
+  Future<void> refreshNow() {
+    final existing = _refreshFuture;
+    if (existing != null) {
+      debugPrint('[v4debug] refreshNow: já estava a correr, a aguardar essa');
+      return existing;
     }
-    _refreshing = true;
+    final future = _doRefresh();
+    _refreshFuture = future;
+    future.whenComplete(() => _refreshFuture = null);
+    return future;
+  }
+
+  Future<void> _doRefresh() async {
     debugPrint('[v4debug] refreshNow: a começar');
     try {
       final wallets = await _walletRepository.getAll();
@@ -355,11 +374,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       // abaixo) — o "antes" deste refresh é a única base possível para
       // começar a construir um histórico de fees prospetivo, um ponto por
       // refresh, tal como já se faz com `pricePoints` para o tick.
-      final previousByKey = {
-        for (final p in _positions) p.positionKey: p,
-      };
+      final previousByKey = {for (final p in _positions) p.positionKey: p};
       final oldFeesTotalUsdByKey = {
-        for (final entry in previousByKey.entries) entry.key: entry.value.feesTotalUsd,
+        for (final entry in previousByKey.entries)
+          entry.key: entry.value.feesTotalUsd,
       };
       final mapped = <PoolPosition>[];
       final pricePoints = <PricePoint>[];
@@ -482,7 +500,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
             // apesar de haver trabalho para fazer (erro, ou tokenIds
             // descobertos mas nenhum lido com sucesso) — ver nota em
             // `failedChains` acima.
-            if (r.positions.isEmpty && (r.error != null || r.tokenPositionCount > 0)) {
+            if (r.positions.isEmpty &&
+                (r.error != null || r.tokenPositionCount > 0)) {
               failedChains.add(chain);
             }
             // Um ponto de fees por refresh, só prospetivo (mesma ideia do
@@ -556,8 +575,9 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       debugPrint('[v4debug] refreshNow: EXCEÇÃO APANHADA: $e\n$st');
       _lastError = e.toString();
     } finally {
-      debugPrint('[v4debug] refreshNow: a terminar (finally), _lastError=$_lastError');
-      _refreshing = false;
+      debugPrint(
+        '[v4debug] refreshNow: a terminar (finally), _lastError=$_lastError',
+      );
     }
   }
 
@@ -565,7 +585,9 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   /// em paralelo com as outras chains selecionadas (`Future.wait` em
   /// `refreshNow`), já que cada uma usa o seu próprio RPC/conta e nunca
   /// partilha rate limit com as outras.
-  Future<({int tokenPositionCount, List<PoolPosition> positions, Object? error})>
+  Future<
+    ({int tokenPositionCount, List<PoolPosition> positions, Object? error})
+  >
   _refreshV4Chain({
     required Chain chain,
     required EthRpcClient rpcClient,
@@ -593,7 +615,9 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     // Descoberta via `alchemy_getAssetTransfers`, não via subgraph nem
     // `eth_getLogs` (o plano gratuito da Alchemy limita-o a 10 blocos por
     // pedido) — ver nota em `uniswap_v4_position_manager_client.dart`.
-    List<({BigInt tokenId, String owner, DateTime createdAt, String? mintTxHash})>
+    List<
+      ({BigInt tokenId, String owner, DateTime createdAt, String? mintTxHash})
+    >
     tokenPositions;
     try {
       final perOwner = await Future.wait(
@@ -619,10 +643,18 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       );
     } catch (e, st) {
       debugPrint('[v4debug] ${chain.name}: fetchOwnedTokenIds FALHOU: $e\n$st');
-      return (tokenPositionCount: 0, positions: const <PoolPosition>[], error: e);
+      return (
+        tokenPositionCount: 0,
+        positions: const <PoolPosition>[],
+        error: e,
+      );
     }
     if (tokenPositions.isEmpty) {
-      return (tokenPositionCount: 0, positions: const <PoolPosition>[], error: null);
+      return (
+        tokenPositionCount: 0,
+        positions: const <PoolPosition>[],
+        error: null,
+      );
     }
 
     final result = await _mapV4Positions(
@@ -765,7 +797,9 @@ class LivePoolFeesRepository implements PoolFeesRepository {
   ///   continua indisponível) — fica a 0 quando o hash não veio na resposta.
   Future<({List<PoolPosition> positions, Object? lastError})> _mapV4Positions({
     required Chain chain,
-    required List<({BigInt tokenId, String owner, DateTime createdAt, String? mintTxHash})>
+    required List<
+      ({BigInt tokenId, String owner, DateTime createdAt, String? mintTxHash})
+    >
     tokenPositions,
     required UniswapV4PositionManagerClient posManager,
     required UniswapV4PoolStateClient poolStateClient,
@@ -802,7 +836,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
         // se vê este tokenId.
         var gasWei = BigInt.zero;
         double? gasCostUsdOverride;
-        final previousPosition = previousByKey['${chain.name}:v4:${raw.tokenId}'];
+        final previousPosition =
+            previousByKey['${chain.name}:v4:${raw.tokenId}'];
         if (previousPosition != null) {
           gasCostUsdOverride = previousPosition.gasCostUsd;
         } else {
@@ -811,9 +846,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           final mintTxHash = raw.mintTxHash;
           if (mintTxHash != null) {
             try {
-              gasWei = await posManager.rpcClient.fetchGasCostWei([
-                mintTxHash,
-              ]);
+              gasWei = await posManager.rpcClient.fetchGasCostWei([mintTxHash]);
             } catch (e) {
               debugPrint(
                 '[v4debug] tokenId ${raw.tokenId}: recibo de gás FALHOU: $e',
@@ -855,18 +888,27 @@ class LivePoolFeesRepository implements PoolFeesRepository {
     });
 
     Object? lastError;
-    final ok = <({
-      ({BigInt tokenId, String owner, DateTime createdAt, String? mintTxHash}) raw,
-      V4PositionInfo info,
-      BigInt liquidity,
-      int tick,
-      BigInt feeGrowthInside0,
-      BigInt feeGrowthInside1,
-      BigInt feeGrowthInside0Last,
-      BigInt feeGrowthInside1Last,
-      BigInt gasWei,
-      double? gasCostUsdOverride,
-    })>[];
+    final ok =
+        <
+          ({
+            ({
+              BigInt tokenId,
+              String owner,
+              DateTime createdAt,
+              String? mintTxHash,
+            })
+            raw,
+            V4PositionInfo info,
+            BigInt liquidity,
+            int tick,
+            BigInt feeGrowthInside0,
+            BigInt feeGrowthInside1,
+            BigInt feeGrowthInside0Last,
+            BigInt feeGrowthInside1Last,
+            BigInt gasWei,
+            double? gasCostUsdOverride,
+          })
+        >[];
     // Pedido do utilizador ("às vezes tem as pools, às vezes não, é
     // aleatório"): uma posição que continua confirmadamente dele
     // (apareceu em `tokenPositions`, ou seja a Alchemy confirmou a posse)
@@ -908,7 +950,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       (r) => r.gasCostUsdOverride == null && r.gasWei > BigInt.zero,
     );
     for (final r in ok) {
-      for (final currency in [r.info.poolKey.currency0, r.info.poolKey.currency1]) {
+      for (final currency in [
+        r.info.poolKey.currency0,
+        r.info.poolKey.currency1,
+      ]) {
         if (currency.toLowerCase() == _zeroAddress) {
           needsNativeEth = true;
         } else {
@@ -922,7 +967,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       address,
     ) async {
       try {
-        return (address: address, metadata: await metadataClient.fetch(address));
+        return (
+          address: address,
+          metadata: await metadataClient.fetch(address),
+        );
       } catch (e) {
         debugPrint('[v4debug] metadata do token $address FALHOU: $e');
         return (address: address, metadata: null as Erc20Metadata?);

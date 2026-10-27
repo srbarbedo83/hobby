@@ -139,54 +139,107 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               refreshIntervalSeconds: settings.refreshIntervalSeconds,
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile(
-                    label: 'Taxas 24h',
-                    value: formatter.format(metrics.fees24hUsd),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: StatTile(
+                      label: 'Taxas 24h',
+                      value: formatter.format(metrics.fees24hUsd),
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Taxas 24h',
+                        body: const InfoSheetText(
+                          'Soma das taxas geradas por todas as pools nas '
+                          'últimas 24 horas.',
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: StatTile(
-                    label: 'APR média',
-                    value: '${metrics.avgAprPct.toStringAsFixed(1)}%',
-                    valueColor: palette.positive,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: StatTile(
+                      label: 'APR média',
+                      value: '${metrics.avgAprPct.toStringAsFixed(1)}%',
+                      valueColor: palette.positive,
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'APR média',
+                        body: const InfoSheetText(
+                          'Média da APR (7d) de todas as pools abertas. '
+                          'Cada APR individual já é anualizada a partir '
+                          'das fees dos últimos 7 dias — uma posição nova '
+                          'sem 7 dias de histórico ainda dá um número '
+                          'pouco fiável.',
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: StatTile(
-                    label: 'Não reclamadas',
-                    value: formatter.format(metrics.unclaimedUsd),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: StatTile(
+                      label: 'Não reclamadas',
+                      value: formatter.format(metrics.unclaimedUsd),
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Taxas não reclamadas',
+                        body: const InfoSheetText(
+                          'Soma, em todas as pools, da parte das taxas '
+                          'que ainda está na pool à espera de um '
+                          'collect() — já é tua, mas ainda não a '
+                          'reclamaste.',
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: StatTile(
-                    label: 'Proj. este mês',
-                    value: formatter.format(
-                      metrics.projection.projectedEndOfMonthUsd,
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: StatTile(
+                      label: 'Proj. este mês',
+                      value: formatter.format(
+                        metrics.projection.projectedEndOfMonthUsd,
+                      ),
+                      caption: 'todas as pools, taxa atual',
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Projeção deste mês/ano',
+                        body: const InfoSheetText(
+                          'Pega na taxa diária média dos últimos 7 dias '
+                          'de todas as pools e estende até ao fim do '
+                          'mês/ano — é uma tendência, não uma garantia.',
+                        ),
+                      ),
                     ),
-                    caption: 'todas as pools, taxa atual',
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: StatTile(
-                    label: 'Proj. este ano',
-                    value: formatter.format(
-                      metrics.projection.projectedEndOfYearUsd,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: StatTile(
+                      label: 'Proj. este ano',
+                      value: formatter.format(
+                        metrics.projection.projectedEndOfYearUsd,
+                      ),
+                      caption: 'todas as pools, taxa atual',
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Projeção deste mês/ano',
+                        body: const InfoSheetText(
+                          'Pega na taxa diária média dos últimos 7 dias '
+                          'de todas as pools e estende até ao fim do '
+                          'mês/ano — é uma tendência, não uma garantia.',
+                        ),
+                      ),
                     ),
-                    caption: 'todas as pools, taxa atual',
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             IntrinsicHeight(
@@ -308,6 +361,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         _selectedBarIndex ??
                         (bars.isEmpty ? null : bars.length - 1),
                     accentColor: palette.accent,
+                    formatter: formatter,
                     onBarSelected: (index) =>
                         setState(() => _selectedBarIndex = index),
                   ),

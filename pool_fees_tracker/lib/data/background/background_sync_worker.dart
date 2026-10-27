@@ -58,9 +58,18 @@ Future<int> runBackgroundSync() async {
   );
 
   try {
-    final positions = await repo.watchPositions().first.timeout(
+    // `refreshNow()` agora espera mesmo pelo refresh (ver nota em
+    // `LivePoolFeesRepository.refreshNow`) — sem isto, `watchPositions()
+    // .first` apanhava quase sempre o valor ANTIGO (cache ou vazio),
+    // porque o construtor do repositório já tinha disparado o seu
+    // próprio refresh em paralelo e não havia garantia de esperar por
+    // ele. Era a causa mais provável de os alertas parecerem não
+    // disparar: a verificação corria sobre dados desatualizados.
+    await repo.refreshNow().timeout(
       const Duration(seconds: 30),
+      onTimeout: () {},
     );
+    final positions = await repo.watchPositions().first;
 
     final snapshotsByKey = {
       for (final position in positions)

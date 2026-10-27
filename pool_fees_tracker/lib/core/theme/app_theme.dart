@@ -73,12 +73,12 @@ class AppPalette extends ThemeExtension<AppPalette> {
   /// ecrã de detalhe (e o tema dos AppBars) pintava por cima e escondia-o.
   factory AppPalette.extraDark() => const AppPalette(
     background: Colors.transparent,
-    surface: Color(0xFF191225),
-    surfaceAlt: Color(0xFF221A33),
-    border: Color(0xFF2E2440),
-    textPrimary: Color(0xFFF2F0F8),
-    textSecondary: Color(0xFF9D94B5),
-    textTertiary: Color(0xFF6B6285),
+    surface: Color(0xFF131C2E),
+    surfaceAlt: Color(0xFF192840),
+    border: Color(0xFF223652),
+    textPrimary: Color(0xFFEEF2FA),
+    textSecondary: Color(0xFF8C9CB8),
+    textTertiary: Color(0xFF5E7089),
     accent: Color(0xFFFF4FA3),
     positive: Color(0xFF33D17A),
     negative: Color(0xFFFF5C5C),
@@ -86,12 +86,13 @@ class AppPalette extends ThemeExtension<AppPalette> {
   );
 
   /// Degradê pintado por trás de toda a app quando o tema é
-  /// `AppThemeMode.extraDark` — do roxo quase preto no topo a um preto
-  /// puro no fundo, "algo moderno" em vez de uma cor lisa.
+  /// `AppThemeMode.extraDark` — do azul-marinho quase preto no topo a um
+  /// preto puro no fundo, "algo moderno" em vez de uma cor lisa (pedido
+  /// do utilizador: tons de azul em vez de roxo).
   static const extraDarkBackgroundGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFF130E1C), Color(0xFF07060A)],
+    colors: [Color(0xFF0B1526), Color(0xFF05070C)],
   );
 
   static AppPalette of(BuildContext context) =>

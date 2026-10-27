@@ -356,6 +356,18 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                       valueColor: metrics.realizedAprPct >= 0
                           ? palette.positive
                           : palette.negative,
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'APR (7d)',
+                        body: const InfoSheetText(
+                          'Taxa de retorno anualizada, calculada a partir '
+                          'das fees dos últimos 7 dias e do valor atual da '
+                          'posição. Como é anualizada, amplifica o que '
+                          'aconteceu numa semana — uma posição nova (sem 7 '
+                          'dias de histórico ainda) mostra um número pouco '
+                          'fiável até esse histórico se preencher.',
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -364,6 +376,16 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                       label: 'Valor da posição',
                       value: formatter.format(position.liquidityUsd),
                       caption: 'incl. taxas não reclamadas',
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Valor da posição',
+                        body: const InfoSheetText(
+                          'Valor atual dos dois tokens que tens depositados '
+                          'nesta posição, ao preço de mercado de agora, '
+                          'incluindo as taxas ainda não reclamadas (a '
+                          'pool já as deve, mesmo antes do collect()).',
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -391,6 +413,21 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                               ? '~${metrics.gasBreakEven.estimatedDaysRemaining}d restantes à taxa atual'
                               : 'para cobrir o gas') +
                           (gasCostUsd != null ? ' · on-chain' : ''),
+                      onInfoTap: () => showInfoSheet(
+                        context,
+                        title: 'Gas break-even',
+                        body: const InfoSheetText(
+                          'Quantas taxas ainda faltam gerar para cobrir o '
+                          'custo de gás gasto a abrir a posição. "Pago" '
+                          'significa que as taxas já geradas já cobrem '
+                          'esse custo.\n\n'
+                          'Para posições v4, o custo de gás só cobre o '
+                          'mint — increases/decreases/collects '
+                          'posteriores ao mesmo tokenId ainda não estão '
+                          'incluídos (precisariam do histórico completo '
+                          'de eventos, que continua indisponível).',
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -423,6 +460,18 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               label: 'Proj. este ano',
               value: formatter.format(metrics.projection.projectedEndOfYearUsd),
               caption: 'à taxa diária atual — tendência, não garantia',
+              onInfoTap: () => showInfoSheet(
+                context,
+                title: 'Projeção deste mês/ano',
+                body: const InfoSheetText(
+                  'Pega na taxa diária média dos últimos 7 dias e estende '
+                  'até ao fim do mês/ano — é uma tendência, não uma '
+                  'garantia (preços e liquidez mudam).\n\n'
+                  'Numa posição v4 acabada de adicionar ainda não há 7 '
+                  'dias de histórico — o número só fica fiável depois de '
+                  'uma semana de refreshes.',
+                ),
+              ),
             ),
             const SizedBox(height: 10),
             IntrinsicHeight(
@@ -483,6 +532,17 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   ? palette.positive
                   : palette.textPrimary,
               caption: 'recorde: ${inRangeStreak.longest}d',
+              onInfoTap: () => showInfoSheet(
+                context,
+                title: 'Streak em range',
+                body: const InfoSheetText(
+                  'Quantos dias consecutivos, até hoje, o preço se '
+                  'manteve dentro do teu range — zero se o preço está '
+                  'fora do range agora. "Recorde" é a sequência mais '
+                  'longa já vista desde que a app começou a registar o '
+                  'histórico de preço desta posição.',
+                ),
+              ),
             ),
             const SizedBox(height: 18),
             Container(
@@ -546,6 +606,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                         _selectedBarIndex ??
                         (bars.isEmpty ? null : bars.length - 1),
                     accentColor: palette.accent,
+                    formatter: formatter,
                     onBarSelected: (index) =>
                         setState(() => _selectedBarIndex = index),
                   ),
