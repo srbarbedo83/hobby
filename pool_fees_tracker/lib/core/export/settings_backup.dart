@@ -41,6 +41,10 @@ String encodeSettingsBackup(AppSettings settings, List<Wallet> wallets) {
       'currencyCode': settings.currencyCode,
       'alertsEnabled': settings.alertsEnabled,
       'outOfRangeAlertsEnabled': settings.outOfRangeAlertsEnabled,
+      'outOfRangeDurationAlertsEnabled':
+          settings.outOfRangeDurationAlertsEnabled,
+      'outOfRangeDurationThresholdDays':
+          settings.outOfRangeDurationThresholdDays,
       'feeMilestoneAlertsEnabled': settings.feeMilestoneAlertsEnabled,
       'feeMilestoneThresholdUsd': settings.feeMilestoneThresholdUsd,
       'feeSlowdownAlertsEnabled': settings.feeSlowdownAlertsEnabled,
@@ -98,6 +102,10 @@ SettingsBackup decodeSettingsBackup(String text) {
     currencyCode: s['currencyCode'] as String? ?? 'USD',
     alertsEnabled: s['alertsEnabled'] as bool? ?? false,
     outOfRangeAlertsEnabled: s['outOfRangeAlertsEnabled'] as bool? ?? true,
+    outOfRangeDurationAlertsEnabled:
+        s['outOfRangeDurationAlertsEnabled'] as bool? ?? true,
+    outOfRangeDurationThresholdDays:
+        (s['outOfRangeDurationThresholdDays'] as num?)?.toInt() ?? 3,
     feeMilestoneAlertsEnabled: s['feeMilestoneAlertsEnabled'] as bool? ?? true,
     feeMilestoneThresholdUsd:
         (s['feeMilestoneThresholdUsd'] as num?)?.toDouble() ?? 50,

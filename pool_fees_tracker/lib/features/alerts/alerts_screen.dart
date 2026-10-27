@@ -164,6 +164,7 @@ class _AlertLogTile extends StatelessWidget {
     final palette = AppPalette.of(context);
     final color = switch (entry.kind) {
       AlertLogKind.outOfRange => palette.warning,
+      AlertLogKind.outOfRangeDuration => palette.negative,
       AlertLogKind.feeMilestone => palette.positive,
       AlertLogKind.feeSlowdown => palette.negative,
       AlertLogKind.priceThreshold => palette.accent,
@@ -171,6 +172,7 @@ class _AlertLogTile extends StatelessWidget {
     };
     final icon = switch (entry.kind) {
       AlertLogKind.outOfRange => Icons.warning_amber_rounded,
+      AlertLogKind.outOfRangeDuration => Icons.schedule,
       AlertLogKind.feeMilestone => Icons.celebration_outlined,
       AlertLogKind.feeSlowdown => Icons.trending_down,
       AlertLogKind.priceThreshold => Icons.notifications_active_outlined,

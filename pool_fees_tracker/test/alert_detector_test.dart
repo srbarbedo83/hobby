@@ -5,6 +5,7 @@ import 'package:pool_fees_tracker/data/local/chain.dart';
 import 'package:pool_fees_tracker/data/local/fee_snapshot.dart';
 import 'package:pool_fees_tracker/data/local/pool_position.dart';
 import 'package:pool_fees_tracker/data/local/price_alert_rule.dart';
+import 'package:pool_fees_tracker/data/local/price_point.dart';
 
 PriceAlertRule _rule({
   required String positionKey,
@@ -26,6 +27,13 @@ FeeSnapshot _snap(String key, DateTime t, double delta) {
     ..positionKey = key
     ..timestamp = t
     ..feesUsdDelta = delta;
+}
+
+PricePoint _point(String key, DateTime t, int tick) {
+  return PricePoint()
+    ..positionKey = key
+    ..timestamp = t
+    ..tick = tick;
 }
 
 PoolPosition _position({
@@ -106,6 +114,103 @@ void main() {
         previousStatusByKey: {},
       );
       expect(alerts, hasLength(1));
+    });
+  });
+
+  group('detectOutOfRangeDuration', () {
+    final now = DateTime(2026, 2, 10, 12);
+
+    test('alerta quando já passou o threshold e ainda não tinha avisado', () {
+      final positions = [_position(key: 'a', currentTick: 150)];
+      final pricePoints = {
+        'a': [_point('a', now.subtract(const Duration(days: 5)), 150)],
+      };
+      final alerts = detectOutOfRangeDuration(
+        positions: positions,
+        pricePointsByKey: pricePoints,
+        previousNotifiedByKey: {},
+        thresholdDays: 3,
+        now: now,
+      );
+      expect(alerts, hasLength(1));
+      expect(alerts.first.kind, AlertKind.outOfRangeDuration);
+    });
+
+    test('não repete se já tinha avisado neste streak', () {
+      final positions = [_position(key: 'a', currentTick: 150)];
+      final pricePoints = {
+        'a': [_point('a', now.subtract(const Duration(days: 5)), 150)],
+      };
+      final alerts = detectOutOfRangeDuration(
+        positions: positions,
+        pricePointsByKey: pricePoints,
+        previousNotifiedByKey: {'a': true},
+        thresholdDays: 3,
+        now: now,
+      );
+      expect(alerts, isEmpty);
+    });
+
+    test('não alerta se a duração ainda não chegou ao threshold', () {
+      final positions = [_position(key: 'a', currentTick: 150)];
+      final pricePoints = {
+        'a': [_point('a', now.subtract(const Duration(days: 1)), 150)],
+      };
+      final alerts = detectOutOfRangeDuration(
+        positions: positions,
+        pricePointsByKey: pricePoints,
+        previousNotifiedByKey: {},
+        thresholdDays: 3,
+        now: now,
+      );
+      expect(alerts, isEmpty);
+    });
+
+    test('não alerta se a posição está de volta ao range (sem duração)', () {
+      final positions = [_position(key: 'a', currentTick: 0)];
+      final pricePoints = {
+        'a': [_point('a', now.subtract(const Duration(days: 5)), 0)],
+      };
+      final alerts = detectOutOfRangeDuration(
+        positions: positions,
+        pricePointsByKey: pricePoints,
+        previousNotifiedByKey: {'a': true},
+        thresholdDays: 3,
+        now: now,
+      );
+      expect(alerts, isEmpty);
+    });
+
+    test('ignora posições fechadas', () {
+      final positions = [_position(key: 'a', currentTick: 150, isClosed: true)];
+      final pricePoints = {
+        'a': [_point('a', now.subtract(const Duration(days: 5)), 150)],
+      };
+      final alerts = detectOutOfRangeDuration(
+        positions: positions,
+        pricePointsByKey: pricePoints,
+        previousNotifiedByKey: {},
+        thresholdDays: 3,
+        now: now,
+      );
+      expect(alerts, isEmpty);
+    });
+
+    test('threshold 0 ou negativo nunca alerta', () {
+      final positions = [_position(key: 'a', currentTick: 150)];
+      final pricePoints = {
+        'a': [_point('a', now.subtract(const Duration(days: 10)), 150)],
+      };
+      expect(
+        detectOutOfRangeDuration(
+          positions: positions,
+          pricePointsByKey: pricePoints,
+          previousNotifiedByKey: {},
+          thresholdDays: 0,
+          now: now,
+        ),
+        isEmpty,
+      );
     });
   });
 

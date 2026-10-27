@@ -3,6 +3,7 @@ import 'package:workmanager/workmanager.dart';
 
 import '../../core/calc/alert_detector.dart';
 import '../../core/calc/dashboard_metrics.dart';
+import '../../core/calc/price_history_calc.dart';
 import '../../core/calc/range_health.dart';
 import '../../core/calc/weekly_digest.dart';
 import '../../core/format/currency_formatter.dart';
@@ -98,6 +99,10 @@ Future<int> runBackgroundSync() async {
 
     if (!settings.alertsEnabled) return 0;
 
+    final pricePointsByKey = {
+      for (final position in positions)
+        position.positionKey: await repo.getPricePoints(position.positionKey),
+    };
     final previousStates = await isar.alertStates.where().findAll();
     final previousStatusByKey = {
       for (final s in previousStates) s.positionKey: s.lastRangeStatus,
@@ -107,6 +112,10 @@ Future<int> runBackgroundSync() async {
     };
     final previousSlowdownByKey = {
       for (final s in previousStates) s.positionKey: s.lastFeeSlowdownNotified,
+    };
+    final previousOutOfRangeDurationByKey = {
+      for (final s in previousStates)
+        s.positionKey: s.lastOutOfRangeDurationNotified,
     };
     bool previousConcentrationActive = false;
     DateTime? previousWeeklyDigestSentAt;
@@ -126,6 +135,14 @@ Future<int> runBackgroundSync() async {
         ? detectRangeTransitions(
             positions: positions,
             previousStatusByKey: previousStatusByKey,
+          )
+        : <AlertEvent>[];
+    final outOfRangeDurationAlerts = settings.outOfRangeDurationAlertsEnabled
+        ? detectOutOfRangeDuration(
+            positions: positions,
+            pricePointsByKey: pricePointsByKey,
+            previousNotifiedByKey: previousOutOfRangeDurationByKey,
+            thresholdDays: settings.outOfRangeDurationThresholdDays,
           )
         : <AlertEvent>[];
     final milestoneAlerts = settings.feeMilestoneAlertsEnabled
@@ -154,6 +171,7 @@ Future<int> runBackgroundSync() async {
         : <AlertEvent>[];
     final allAlerts = [
       ...rangeAlerts,
+      ...outOfRangeDurationAlerts,
       ...milestoneAlerts,
       ...slowdownAlerts,
       ...priceThresholdAlerts,
@@ -204,13 +222,22 @@ Future<int> runBackgroundSync() async {
         final slowdownNow = isFeeSlowdown(
           snapshots: snapshotsByKey[position.positionKey] ?? const [],
         );
+        final outOfRangeDurationNow =
+            (currentOutOfRangeDuration(
+                  points: pricePointsByKey[position.positionKey] ?? const [],
+                  tickLower: position.tickLower,
+                  tickUpper: position.tickUpper,
+                )?.inDays ??
+                -1) >=
+            settings.outOfRangeDurationThresholdDays;
 
         await isar.alertStates.put(
           AlertState()
             ..positionKey = position.positionKey
             ..lastRangeStatus = health.status
             ..lastNotifiedFeesTotal = notifiedFeesTotal
-            ..lastFeeSlowdownNotified = slowdownNow,
+            ..lastFeeSlowdownNotified = slowdownNow
+            ..lastOutOfRangeDurationNotified = outOfRangeDurationNow,
         );
 
         final rule = ruleByPositionKey[position.positionKey];
@@ -238,6 +265,7 @@ Future<int> runBackgroundSync() async {
             ..positionKey = alert.positionKey
             ..kind = switch (alert.kind) {
               AlertKind.outOfRange => AlertLogKind.outOfRange,
+              AlertKind.outOfRangeDuration => AlertLogKind.outOfRangeDuration,
               AlertKind.feeMilestone => AlertLogKind.feeMilestone,
               AlertKind.feeSlowdown => AlertLogKind.feeSlowdown,
               AlertKind.priceThreshold => AlertLogKind.priceThreshold,

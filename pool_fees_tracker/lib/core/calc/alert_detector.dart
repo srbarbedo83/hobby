@@ -2,11 +2,14 @@ import '../../data/local/alert_state.dart';
 import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
 import '../../data/local/price_alert_rule.dart';
+import '../../data/local/price_point.dart';
 import 'portfolio_composition.dart';
+import 'price_history_calc.dart';
 import 'range_health.dart';
 
 enum AlertKind {
   outOfRange,
+  outOfRangeDuration,
   feeMilestone,
   feeSlowdown,
   priceThreshold,
@@ -61,6 +64,51 @@ List<AlertEvent> detectRangeTransitions({
           title:
               '${position.token0Symbol}/${position.token1Symbol} está fora do range',
           body: 'O preço saiu do range desta posição — deixou de ganhar taxas.',
+        ),
+      );
+    }
+  }
+  return alerts;
+}
+
+/// Alerta para quem está fora do range há pelo menos [thresholdDays] dias
+/// consecutivos — distinto de [detectRangeTransitions] (que dispara logo
+/// ao sair, mesmo que só por minutos). [previousNotifiedByKey] marca quem
+/// já foi avisado NESTE streak, para não reavisar a cada verificação
+/// enquanto continuar fora — o chamador deve persistir o novo valor
+/// (`duration != null && duration.inDays >= thresholdDays`) como o próximo
+/// "já avisado", que naturalmente volta a `false` quando a posição regressa
+/// ao range (a duração passa a `null`).
+List<AlertEvent> detectOutOfRangeDuration({
+  required List<PoolPosition> positions,
+  required Map<String, List<PricePoint>> pricePointsByKey,
+  required Map<String, bool> previousNotifiedByKey,
+  required int thresholdDays,
+  DateTime? now,
+}) {
+  if (thresholdDays <= 0) return [];
+  final alerts = <AlertEvent>[];
+  for (final position in positions) {
+    if (position.isClosed) continue;
+    final duration = currentOutOfRangeDuration(
+      points: pricePointsByKey[position.positionKey] ?? const [],
+      tickLower: position.tickLower,
+      tickUpper: position.tickUpper,
+      now: now,
+    );
+    final exceeds = duration != null && duration.inDays >= thresholdDays;
+    final alreadyNotified =
+        previousNotifiedByKey[position.positionKey] ?? false;
+    if (exceeds && !alreadyNotified) {
+      alerts.add(
+        AlertEvent(
+          positionKey: position.positionKey,
+          kind: AlertKind.outOfRangeDuration,
+          title:
+              '${position.token0Symbol}/${position.token1Symbol} fora do range há ${duration.inDays}d',
+          body:
+              'Já leva ${duration.inDays} dias fora do range, sem gerar '
+              'taxas novas — considera reequilibrar.',
         ),
       );
     }

@@ -24,6 +24,10 @@ class AlertState {
   /// execução em background enquanto o abrandamento continuar.
   bool lastFeeSlowdownNotified = false;
 
+  /// Mesma ideia, para o alerta de "fora do range há X dias" — ver
+  /// `detectOutOfRangeDuration`.
+  bool lastOutOfRangeDurationNotified = false;
+
   /// Só usado na linha reservada `positionKey == "__portfolio__"` (ver
   /// `detectConcentrationRisk`) — não é por posição, é da carteira toda.
   bool lastConcentrationRiskActive = false;

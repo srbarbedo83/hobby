@@ -18,14 +18,31 @@ import '../../shared/widgets/token_pair_icon.dart';
 import '../compare/compare_screen.dart';
 import '../pool_detail/pool_detail_screen.dart';
 
-enum _SortBy { fees, apr, age }
+enum _SortBy { fees, apr, efficiency, age }
 
 extension on _SortBy {
   String get label => switch (this) {
     _SortBy.fees => 'Taxas',
     _SortBy.apr => 'APR',
+    _SortBy.efficiency => 'Eficaz',
     _SortBy.age => 'Recentes',
   };
+}
+
+/// % do capital inicial gerado em taxas, por dia, ao longo de TODA a vida
+/// da posição — ao contrário da APR (7d), não é anualizado nem só olha
+/// para a semana mais recente, por isso ordena diferente: uma pool com um
+/// primeiro mês excelente mas parada há semanas continua "eficiente" aqui,
+/// mesmo com APR (7d) baixa agora. Pedido do utilizador: "ranking de
+/// eficiência de capital (fees/dia por $ investido)".
+double _capitalEfficiencyPctPerDay(PoolPosition position) {
+  if (position.initialLiquidityUsd <= 0) return 0;
+  final daysOpen = DateTime.now().difference(position.createdAt).inHours ~/ 24;
+  final effectiveDays = daysOpen < 1 ? 1 : daysOpen;
+  return position.feesTotalUsd /
+      effectiveDays /
+      position.initialLiquidityUsd *
+      100;
 }
 
 class PoolsScreen extends ConsumerStatefulWidget {
@@ -78,6 +95,12 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
           final aprB = _apr7d(b, snapshots);
           return aprB.compareTo(aprA);
         });
+      case _SortBy.efficiency:
+        positions.sort(
+          (a, b) =>
+              _capitalEfficiencyPctPerDay(b)
+                  .compareTo(_capitalEfficiencyPctPerDay(a)),
+        );
       case _SortBy.age:
         positions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     }
@@ -118,7 +141,7 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                   ],
                 ),
                 SizedBox(
-                  width: 160,
+                  width: 200,
                   child: SegmentedPillControl<_SortBy>(
                     options: _SortBy.values,
                     selected: _sortBy,
@@ -135,6 +158,12 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                 selectedAddress: _selectedWalletAddress,
                 onSelected: (address) =>
                     setState(() => _selectedWalletAddress = address),
+              ),
+              const SizedBox(height: 10),
+              _WalletSummaryStrip(
+                wallets: wallets,
+                allPositions: allPositionsUnfiltered,
+                formatter: formatter,
               ),
             ],
             const SizedBox(height: 14),
@@ -326,6 +355,92 @@ class _WalletFilterChip extends StatelessWidget {
             color: selected ? palette.background : palette.textSecondary,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Resumo por carteira — pedido do utilizador: já havia um filtro por
+/// carteira, mas não um sítio para ver o total de cada uma de uma vez.
+/// Usa SEMPRE todas as posições (ignora o filtro ativo), para a carteira
+/// selecionada continuar visível na lista mesmo depois de a escolher.
+class _WalletSummaryStrip extends StatelessWidget {
+  final List<Wallet> wallets;
+  final List<PoolPosition> allPositions;
+  final CurrencyFormatter formatter;
+
+  const _WalletSummaryStrip({
+    required this.wallets,
+    required this.allPositions,
+    required this.formatter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 54,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final wallet in wallets) ...[
+            _WalletSummaryCard(
+              wallet: wallet,
+              positions: allPositions
+                  .where((p) => p.walletAddress == wallet.address)
+                  .toList(),
+              formatter: formatter,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _WalletSummaryCard extends StatelessWidget {
+  final Wallet wallet;
+  final List<PoolPosition> positions;
+  final CurrencyFormatter formatter;
+
+  const _WalletSummaryCard({
+    required this.wallet,
+    required this.positions,
+    required this.formatter,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final openCount = positions.where((p) => !p.isClosed).length;
+    final totalFeesUsd = positions.fold<double>(
+      0,
+      (a, p) => a + p.feesTotalUsd,
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: palette.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${wallet.label} · $openCount pool${openCount == 1 ? '' : 's'}',
+            style: TextStyle(fontSize: 10, color: palette.textTertiary),
+          ),
+          Text(
+            formatter.format(totalFeesUsd),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: palette.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }

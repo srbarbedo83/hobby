@@ -532,6 +532,66 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: palette.accent,
                     title: Text(
+                      'Alertas de fora do range há X dias',
+                      style: TextStyle(
+                        color: palette.textPrimary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Dispara uma vez quando passa do limite — diferente '
+                      'do alerta acima, que avisa logo ao sair do range.',
+                      style: TextStyle(
+                        color: palette.textTertiary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    value: settings.outOfRangeDurationAlertsEnabled,
+                    onChanged: (value) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update(
+                          (s) => s.copyWith(
+                            outOfRangeDurationAlertsEnabled: value,
+                          ),
+                        ),
+                  ),
+                  if (settings.outOfRangeDurationAlertsEnabled)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Depois de ${settings.outOfRangeDurationThresholdDays}'
+                            ' dia${settings.outOfRangeDurationThresholdDays == 1 ? '' : 's'} seguidos fora do range',
+                            style: TextStyle(
+                              color: palette.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Slider(
+                            value: settings.outOfRangeDurationThresholdDays
+                                .toDouble(),
+                            min: 1,
+                            max: 14,
+                            divisions: 13,
+                            activeColor: palette.accent,
+                            onChanged: (v) => ref
+                                .read(appSettingsProvider.notifier)
+                                .update(
+                                  (s) => s.copyWith(
+                                    outOfRangeDurationThresholdDays: v.round(),
+                                  ),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: palette.accent,
+                    title: Text(
                       'Alertas de milestones de taxas',
                       style: TextStyle(
                         color: palette.textPrimary,

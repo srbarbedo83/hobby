@@ -81,6 +81,8 @@ class AppSettings {
 
   final bool alertsEnabled;
   final bool outOfRangeAlertsEnabled;
+  final bool outOfRangeDurationAlertsEnabled;
+  final int outOfRangeDurationThresholdDays;
   final bool feeMilestoneAlertsEnabled;
   final double feeMilestoneThresholdUsd;
   final bool feeSlowdownAlertsEnabled;
@@ -101,6 +103,8 @@ class AppSettings {
     this.currencyCode = 'USD',
     this.alertsEnabled = false,
     this.outOfRangeAlertsEnabled = true,
+    this.outOfRangeDurationAlertsEnabled = true,
+    this.outOfRangeDurationThresholdDays = 3,
     this.feeMilestoneAlertsEnabled = true,
     this.feeMilestoneThresholdUsd = 50,
     this.feeSlowdownAlertsEnabled = true,
@@ -122,6 +126,8 @@ class AppSettings {
     String? currencyCode,
     bool? alertsEnabled,
     bool? outOfRangeAlertsEnabled,
+    bool? outOfRangeDurationAlertsEnabled,
+    int? outOfRangeDurationThresholdDays,
     bool? feeMilestoneAlertsEnabled,
     double? feeMilestoneThresholdUsd,
     bool? feeSlowdownAlertsEnabled,
@@ -145,6 +151,12 @@ class AppSettings {
       alertsEnabled: alertsEnabled ?? this.alertsEnabled,
       outOfRangeAlertsEnabled:
           outOfRangeAlertsEnabled ?? this.outOfRangeAlertsEnabled,
+      outOfRangeDurationAlertsEnabled:
+          outOfRangeDurationAlertsEnabled ??
+          this.outOfRangeDurationAlertsEnabled,
+      outOfRangeDurationThresholdDays:
+          outOfRangeDurationThresholdDays ??
+          this.outOfRangeDurationThresholdDays,
       feeMilestoneAlertsEnabled:
           feeMilestoneAlertsEnabled ?? this.feeMilestoneAlertsEnabled,
       feeMilestoneThresholdUsd:
@@ -177,6 +189,10 @@ class SettingsService {
   static const _keyCurrency = 'currency_code';
   static const _keyAlertsEnabled = 'alerts_enabled';
   static const _keyOutOfRangeAlerts = 'out_of_range_alerts_enabled';
+  static const _keyOutOfRangeDurationAlerts =
+      'out_of_range_duration_alerts_enabled';
+  static const _keyOutOfRangeDurationThresholdDays =
+      'out_of_range_duration_threshold_days';
   static const _keyFeeMilestoneAlerts = 'fee_milestone_alerts_enabled';
   static const _keyFeeMilestoneThreshold = 'fee_milestone_threshold_usd';
   static const _keyFeeSlowdownAlerts = 'fee_slowdown_alerts_enabled';
@@ -233,6 +249,10 @@ class SettingsService {
       currencyCode: _prefs.getString(_keyCurrency) ?? 'USD',
       alertsEnabled: _prefs.getBool(_keyAlertsEnabled) ?? false,
       outOfRangeAlertsEnabled: _prefs.getBool(_keyOutOfRangeAlerts) ?? true,
+      outOfRangeDurationAlertsEnabled:
+          _prefs.getBool(_keyOutOfRangeDurationAlerts) ?? true,
+      outOfRangeDurationThresholdDays:
+          _prefs.getInt(_keyOutOfRangeDurationThresholdDays) ?? 3,
       feeMilestoneAlertsEnabled: _prefs.getBool(_keyFeeMilestoneAlerts) ?? true,
       feeMilestoneThresholdUsd:
           _prefs.getDouble(_keyFeeMilestoneThreshold) ?? 50,
@@ -271,6 +291,14 @@ class SettingsService {
     await _prefs.setBool(
       _keyOutOfRangeAlerts,
       settings.outOfRangeAlertsEnabled,
+    );
+    await _prefs.setBool(
+      _keyOutOfRangeDurationAlerts,
+      settings.outOfRangeDurationAlertsEnabled,
+    );
+    await _prefs.setInt(
+      _keyOutOfRangeDurationThresholdDays,
+      settings.outOfRangeDurationThresholdDays,
     );
     await _prefs.setBool(
       _keyFeeMilestoneAlerts,

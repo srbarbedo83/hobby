@@ -4,6 +4,7 @@ part 'alert_log_entry.g.dart';
 
 enum AlertLogKind {
   outOfRange,
+  outOfRangeDuration,
   feeMilestone,
   feeSlowdown,
   priceThreshold,
