@@ -41,6 +41,22 @@ class PoolFeesWidgetProvider : HomeWidgetProvider() {
                 R.id.widget_updated_at,
                 widgetData.getString("updated_at_label", null) ?: "Abre a app para atualizar",
             )
+            setTextViewText(
+                R.id.widget_secondary1_label,
+                widgetData.getString("secondary1_label", null) ?: "",
+            )
+            setTextViewText(
+                R.id.widget_secondary1_value,
+                widgetData.getString("secondary1_value", null) ?: "—",
+            )
+            setTextViewText(
+                R.id.widget_secondary2_label,
+                widgetData.getString("secondary2_label", null) ?: "",
+            )
+            setTextViewText(
+                R.id.widget_secondary2_value,
+                widgetData.getString("secondary2_value", null) ?: "—",
+            )
           }
 
       appWidgetManager.updateAppWidget(widgetId, views)

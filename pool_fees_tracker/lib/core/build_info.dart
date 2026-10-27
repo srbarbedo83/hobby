@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.30+31 — tema azul, escalas nos gráficos, mais explicações, alertas corrigidos';
+const String appBuildLabel = 'v1.0.31+32 — widget transparente com mais info, preço do gás em Definições';

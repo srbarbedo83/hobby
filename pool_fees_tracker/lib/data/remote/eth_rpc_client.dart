@@ -115,9 +115,7 @@ class EthRpcClient {
         continue;
       }
       if (response.statusCode != 200) {
-        throw EthRpcException(
-          'HTTP ${response.statusCode}: ${response.body}',
-        );
+        throw EthRpcException('HTTP ${response.statusCode}: ${response.body}');
       }
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       if (decoded['error'] != null) {
@@ -193,6 +191,14 @@ class EthRpcClient {
     final block = result['result'] as Map<String, dynamic>;
     final seconds = parseHexBigInt(block['timestamp'] as String?).toInt();
     return DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
+  }
+
+  /// Preço de gás atual da chain (wei por unidade de gás), via
+  /// `eth_gasPrice` — pedido do utilizador para ter uma referência rápida
+  /// do custo de transacionar agora, sem ter de ir a um explorer externo.
+  Future<BigInt> getGasPriceWei() async {
+    final result = await _call('eth_gasPrice', const []);
+    return parseHexBigInt(result['result'] as String?);
   }
 
   /// Soma `gasUsed × effectiveGasPrice` de várias transações, em wei do

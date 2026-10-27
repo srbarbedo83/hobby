@@ -12,9 +12,16 @@ double widgetMetricValueUsd(WidgetMetric metric, DashboardMetrics metrics) =>
       WidgetMetric.unclaimed => metrics.unclaimedUsd,
     };
 
-/// Escreve o número e o título em destaque no widget de ecrã inicial
-/// Android (`PoolFeesWidgetProvider`) — ambos dependem da estatística
-/// escolhida em Definições (`WidgetMetric`), não só o total de fees.
+/// Os outros dois `WidgetMetric` além do escolhido como principal — para
+/// mostrar como estatísticas secundárias no widget (ver `HomeWidgetService`),
+/// em vez de ficarem de fora só porque não foram o escolhido.
+List<WidgetMetric> secondaryWidgetMetrics(WidgetMetric primary) =>
+    WidgetMetric.values.where((m) => m != primary).toList();
+
+/// Escreve o número em destaque (escolhido em Definições → `WidgetMetric`)
+/// e, pedido do utilizador ("só tem uma info, dá para pôr o máximo
+/// possível?"), também os outros dois valores, mais pequenos, numa linha
+/// por baixo — o widget deixa de mostrar só uma estatística isolada.
 /// Chamado tanto em primeiro plano (sempre que o dashboard recalcula os
 /// totais) como na verificação periódica em background de alertas — assim
 /// o widget continua a atualizar, só menos frequentemente (~15 min), com a
@@ -26,10 +33,18 @@ class HomeWidgetService {
     required String titleLabel,
     required String valueFormatted,
     required String updatedAtLabel,
+    required String secondary1Label,
+    required String secondary1Value,
+    required String secondary2Label,
+    required String secondary2Value,
   }) async {
     await HomeWidget.saveWidgetData('widget_title', titleLabel);
     await HomeWidget.saveWidgetData('value_formatted', valueFormatted);
     await HomeWidget.saveWidgetData('updated_at_label', updatedAtLabel);
+    await HomeWidget.saveWidgetData('secondary1_label', secondary1Label);
+    await HomeWidget.saveWidgetData('secondary1_value', secondary1Value);
+    await HomeWidget.saveWidgetData('secondary2_label', secondary2Label);
+    await HomeWidget.saveWidgetData('secondary2_value', secondary2Value);
     await HomeWidget.updateWidget(androidName: _androidProviderName);
   }
 }

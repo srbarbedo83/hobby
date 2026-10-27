@@ -7,6 +7,7 @@ import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/local/chain.dart';
 import '../../data/local/settings_service.dart';
+import '../../data/remote/eth_rpc_client.dart';
 import '../../data/services/export_service.dart';
 import 'add_wallet_dialog.dart';
 import 'glossary_screen.dart';
@@ -410,6 +411,54 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          _SectionLabel('Gás atual'),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Referência rápida do custo de transacionar agora em cada '
+              'chain com RPC URL configurado acima — não afeta o cálculo '
+              'de gás das tuas posições, é só informativo.',
+              style: TextStyle(color: palette.textTertiary, fontSize: 11),
+            ),
+          ),
+          ...() {
+            final chainsWithRpc = settings.selectedChains
+                .where((c) => (settings.v4RpcUrlOverrides[c] ?? '').isNotEmpty)
+                .toList();
+            if (chainsWithRpc.isEmpty) {
+              return [
+                _SettingsCard(
+                  child: Text(
+                    'Configura o "RPC URL desta chain" numa secção acima '
+                    'para veres aqui o preço do gás.',
+                    style: TextStyle(
+                      color: palette.textTertiary,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ),
+              ];
+            }
+            return [
+              _SettingsCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final chain in chainsWithRpc) ...[
+                      _GasPriceRow(
+                        chain: chain,
+                        rpcUrl: settings.v4RpcUrlOverrides[chain]!,
+                      ),
+                      if (chain != chainsWithRpc.last)
+                        const SizedBox(height: 10),
+                    ],
+                  ],
+                ),
+              ),
+            ];
+          }(),
+          const SizedBox(height: 24),
           _SectionLabel('Intervalo de atualização'),
           const SizedBox(height: 8),
           _SettingsCard(
@@ -780,6 +829,86 @@ class _SettingsCard extends StatelessWidget {
         border: Border.all(color: palette.border),
       ),
       child: child,
+    );
+  }
+}
+
+/// Lê e mostra o `eth_gasPrice` atual de uma chain — pedido do
+/// utilizador ("o preço atual das transações, ou taxas de gas").
+/// Mantido fora do Dashboard de propósito (lá já há muita informação) —
+/// fica em Definições, junto do RPC URL que usa para ler o valor.
+class _GasPriceRow extends StatefulWidget {
+  final Chain chain;
+  final String rpcUrl;
+
+  const _GasPriceRow({required this.chain, required this.rpcUrl});
+
+  @override
+  State<_GasPriceRow> createState() => _GasPriceRowState();
+}
+
+class _GasPriceRowState extends State<_GasPriceRow> {
+  late Future<BigInt> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  void _fetch() {
+    _future = EthRpcClient(rpcUrl: widget.rpcUrl).getGasPriceWei();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            widget.chain.displayName,
+            style: TextStyle(color: palette.textPrimary, fontSize: 12.5),
+          ),
+        ),
+        FutureBuilder<BigInt>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: palette.textTertiary,
+                ),
+              );
+            }
+            if (snapshot.hasError) {
+              return Text(
+                'falhou',
+                style: TextStyle(color: palette.negative, fontSize: 12),
+              );
+            }
+            final gwei = snapshot.data!.toDouble() / 1e9;
+            return Text(
+              '~${gwei.toStringAsFixed(1)} Gwei',
+              style: TextStyle(
+                color: palette.textPrimary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 6),
+        IconButton(
+          icon: Icon(Icons.refresh, size: 16, color: palette.textTertiary),
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          padding: EdgeInsets.zero,
+          onPressed: () => setState(_fetch),
+        ),
+      ],
     );
   }
 }

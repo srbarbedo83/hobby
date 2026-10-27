@@ -80,11 +80,21 @@ class _RootNavigationState extends ConsumerState<_RootNavigation> {
       snapshotsByKey: snapshots,
     );
     final settings = ref.read(appSettingsProvider);
+    final formatter = CurrencyFormatter(settings.currencyCode);
     final value = widgetMetricValueUsd(settings.widgetMetric, metrics);
+    final secondaries = secondaryWidgetMetrics(settings.widgetMetric);
     HomeWidgetService.update(
       titleLabel: settings.widgetMetric.widgetTitle,
-      valueFormatted: CurrencyFormatter(settings.currencyCode).format(value),
+      valueFormatted: formatter.format(value),
       updatedAtLabel: 'Atualizado agora mesmo',
+      secondary1Label: secondaries[0].widgetTitle,
+      secondary1Value: formatter.format(
+        widgetMetricValueUsd(secondaries[0], metrics),
+      ),
+      secondary2Label: secondaries[1].widgetTitle,
+      secondary2Value: formatter.format(
+        widgetMetricValueUsd(secondaries[1], metrics),
+      ),
     );
   }
 

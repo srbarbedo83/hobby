@@ -79,12 +79,21 @@ Future<int> runBackgroundSync() async {
       positions: positions,
       snapshotsByKey: snapshotsByKey,
     );
+    final widgetFormatter = CurrencyFormatter(settings.currencyCode);
     final widgetValue = widgetMetricValueUsd(settings.widgetMetric, metrics);
+    final widgetSecondaries = secondaryWidgetMetrics(settings.widgetMetric);
     await HomeWidgetService.update(
       titleLabel: settings.widgetMetric.widgetTitle,
-      valueFormatted: CurrencyFormatter(settings.currencyCode)
-          .format(widgetValue),
+      valueFormatted: widgetFormatter.format(widgetValue),
       updatedAtLabel: 'Atualizado agora mesmo',
+      secondary1Label: widgetSecondaries[0].widgetTitle,
+      secondary1Value: widgetFormatter.format(
+        widgetMetricValueUsd(widgetSecondaries[0], metrics),
+      ),
+      secondary2Label: widgetSecondaries[1].widgetTitle,
+      secondary2Value: widgetFormatter.format(
+        widgetMetricValueUsd(widgetSecondaries[1], metrics),
+      ),
     );
 
     if (!settings.alertsEnabled) return 0;
