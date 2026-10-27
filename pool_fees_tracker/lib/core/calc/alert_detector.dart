@@ -12,6 +12,7 @@ enum AlertKind {
   outOfRangeDuration,
   feeMilestone,
   feeSlowdown,
+  feeSpike,
   priceThreshold,
   concentrationRisk,
 }
@@ -195,6 +196,63 @@ List<AlertEvent> detectFeeSlowdowns({
           body:
               'As taxas das últimas 24h caíram bem abaixo da média de 7 dias desta '
               'posição — a pool pode estar a ter menos volume.',
+        ),
+      );
+    }
+  }
+  return alerts;
+}
+
+/// `true` quando as fees das últimas 24h estão bem ACIMA da média diária
+/// dos últimos 7 dias — o inverso de [isFeeSlowdown]: um dia excecional,
+/// útil para o utilizador notar (pode ser um pico de volume temporário,
+/// ou um sinal de que valeria a pena reequilibrar o range para captar
+/// mais disto). Mesma condição de base de 7 dias suficiente para a
+/// comparação fazer sentido.
+bool isFeeSpike({
+  required List<FeeSnapshot> snapshots,
+  double spikeThresholdMultiplier = 2.0,
+  DateTime? now,
+}) {
+  final effectiveNow = now ?? DateTime.now();
+  final last24hCutoff = effectiveNow.subtract(const Duration(hours: 24));
+  final last7dCutoff = effectiveNow.subtract(const Duration(days: 7));
+  final fees24h = snapshots
+      .where((s) => s.timestamp.isAfter(last24hCutoff))
+      .fold<double>(0, (a, b) => a + b.feesUsdDelta);
+  final fees7d = snapshots
+      .where((s) => s.timestamp.isAfter(last7dCutoff))
+      .fold<double>(0, (a, b) => a + b.feesUsdDelta);
+  final avgDaily7d = fees7d / 7;
+  if (avgDaily7d <= 0.01) return false;
+  return fees24h > avgDaily7d * spikeThresholdMultiplier;
+}
+
+/// Compara o estado de pico anterior com o atual e devolve um alerta só
+/// para quem acabou de ENTRAR em pico — mesma lógica de "transição, não
+/// estado" de [detectFeeSlowdowns].
+List<AlertEvent> detectFeeSpikes({
+  required List<PoolPosition> positions,
+  required Map<String, List<FeeSnapshot>> snapshotsByKey,
+  required Map<String, bool> previousSpikeByKey,
+  DateTime? now,
+}) {
+  final alerts = <AlertEvent>[];
+  for (final position in positions) {
+    if (position.isClosed) continue;
+    final snapshots = snapshotsByKey[position.positionKey] ?? const [];
+    final spikeNow = isFeeSpike(snapshots: snapshots, now: now);
+    final wasSpike = previousSpikeByKey[position.positionKey] ?? false;
+    if (spikeNow && !wasSpike) {
+      alerts.add(
+        AlertEvent(
+          positionKey: position.positionKey,
+          kind: AlertKind.feeSpike,
+          title:
+              '${position.token0Symbol}/${position.token1Symbol} — pico de taxas',
+          body:
+              'As taxas das últimas 24h ficaram bem acima da média de 7 dias '
+              'desta posição — dia de volume fora do normal.',
         ),
       );
     }

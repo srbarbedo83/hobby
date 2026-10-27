@@ -113,6 +113,9 @@ Future<int> runBackgroundSync() async {
     final previousSlowdownByKey = {
       for (final s in previousStates) s.positionKey: s.lastFeeSlowdownNotified,
     };
+    final previousSpikeByKey = {
+      for (final s in previousStates) s.positionKey: s.lastFeeSpikeNotified,
+    };
     final previousOutOfRangeDurationByKey = {
       for (final s in previousStates)
         s.positionKey: s.lastOutOfRangeDurationNotified,
@@ -159,6 +162,13 @@ Future<int> runBackgroundSync() async {
             previousSlowdownByKey: previousSlowdownByKey,
           )
         : <AlertEvent>[];
+    final spikeAlerts = settings.feeSpikeAlertsEnabled
+        ? detectFeeSpikes(
+            positions: positions,
+            snapshotsByKey: snapshotsByKey,
+            previousSpikeByKey: previousSpikeByKey,
+          )
+        : <AlertEvent>[];
     final priceThresholdAlerts = detectPriceThresholdCrossings(
       positions: positions,
       ruleByPositionKey: ruleByPositionKey,
@@ -174,6 +184,7 @@ Future<int> runBackgroundSync() async {
       ...outOfRangeDurationAlerts,
       ...milestoneAlerts,
       ...slowdownAlerts,
+      ...spikeAlerts,
       ...priceThresholdAlerts,
       ...concentrationAlerts,
     ];
@@ -222,6 +233,9 @@ Future<int> runBackgroundSync() async {
         final slowdownNow = isFeeSlowdown(
           snapshots: snapshotsByKey[position.positionKey] ?? const [],
         );
+        final spikeNow = isFeeSpike(
+          snapshots: snapshotsByKey[position.positionKey] ?? const [],
+        );
         final outOfRangeDurationNow =
             (currentOutOfRangeDuration(
                   points: pricePointsByKey[position.positionKey] ?? const [],
@@ -237,6 +251,7 @@ Future<int> runBackgroundSync() async {
             ..lastRangeStatus = health.status
             ..lastNotifiedFeesTotal = notifiedFeesTotal
             ..lastFeeSlowdownNotified = slowdownNow
+            ..lastFeeSpikeNotified = spikeNow
             ..lastOutOfRangeDurationNotified = outOfRangeDurationNow,
         );
 
@@ -268,6 +283,7 @@ Future<int> runBackgroundSync() async {
               AlertKind.outOfRangeDuration => AlertLogKind.outOfRangeDuration,
               AlertKind.feeMilestone => AlertLogKind.feeMilestone,
               AlertKind.feeSlowdown => AlertLogKind.feeSlowdown,
+              AlertKind.feeSpike => AlertLogKind.feeSpike,
               AlertKind.priceThreshold => AlertLogKind.priceThreshold,
               AlertKind.concentrationRisk => AlertLogKind.concentrationRisk,
             }

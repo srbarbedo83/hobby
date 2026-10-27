@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/calc/apr_history.dart';
 import '../../core/calc/bar_aggregator.dart';
+import '../../core/calc/close_now_simulation.dart';
 import '../../core/calc/out_of_range_estimate.dart';
 import '../../core/calc/staleness.dart';
 import '../../core/calc/pool_metrics.dart';
@@ -104,6 +105,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
       snapshots: snapshots,
       gasCostUsdOverride: gasCostUsd,
     );
+    final closeNowSim = computeCloseNowSimulation(position: position);
     final outOfRangeEstimate = estimateMissedFees(
       pricePoints: pricePoints,
       tickLower: position.tickLower,
@@ -541,6 +543,35 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   'fora do range agora. "Recorde" é a sequência mais '
                   'longa já vista desde que a app começou a registar o '
                   'histórico de preço desta posição.',
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            StatTile(
+              label: 'Se fechasses agora',
+              value: formatter.format(closeNowSim.netReceivedUsd),
+              valueColor: closeNowSim.netProfitSinceOpenUsd >= 0
+                  ? palette.positive
+                  : palette.negative,
+              caption:
+                  'lucro desde a abertura: '
+                  '${formatter.format(closeNowSim.netProfitSinceOpenUsd)}',
+              onInfoTap: () => showInfoSheet(
+                context,
+                title: 'Se fechasses agora',
+                body: const InfoSheetText(
+                  'Simula fechar esta posição agora: o que receberias '
+                  '(valor atual + fees já reclamadas) menos o gás '
+                  'estimado da saída (decreaseLiquidity + collect + '
+                  'burn).\n\n'
+                  'Como não há forma de simular a transação sem a '
+                  'executar, assume-se que fechar custa aproximadamente '
+                  'o mesmo gás que abriu a posição — uma aproximação, '
+                  'não o valor exato.\n\n'
+                  '"Lucro desde a abertura" conta tudo: capital '
+                  'depositado, gás já pago e este gás estimado da '
+                  'saída — diferente do "Net vs. HODL", que não inclui '
+                  'nenhum custo de gás.',
                 ),
               ),
             ),

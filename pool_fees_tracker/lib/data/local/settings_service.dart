@@ -86,6 +86,7 @@ class AppSettings {
   final bool feeMilestoneAlertsEnabled;
   final double feeMilestoneThresholdUsd;
   final bool feeSlowdownAlertsEnabled;
+  final bool feeSpikeAlertsEnabled;
   final bool concentrationRiskAlertsEnabled;
   final bool weeklyDigestEnabled;
 
@@ -108,6 +109,7 @@ class AppSettings {
     this.feeMilestoneAlertsEnabled = true,
     this.feeMilestoneThresholdUsd = 50,
     this.feeSlowdownAlertsEnabled = true,
+    this.feeSpikeAlertsEnabled = true,
     this.concentrationRiskAlertsEnabled = true,
     this.weeklyDigestEnabled = true,
   });
@@ -131,6 +133,7 @@ class AppSettings {
     bool? feeMilestoneAlertsEnabled,
     double? feeMilestoneThresholdUsd,
     bool? feeSlowdownAlertsEnabled,
+    bool? feeSpikeAlertsEnabled,
     bool? concentrationRiskAlertsEnabled,
     bool? weeklyDigestEnabled,
   }) {
@@ -163,6 +166,8 @@ class AppSettings {
           feeMilestoneThresholdUsd ?? this.feeMilestoneThresholdUsd,
       feeSlowdownAlertsEnabled:
           feeSlowdownAlertsEnabled ?? this.feeSlowdownAlertsEnabled,
+      feeSpikeAlertsEnabled:
+          feeSpikeAlertsEnabled ?? this.feeSpikeAlertsEnabled,
       concentrationRiskAlertsEnabled:
           concentrationRiskAlertsEnabled ?? this.concentrationRiskAlertsEnabled,
       weeklyDigestEnabled: weeklyDigestEnabled ?? this.weeklyDigestEnabled,
@@ -196,6 +201,7 @@ class SettingsService {
   static const _keyFeeMilestoneAlerts = 'fee_milestone_alerts_enabled';
   static const _keyFeeMilestoneThreshold = 'fee_milestone_threshold_usd';
   static const _keyFeeSlowdownAlerts = 'fee_slowdown_alerts_enabled';
+  static const _keyFeeSpikeAlerts = 'fee_spike_alerts_enabled';
   static const _keyConcentrationRiskAlerts =
       'concentration_risk_alerts_enabled';
   static const _keyWeeklyDigestEnabled = 'weekly_digest_enabled';
@@ -257,6 +263,7 @@ class SettingsService {
       feeMilestoneThresholdUsd:
           _prefs.getDouble(_keyFeeMilestoneThreshold) ?? 50,
       feeSlowdownAlertsEnabled: _prefs.getBool(_keyFeeSlowdownAlerts) ?? true,
+      feeSpikeAlertsEnabled: _prefs.getBool(_keyFeeSpikeAlerts) ?? true,
       concentrationRiskAlertsEnabled:
           _prefs.getBool(_keyConcentrationRiskAlerts) ?? true,
       weeklyDigestEnabled: _prefs.getBool(_keyWeeklyDigestEnabled) ?? true,
@@ -312,6 +319,7 @@ class SettingsService {
       _keyFeeSlowdownAlerts,
       settings.feeSlowdownAlertsEnabled,
     );
+    await _prefs.setBool(_keyFeeSpikeAlerts, settings.feeSpikeAlertsEnabled);
     await _prefs.setBool(
       _keyConcentrationRiskAlerts,
       settings.concentrationRiskAlertsEnabled,

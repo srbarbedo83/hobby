@@ -664,6 +664,31 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: palette.accent,
                     title: Text(
+                      'Alertas de pico de taxas',
+                      style: TextStyle(
+                        color: palette.textPrimary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Taxas de 24h bem acima da média de 7 dias — um dia de volume '
+                      'fora do normal.',
+                      style: TextStyle(
+                        color: palette.textTertiary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    value: settings.feeSpikeAlertsEnabled,
+                    onChanged: (value) => ref
+                        .read(appSettingsProvider.notifier)
+                        .update(
+                          (s) => s.copyWith(feeSpikeAlertsEnabled: value),
+                        ),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: palette.accent,
+                    title: Text(
                       'Alertas de concentração de risco',
                       style: TextStyle(
                         color: palette.textPrimary,

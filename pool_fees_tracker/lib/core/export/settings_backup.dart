@@ -48,6 +48,7 @@ String encodeSettingsBackup(AppSettings settings, List<Wallet> wallets) {
       'feeMilestoneAlertsEnabled': settings.feeMilestoneAlertsEnabled,
       'feeMilestoneThresholdUsd': settings.feeMilestoneThresholdUsd,
       'feeSlowdownAlertsEnabled': settings.feeSlowdownAlertsEnabled,
+      'feeSpikeAlertsEnabled': settings.feeSpikeAlertsEnabled,
       'concentrationRiskAlertsEnabled': settings.concentrationRiskAlertsEnabled,
       'weeklyDigestEnabled': settings.weeklyDigestEnabled,
     },
@@ -110,6 +111,7 @@ SettingsBackup decodeSettingsBackup(String text) {
     feeMilestoneThresholdUsd:
         (s['feeMilestoneThresholdUsd'] as num?)?.toDouble() ?? 50,
     feeSlowdownAlertsEnabled: s['feeSlowdownAlertsEnabled'] as bool? ?? true,
+    feeSpikeAlertsEnabled: s['feeSpikeAlertsEnabled'] as bool? ?? true,
     concentrationRiskAlertsEnabled:
         s['concentrationRiskAlertsEnabled'] as bool? ?? true,
     weeklyDigestEnabled: s['weeklyDigestEnabled'] as bool? ?? true,

@@ -167,6 +167,7 @@ class _AlertLogTile extends StatelessWidget {
       AlertLogKind.outOfRangeDuration => palette.negative,
       AlertLogKind.feeMilestone => palette.positive,
       AlertLogKind.feeSlowdown => palette.negative,
+      AlertLogKind.feeSpike => palette.positive,
       AlertLogKind.priceThreshold => palette.accent,
       AlertLogKind.concentrationRisk => palette.warning,
     };
@@ -175,6 +176,7 @@ class _AlertLogTile extends StatelessWidget {
       AlertLogKind.outOfRangeDuration => Icons.schedule,
       AlertLogKind.feeMilestone => Icons.celebration_outlined,
       AlertLogKind.feeSlowdown => Icons.trending_down,
+      AlertLogKind.feeSpike => Icons.trending_up,
       AlertLogKind.priceThreshold => Icons.notifications_active_outlined,
       AlertLogKind.concentrationRisk => Icons.pie_chart_outline,
     };

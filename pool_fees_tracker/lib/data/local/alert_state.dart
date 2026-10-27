@@ -28,6 +28,9 @@ class AlertState {
   /// `detectOutOfRangeDuration`.
   bool lastOutOfRangeDurationNotified = false;
 
+  /// Mesma ideia, para o alerta de pico de fees — ver `detectFeeSpikes`.
+  bool lastFeeSpikeNotified = false;
+
   /// Só usado na linha reservada `positionKey == "__portfolio__"` (ver
   /// `detectConcentrationRisk`) — não é por posição, é da carteira toda.
   bool lastConcentrationRiskActive = false;

@@ -136,15 +136,19 @@ P _alertLogEntryDeserializeProp<P>(
 
 const _AlertLogEntrykindEnumValueMap = {
   r'outOfRange': r'outOfRange',
+  r'outOfRangeDuration': r'outOfRangeDuration',
   r'feeMilestone': r'feeMilestone',
   r'feeSlowdown': r'feeSlowdown',
+  r'feeSpike': r'feeSpike',
   r'priceThreshold': r'priceThreshold',
   r'concentrationRisk': r'concentrationRisk',
 };
 const _AlertLogEntrykindValueEnumMap = {
   r'outOfRange': AlertLogKind.outOfRange,
+  r'outOfRangeDuration': AlertLogKind.outOfRangeDuration,
   r'feeMilestone': AlertLogKind.feeMilestone,
   r'feeSlowdown': AlertLogKind.feeSlowdown,
+  r'feeSpike': AlertLogKind.feeSpike,
   r'priceThreshold': AlertLogKind.priceThreshold,
   r'concentrationRisk': AlertLogKind.concentrationRisk,
 };

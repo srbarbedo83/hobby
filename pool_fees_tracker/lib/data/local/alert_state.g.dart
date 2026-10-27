@@ -27,29 +27,34 @@ const AlertStateSchema = CollectionSchema(
       name: r'lastFeeSlowdownNotified',
       type: IsarType.bool,
     ),
-    r'lastNotifiedFeesTotal': PropertySchema(
+    r'lastFeeSpikeNotified': PropertySchema(
       id: 2,
+      name: r'lastFeeSpikeNotified',
+      type: IsarType.bool,
+    ),
+    r'lastNotifiedFeesTotal': PropertySchema(
+      id: 3,
       name: r'lastNotifiedFeesTotal',
       type: IsarType.double,
     ),
     r'lastOutOfRangeDurationNotified': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'lastOutOfRangeDurationNotified',
       type: IsarType.bool,
     ),
     r'lastRangeStatus': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'lastRangeStatus',
       type: IsarType.string,
       enumMap: _AlertStatelastRangeStatusEnumValueMap,
     ),
     r'lastWeeklyDigestSentAt': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'lastWeeklyDigestSentAt',
       type: IsarType.dateTime,
     ),
     r'positionKey': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'positionKey',
       type: IsarType.string,
     ),
@@ -103,11 +108,12 @@ void _alertStateSerialize(
 ) {
   writer.writeBool(offsets[0], object.lastConcentrationRiskActive);
   writer.writeBool(offsets[1], object.lastFeeSlowdownNotified);
-  writer.writeDouble(offsets[2], object.lastNotifiedFeesTotal);
-  writer.writeBool(offsets[3], object.lastOutOfRangeDurationNotified);
-  writer.writeString(offsets[4], object.lastRangeStatus.name);
-  writer.writeDateTime(offsets[5], object.lastWeeklyDigestSentAt);
-  writer.writeString(offsets[6], object.positionKey);
+  writer.writeBool(offsets[2], object.lastFeeSpikeNotified);
+  writer.writeDouble(offsets[3], object.lastNotifiedFeesTotal);
+  writer.writeBool(offsets[4], object.lastOutOfRangeDurationNotified);
+  writer.writeString(offsets[5], object.lastRangeStatus.name);
+  writer.writeDateTime(offsets[6], object.lastWeeklyDigestSentAt);
+  writer.writeString(offsets[7], object.positionKey);
 }
 
 AlertState _alertStateDeserialize(
@@ -120,15 +126,16 @@ AlertState _alertStateDeserialize(
   object.id = id;
   object.lastConcentrationRiskActive = reader.readBool(offsets[0]);
   object.lastFeeSlowdownNotified = reader.readBool(offsets[1]);
-  object.lastNotifiedFeesTotal = reader.readDouble(offsets[2]);
-  object.lastOutOfRangeDurationNotified = reader.readBool(offsets[3]);
+  object.lastFeeSpikeNotified = reader.readBool(offsets[2]);
+  object.lastNotifiedFeesTotal = reader.readDouble(offsets[3]);
+  object.lastOutOfRangeDurationNotified = reader.readBool(offsets[4]);
   object.lastRangeStatus =
       _AlertStatelastRangeStatusValueEnumMap[reader.readStringOrNull(
-        offsets[4],
+        offsets[5],
       )] ??
       RangeStatus.inRange;
-  object.lastWeeklyDigestSentAt = reader.readDateTimeOrNull(offsets[5]);
-  object.positionKey = reader.readString(offsets[6]);
+  object.lastWeeklyDigestSentAt = reader.readDateTimeOrNull(offsets[6]);
+  object.positionKey = reader.readString(offsets[7]);
   return object;
 }
 
@@ -144,18 +151,20 @@ P _alertStateDeserializeProp<P>(
     case 1:
       return (reader.readBool(offset)) as P;
     case 2:
-      return (reader.readDouble(offset)) as P;
-    case 3:
       return (reader.readBool(offset)) as P;
+    case 3:
+      return (reader.readDouble(offset)) as P;
     case 4:
+      return (reader.readBool(offset)) as P;
+    case 5:
       return (_AlertStatelastRangeStatusValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
               RangeStatus.inRange)
           as P;
-    case 5:
-      return (reader.readDateTimeOrNull(offset)) as P;
     case 6:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 7:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -460,6 +469,18 @@ extension AlertStateQueryFilter
       return query.addFilterCondition(
         FilterCondition.equalTo(
           property: r'lastFeeSlowdownNotified',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterFilterCondition>
+  lastFeeSpikeNotifiedEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'lastFeeSpikeNotified',
           value: value,
         ),
       );
@@ -949,6 +970,20 @@ extension AlertStateQuerySortBy
   }
 
   QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  sortByLastFeeSpikeNotified() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastFeeSpikeNotified', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  sortByLastFeeSpikeNotifiedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastFeeSpikeNotified', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
   sortByLastNotifiedFeesTotal() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastNotifiedFeesTotal', Sort.asc);
@@ -1059,6 +1094,20 @@ extension AlertStateQuerySortThenBy
   }
 
   QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  thenByLastFeeSpikeNotified() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastFeeSpikeNotified', Sort.asc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
+  thenByLastFeeSpikeNotifiedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastFeeSpikeNotified', Sort.desc);
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QAfterSortBy>
   thenByLastNotifiedFeesTotal() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastNotifiedFeesTotal', Sort.asc);
@@ -1143,6 +1192,13 @@ extension AlertStateQueryWhereDistinct
   }
 
   QueryBuilder<AlertState, AlertState, QDistinct>
+  distinctByLastFeeSpikeNotified() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastFeeSpikeNotified');
+    });
+  }
+
+  QueryBuilder<AlertState, AlertState, QDistinct>
   distinctByLastNotifiedFeesTotal() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'lastNotifiedFeesTotal');
@@ -1202,6 +1258,13 @@ extension AlertStateQueryProperty
   lastFeeSlowdownNotifiedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'lastFeeSlowdownNotified');
+    });
+  }
+
+  QueryBuilder<AlertState, bool, QQueryOperations>
+  lastFeeSpikeNotifiedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastFeeSpikeNotified');
     });
   }
 

@@ -6,12 +6,15 @@ import '../../core/calc/impermanent_loss.dart';
 import '../../core/calc/leaderboard.dart';
 import '../../core/calc/pool_health_score.dart';
 import '../../core/calc/range_health.dart';
+import '../../core/calc/univ3_fee_math.dart';
+import '../../core/calc/weighted_entry_price.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
 import '../../data/local/wallet.dart';
+import '../../shared/widgets/info_sheet.dart';
 import '../../shared/widgets/pool_row_tile.dart';
 import '../../shared/widgets/segmented_pill_control.dart';
 import '../../shared/widgets/token_pair_icon.dart';
@@ -43,6 +46,18 @@ double _capitalEfficiencyPctPerDay(PoolPosition position) {
       effectiveDays /
       position.initialLiquidityUsd *
       100;
+}
+
+/// Agrupa posições abertas pelo mesmo par (chain + token0 + token1) — só
+/// interessante quando há 2+ posições no mesmo par, para mostrar um preço
+/// de entrada combinado (ver `_PairEntryPriceCard`).
+Map<String, List<PoolPosition>> _groupByPair(List<PoolPosition> positions) {
+  final groups = <String, List<PoolPosition>>{};
+  for (final p in positions) {
+    final key = '${p.chain.name}:${p.token0Symbol}/${p.token1Symbol}';
+    groups.putIfAbsent(key, () => []).add(p);
+  }
+  return groups;
 }
 
 class PoolsScreen extends ConsumerStatefulWidget {
@@ -85,6 +100,9 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
     final snapshots =
         snapshotsAsync.value ?? const <String, List<FeeSnapshot>>{};
     final formatter = CurrencyFormatter(settings.currencyCode);
+    final multiPositionPairs = _groupByPair(positions).values
+        .where((g) => g.length >= 2)
+        .toList();
 
     switch (_sortBy) {
       case _SortBy.fees:
@@ -165,6 +183,13 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                 allPositions: allPositionsUnfiltered,
                 formatter: formatter,
               ),
+            ],
+            if (multiPositionPairs.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              for (final group in multiPositionPairs) ...[
+                _PairEntryPriceCard(positions: group, formatter: formatter),
+                const SizedBox(height: 8),
+              ],
             ],
             const SizedBox(height: 14),
             Expanded(
@@ -438,6 +463,105 @@ class _WalletSummaryCard extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: palette.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Mostra o preço médio de entrada (ponderado pelo capital inicial) de
+/// todas as posições abertas no mesmo par, vs. o preço atual — útil
+/// quando reentraste no mesmo par ou mantens várias ranges em paralelo e
+/// queres um ponto de entrada combinado, não só o de cada posição.
+class _PairEntryPriceCard extends StatelessWidget {
+  final List<PoolPosition> positions;
+  final CurrencyFormatter formatter;
+
+  const _PairEntryPriceCard({required this.positions, required this.formatter});
+
+  String _formatPrice(double price) =>
+      price < 1 ? price.toStringAsFixed(6) : price.toStringAsFixed(2);
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final avgEntryPrice = weightedAverageEntryPrice(positions);
+    if (avgEntryPrice == null) return const SizedBox.shrink();
+    final first = positions.first;
+    final currentPrice = priceAtTick(
+      tick: first.currentTick,
+      token0Decimals: first.token0Decimals,
+      token1Decimals: first.token1Decimals,
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: palette.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${first.token0Symbol}/${first.token1Symbol} · entrada média (${positions.length} posições)',
+                  style: TextStyle(fontSize: 11, color: palette.textTertiary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _formatPrice(avgEntryPrice),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: palette.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'Atual',
+                style: TextStyle(fontSize: 11, color: palette.textTertiary),
+              ),
+              Text(
+                _formatPrice(currentPrice),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: currentPrice >= avgEntryPrice
+                      ? palette.positive
+                      : palette.negative,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => showInfoSheet(
+              context,
+              title: 'Entrada média',
+              body: const InfoSheetText(
+                'Preço médio de entrada de todas as posições abertas '
+                'neste par, ponderado pelo capital inicial de cada uma '
+                '— uma posição grande pesa mais no cálculo do que uma '
+                'pequena. Útil quando reentraste no mesmo par várias '
+                'vezes, ou mantens mais do que uma range em paralelo, '
+                'e queres um ponto de entrada combinado em vez de olhar '
+                'a cada posição isolada.',
+              ),
+            ),
+            child: Icon(
+              Icons.info_outline,
+              size: 16,
+              color: palette.textTertiary,
             ),
           ),
         ],

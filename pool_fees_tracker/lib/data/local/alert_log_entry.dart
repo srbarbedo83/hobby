@@ -7,6 +7,7 @@ enum AlertLogKind {
   outOfRangeDuration,
   feeMilestone,
   feeSlowdown,
+  feeSpike,
   priceThreshold,
   concentrationRisk,
 }

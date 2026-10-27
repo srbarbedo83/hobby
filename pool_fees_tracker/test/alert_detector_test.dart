@@ -342,6 +342,82 @@ void main() {
     });
   });
 
+  group('isFeeSpike', () {
+    final now = DateTime(2026, 2, 1, 12);
+
+    test('true quando as últimas 24h ganharam bem mais que a média de 7d', () {
+      final snapshots = [
+        for (var d = 1; d <= 7; d++)
+          _snap('a', now.subtract(Duration(days: d)), 14),
+        _snap('a', now.subtract(const Duration(hours: 12)), 50),
+      ];
+      expect(isFeeSpike(snapshots: snapshots, now: now), isTrue);
+    });
+
+    test('false quando a taxa das últimas 24h é normal', () {
+      final snapshots = [
+        for (var d = 1; d <= 7; d++)
+          _snap('a', now.subtract(Duration(days: d)), 14),
+        _snap('a', now.subtract(const Duration(hours: 12)), 14),
+      ];
+      expect(isFeeSpike(snapshots: snapshots, now: now), isFalse);
+    });
+
+    test('false sem média de base suficiente (posição nova/sem fees)', () {
+      expect(isFeeSpike(snapshots: const [], now: now), isFalse);
+    });
+  });
+
+  group('detectFeeSpikes', () {
+    final now = DateTime(2026, 2, 1, 12);
+
+    test('alerta só na transição para pico', () {
+      final positions = [_position(key: 'a')];
+      final snapshots = {
+        'a': [
+          for (var d = 1; d <= 7; d++)
+            _snap('a', now.subtract(Duration(days: d)), 14),
+          _snap('a', now.subtract(const Duration(hours: 12)), 50),
+        ],
+      };
+
+      final firstCheck = detectFeeSpikes(
+        positions: positions,
+        snapshotsByKey: snapshots,
+        previousSpikeByKey: {},
+        now: now,
+      );
+      expect(firstCheck, hasLength(1));
+      expect(firstCheck.first.kind, AlertKind.feeSpike);
+
+      final secondCheck = detectFeeSpikes(
+        positions: positions,
+        snapshotsByKey: snapshots,
+        previousSpikeByKey: {'a': true},
+        now: now,
+      );
+      expect(secondCheck, isEmpty);
+    });
+
+    test('ignora posições fechadas', () {
+      final positions = [_position(key: 'a', isClosed: true)];
+      final snapshots = {
+        'a': [
+          for (var d = 1; d <= 7; d++)
+            _snap('a', now.subtract(Duration(days: d)), 14),
+          _snap('a', now.subtract(const Duration(hours: 12)), 50),
+        ],
+      };
+      final alerts = detectFeeSpikes(
+        positions: positions,
+        snapshotsByKey: snapshots,
+        previousSpikeByKey: {},
+        now: now,
+      );
+      expect(alerts, isEmpty);
+    });
+  });
+
   group('detectPriceThresholdCrossings', () {
     test('alerta quando o tick cruza para acima do threshold', () {
       final positions = [_position(key: 'a', currentTick: 150)];
