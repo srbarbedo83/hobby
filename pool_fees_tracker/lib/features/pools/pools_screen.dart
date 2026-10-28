@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/calc/bar_aggregator.dart';
+import '../../core/calc/eth_benchmark.dart';
 import '../../core/calc/impermanent_loss.dart';
 import '../../core/calc/leaderboard.dart';
 import '../../core/calc/pool_health_score.dart';
+import '../../core/calc/portfolio_heatmap.dart';
 import '../../core/calc/range_health.dart';
 import '../../core/calc/univ3_fee_math.dart';
 import '../../core/calc/weighted_entry_price.dart';
 import '../../core/format/currency_formatter.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/local/chain.dart';
 import '../../data/local/fee_snapshot.dart';
 import '../../data/local/pool_position.dart';
 import '../../data/local/wallet.dart';
@@ -70,6 +73,7 @@ class PoolsScreen extends ConsumerStatefulWidget {
 class _PoolsScreenState extends ConsumerState<PoolsScreen> {
   _SortBy _sortBy = _SortBy.fees;
   String? _selectedWalletAddress;
+  bool _showInsights = false;
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +107,8 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
     final multiPositionPairs = _groupByPair(positions).values
         .where((g) => g.length >= 2)
         .toList();
+    final heatmapCells = computePortfolioHeatmap(positions);
+    final ethBenchmark = computeEthBenchmark(positions);
 
     switch (_sortBy) {
       case _SortBy.fees:
@@ -189,6 +195,45 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
               for (final group in multiPositionPairs) ...[
                 _PairEntryPriceCard(positions: group, formatter: formatter),
                 const SizedBox(height: 8),
+              ],
+            ],
+            if (heatmapCells.isNotEmpty || ethBenchmark != null) ...[
+              const SizedBox(height: 10),
+              InkWell(
+                onTap: () => setState(() => _showInsights = !_showInsights),
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _showInsights ? Icons.expand_less : Icons.expand_more,
+                        size: 18,
+                        color: palette.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Concentração & benchmark',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: palette.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (_showInsights) ...[
+                const SizedBox(height: 8),
+                if (heatmapCells.isNotEmpty) ...[
+                  _HeatmapCard(cells: heatmapCells, formatter: formatter),
+                  const SizedBox(height: 8),
+                ],
+                if (ethBenchmark != null) ...[
+                  _EthBenchmarkCard(result: ethBenchmark, formatter: formatter),
+                  const SizedBox(height: 8),
+                ],
               ],
             ],
             const SizedBox(height: 14),
@@ -556,6 +601,191 @@ class _PairEntryPriceCard extends StatelessWidget {
                 'vezes, ou mantens mais do que uma range em paralelo, '
                 'e queres um ponto de entrada combinado em vez de olhar '
                 'a cada posição isolada.',
+              ),
+            ),
+            child: Icon(
+              Icons.info_outline,
+              size: 16,
+              color: palette.textTertiary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Heatmap de concentração: quanto do valor total está em cada
+/// cruzamento chain+par — mais fino do que os donuts de composição
+/// (chain OU par, nunca os dois juntos). Mostra só as 5 maiores células,
+/// uma barra de intensidade por linha em vez de uma grelha 2D real, para
+/// caber num espaço compacto sem precisar de scroll horizontal.
+class _HeatmapCard extends StatelessWidget {
+  final List<HeatmapCell> cells;
+  final CurrencyFormatter formatter;
+
+  const _HeatmapCard({required this.cells, required this.formatter});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final topCells = cells.take(5).toList();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Concentração por chain + par',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: palette.textPrimary,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => showInfoSheet(
+                  context,
+                  title: 'Concentração por chain + par',
+                  body: const InfoSheetText(
+                    'Quanto do valor total da carteira está em cada '
+                    'combinação de chain + par de tokens — mais fino do '
+                    'que olhar só a chain ou só o par isoladamente. Uma '
+                    'barra muito maior que as outras é um sinal de '
+                    'concentração: se essa pool tiver um problema (hack, '
+                    'depeg, liquidez a secar), afeta uma fatia grande da '
+                    'carteira toda.',
+                  ),
+                ),
+                child: Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: palette.textTertiary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final cell in topCells) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${cell.pairLabel} · ${cell.chain.displayName}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: palette.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        '${cell.pctOfTotal.toStringAsFixed(0)}% · ${formatter.format(cell.valueUsd)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: palette.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: (cell.pctOfTotal / 100).clamp(0, 1),
+                      minHeight: 6,
+                      backgroundColor: palette.surfaceAlt,
+                      color: cell.pctOfTotal >= 50
+                          ? palette.warning
+                          : palette.accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Compara o valor atual das posições em pares ETH/stablecoin com o que
+/// esse mesmo capital valeria se, em vez de dar liquidez, tivesse só
+/// comprado e guardado ETH desde a abertura de cada posição.
+class _EthBenchmarkCard extends StatelessWidget {
+  final EthBenchmarkResult result;
+  final CurrencyFormatter formatter;
+
+  const _EthBenchmarkCard({required this.result, required this.formatter});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Vs. guardar ETH (${result.eligiblePositionsCount} posições)',
+                  style: TextStyle(fontSize: 12, color: palette.textTertiary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  formatter.format(result.netVsEthUsd),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: result.netVsEthUsd >= 0
+                        ? palette.positive
+                        : palette.negative,
+                  ),
+                ),
+                Text(
+                  result.netVsEthUsd >= 0
+                      ? 'compensou dar liquidez em vez de guardar ETH'
+                      : 'terias saído a ganhar só a guardar ETH',
+                  style: TextStyle(fontSize: 11, color: palette.textTertiary),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => showInfoSheet(
+              context,
+              title: 'Vs. guardar ETH',
+              body: const InfoSheetText(
+                'Compara o valor atual das posições em pares ETH/'
+                'stablecoin com o que esse mesmo capital valeria se, em '
+                'vez de dar liquidez, tivesse só comprado ETH no momento '
+                'de abertura de cada posição e continuado a guardá-lo.\n\n'
+                'Só entram posições ETH/stablecoin (ETH/USDC, por '
+                'exemplo) — para outros pares não há forma honesta de '
+                'estimar o preço do ETH sem um histórico de preço que a '
+                'app não guarda.\n\n'
+                'Positivo: valeu mais a pena dar liquidez do que só '
+                'guardar ETH. Negativo: terias saído a ganhar só a '
+                'guardar.',
               ),
             ),
             child: Icon(

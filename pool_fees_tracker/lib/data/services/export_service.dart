@@ -4,7 +4,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/export/csv_export.dart';
+import '../../core/export/position_pdf.dart';
+import '../../core/calc/pool_metrics.dart';
+import '../../core/format/currency_formatter.dart';
 import '../local/fee_snapshot.dart';
+import '../local/pool_position.dart';
 import '../local/position_event.dart';
 
 /// Escreve o histórico de fees + eventos de uma posição num CSV
@@ -40,6 +44,35 @@ class ExportService {
   /// ficheiros, só para colar numa mensagem/post.
   static Future<void> sharePositionSummary(String summary) async {
     await SharePlus.instance.share(ShareParams(text: summary));
+  }
+
+  /// Gera e partilha um relatório PDF de uma posição — para quem quer um
+  /// ficheiro para guardar (registo pessoal, não um documento fiscal).
+  static Future<void> sharePositionReportPdf({
+    required PoolPosition position,
+    required PoolMetrics metrics,
+    required CurrencyFormatter formatter,
+  }) async {
+    final bytes = await buildPositionReportPdf(
+      position: position,
+      metrics: metrics,
+      formatter: formatter,
+      generatedAt: DateTime.now(),
+    );
+
+    final dir = await getTemporaryDirectory();
+    final safeLabel = '${position.token0Symbol}_${position.token1Symbol}'
+        .replaceAll(RegExp(r'[^A-Za-z0-9_]'), '_');
+    final file = File('${dir.path}/pool_fees_$safeLabel.pdf');
+    await file.writeAsBytes(bytes);
+
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        subject:
+            'Relatório — ${position.token0Symbol}/${position.token1Symbol}',
+      ),
+    );
   }
 
   /// Partilha o backup de definições/carteiras como ficheiro .json — para

@@ -3,4 +3,4 @@
 /// atualiza este texto sempre que fizeres um build novo via CI. Nenhuma
 /// dependência nova (ex.: package_info_plus) de propósito: é só uma
 /// constante, zero risco de voltar a rebentar o Gradle.
-const String appBuildLabel = 'v1.0.33+34 — simulador "se fechasses agora", entrada média ponderada, alerta de pico de taxas';
+const String appBuildLabel = 'v1.0.34+35 — heatmap de concentração, benchmark vs. ETH, export PDF';

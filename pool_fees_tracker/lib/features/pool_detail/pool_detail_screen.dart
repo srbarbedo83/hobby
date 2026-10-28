@@ -173,6 +173,15 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               );
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Exportar PDF',
+            onPressed: () => ExportService.sharePositionReportPdf(
+              position: position!,
+              metrics: metrics,
+              formatter: formatter,
+            ),
+          ),
         ],
       ),
       body: SafeArea(
