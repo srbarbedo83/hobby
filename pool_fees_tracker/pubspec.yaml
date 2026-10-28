@@ -74,8 +74,15 @@ dependencies:
 # arranque (NoSuchMethodError em SharedPreferencesApiRegistrar.getAll,
 # antes do primeiro frame — a app fica presa no splash). Fixa a última
 # versão estável anterior até a regressão ser corrigida a montante.
+#
+# O `pdf` (via `image`, para suporte a imagens em PDF que nem usamos)
+# precisa de uma versão do `archive` mais recente do que a que o pub
+# resolvia por omissão (4.0.9, sem `ZLibDecoder.decodeLazy`) — sem este
+# override, o build rebentava com "decodeLazy isn't defined" ao
+# compilar o kernel snapshot de release.
 dependency_overrides:
   shared_preferences_android: 2.4.28
+  archive: ^4.5.2
 
 dev_dependencies:
   flutter_test:
