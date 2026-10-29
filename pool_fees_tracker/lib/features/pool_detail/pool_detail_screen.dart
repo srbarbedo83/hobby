@@ -32,6 +32,9 @@ import 'price_alert_section.dart';
 import 'price_range_chart.dart';
 import 'range_simulator_section.dart';
 
+String _formatPrice(double price) =>
+    price < 1 ? price.toStringAsFixed(6) : price.toStringAsFixed(2);
+
 class PoolDetailScreen extends ConsumerStatefulWidget {
   final String positionKey;
 
@@ -180,6 +183,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               position: position!,
               metrics: metrics,
               formatter: formatter,
+              snapshots: snapshots,
             ),
           ),
         ],
@@ -236,6 +240,20 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   style: TextStyle(fontSize: 11, color: palette.textTertiary),
                 ),
               ],
+            ),
+            const SizedBox(height: 6),
+            // Pedido do utilizador: ao abrir uma pool, dava jeito ver já
+            // o preço em direto entre os dois ativos, como referência —
+            // o mesmo tick usado em todo o resto do ecrã (range, IL,
+            // etc.), só que convertido para "1 token0 = X token1".
+            Text(
+              '1 ${position.token0Symbol} = '
+              '${_formatPrice(priceAtTick(tick: position.currentTick, token0Decimals: position.token0Decimals, token1Decimals: position.token1Decimals))} ${position.token1Symbol}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: palette.textSecondary,
+              ),
             ),
             if (position.isV4) ...[
               const SizedBox(height: 12),

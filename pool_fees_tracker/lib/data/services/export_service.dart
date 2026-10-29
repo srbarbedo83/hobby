@@ -52,12 +52,14 @@ class ExportService {
     required PoolPosition position,
     required PoolMetrics metrics,
     required CurrencyFormatter formatter,
+    List<FeeSnapshot> snapshots = const [],
   }) async {
     final bytes = await buildPositionReportPdf(
       position: position,
       metrics: metrics,
       formatter: formatter,
       generatedAt: DateTime.now(),
+      snapshots: snapshots,
     );
 
     final dir = await getTemporaryDirectory();

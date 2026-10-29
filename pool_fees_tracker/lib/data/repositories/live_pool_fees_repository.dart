@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:isar_community/isar.dart';
 
+import '../../core/calc/fee_delta.dart';
 import '../../core/calc/liquidity_amounts.dart';
 import '../../core/calc/liquidity_profile.dart';
 import '../../core/calc/univ3_fee_math.dart';
@@ -517,9 +518,10 @@ class LivePoolFeesRepository implements PoolFeesRepository {
                 FeeSnapshot()
                   ..positionKey = position.positionKey
                   ..timestamp = now
-                  ..feesUsdDelta = previousTotal == null
-                      ? 0
-                      : position.feesTotalUsd - previousTotal,
+                  ..feesUsdDelta = clampFeeDeltaUsd(
+                    previousTotal: previousTotal,
+                    currentTotal: position.feesTotalUsd,
+                  ),
               );
             }
           }

@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Pedido do utilizador: só mostrava UM número — o espaço dá para mais.
      Mostra agora o metric escolhido (Definições → widget) em destaque,
-     mais os outros dois, mais pequenos, numa linha por baixo. -->
+     mais os outros dois, mais pequenos, numa linha por baixo.
+
+     O fundo transparente (pedido do utilizador) significa que o texto
+     fica em cima de QUALQUER wallpaper, claro ou escuro — por isso todo
+     o texto ganhou uma sombra escura (`shadowColor`/`shadowDx/Dy/Radius`),
+     a mesma técnica dos widgets de relógio do Android: sobre wallpaper
+     escuro não faz diferença (o texto claro já é legível), mas sobre
+     wallpaper claro evita o texto desaparecer por falta de contraste. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_root"
@@ -16,10 +23,14 @@
         android:id="@+id/widget_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#8A8F98"
+        android:textColor="#B0B4BC"
         android:textSize="10sp"
         android:letterSpacing="0.08"
         android:textStyle="bold"
+        android:shadowColor="#AA000000"
+        android:shadowDx="0"
+        android:shadowDy="1"
+        android:shadowRadius="2.5"
         tools:text="TOTAL DE TAXAS GERADAS" />
 
     <TextView
@@ -30,6 +41,10 @@
         android:textColor="#F2F3F5"
         android:textSize="26sp"
         android:textStyle="bold"
+        android:shadowColor="#AA000000"
+        android:shadowDx="0"
+        android:shadowDy="1"
+        android:shadowRadius="2.5"
         tools:text="$12,847.32" />
 
     <LinearLayout
@@ -48,9 +63,13 @@
                 android:id="@+id/widget_secondary1_label"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="#5B6168"
+                android:textColor="#9298A0"
                 android:textSize="9sp"
                 android:letterSpacing="0.05"
+                android:shadowColor="#AA000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="2.5"
                 tools:text="TAXAS 24H" />
 
             <TextView
@@ -60,6 +79,10 @@
                 android:textColor="#C7CAD1"
                 android:textSize="13sp"
                 android:textStyle="bold"
+                android:shadowColor="#AA000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="2.5"
                 tools:text="$42.10" />
         </LinearLayout>
 
@@ -73,9 +96,13 @@
                 android:id="@+id/widget_secondary2_label"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="#5B6168"
+                android:textColor="#9298A0"
                 android:textSize="9sp"
                 android:letterSpacing="0.05"
+                android:shadowColor="#AA000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="2.5"
                 tools:text="NÃO RECLAMADAS" />
 
             <TextView
@@ -85,6 +112,10 @@
                 android:textColor="#C7CAD1"
                 android:textSize="13sp"
                 android:textStyle="bold"
+                android:shadowColor="#AA000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="2.5"
                 tools:text="$310.55" />
         </LinearLayout>
     </LinearLayout>
@@ -94,7 +125,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:textColor="#5B6168"
+        android:textColor="#9298A0"
         android:textSize="10sp"
+        android:shadowColor="#AA000000"
+        android:shadowDx="0"
+        android:shadowDy="1"
+        android:shadowRadius="2.5"
         tools:text="Atualizado há 2m" />
 </LinearLayout>

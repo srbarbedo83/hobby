@@ -36,7 +36,13 @@ class AprHistoryChart extends StatelessWidget {
     final dataMin = values.reduce((a, b) => a < b ? a : b);
     final dataMax = values.reduce((a, b) => a > b ? a : b);
     final pad = (dataMax - dataMin) * 0.1 + (dataMax - dataMin == 0 ? 1 : 0);
-    final chartMinY = (dataMin - pad).clamp(0, double.infinity).toDouble();
+    // O chão só é forçado a 0 quando os dados já são todos ≥ 0 (o caso
+    // normal) — se alguma barra for negativa, limitar minY a 0 punha-o
+    // ACIMA do maxY (que já ficava negativo), invertendo o eixo e
+    // fazendo a linha atravessar o gráfico todo de forma disparatada.
+    final chartMinY = dataMin >= 0
+        ? (dataMin - pad).clamp(0, double.infinity).toDouble()
+        : dataMin - pad;
     final chartMaxY = dataMax + pad;
 
     return SizedBox(

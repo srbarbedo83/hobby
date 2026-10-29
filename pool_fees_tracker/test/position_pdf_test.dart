@@ -45,5 +45,52 @@ void main() {
       // Todo o ficheiro PDF começa pela assinatura "%PDF-".
       expect(bytes.take(5), [0x25, 0x50, 0x44, 0x46, 0x2d]);
     });
+
+    test('inclui o gráfico semanal quando há histórico suficiente', () async {
+      final position = PoolPosition()
+        ..positionKey = 'a'
+        ..chain = Chain.ethereum
+        ..walletAddress = '0xabc'
+        ..tokenIdOnChain = '1'
+        ..token0Symbol = 'ETH'
+        ..token1Symbol = 'USDC'
+        ..feeTierBps = 500
+        ..createdAt = DateTime(2025, 1, 1)
+        ..tickLower = -100
+        ..tickUpper = 100
+        ..currentTick = 0
+        ..entryTick = 0
+        ..liquidityUsd = 1000
+        ..initialLiquidityUsd = 900
+        ..feesClaimedUsd = 10
+        ..feesUnclaimedUsd = 5
+        ..gasCostUsd = 2
+        ..isClosed = false;
+
+      final now = DateTime(2026, 1, 1);
+      final snapshots = [
+        for (var w = 1; w <= 6; w++)
+          FeeSnapshot()
+            ..positionKey = 'a'
+            ..timestamp = now.subtract(Duration(days: w * 7))
+            ..feesUsdDelta = w * 2.0,
+      ];
+
+      final metrics = computePoolMetrics(
+        position: position,
+        snapshots: snapshots,
+      );
+
+      final bytes = await buildPositionReportPdf(
+        position: position,
+        metrics: metrics,
+        formatter: CurrencyFormatter('USD'),
+        generatedAt: now,
+        snapshots: snapshots,
+      );
+
+      expect(bytes, isNotEmpty);
+      expect(bytes.take(5), [0x25, 0x50, 0x44, 0x46, 0x2d]);
+    });
   });
 }

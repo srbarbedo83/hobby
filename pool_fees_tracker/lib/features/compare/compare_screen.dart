@@ -230,13 +230,20 @@ class _ComparisonChart extends StatelessWidget {
     final maxValue = series
         .expand((p) => [p.valueA, p.valueB])
         .fold<double>(0, (a, b) => a > b ? a : b);
+    // Mesma defesa do FeeBarChart: os deltas normalmente nunca são
+    // negativos, mas um minY fixo em 0 fazia a linha sair do gráfico
+    // sempre que algum valor antigo gravado antes desse fix for negativo.
+    final minValue = series
+        .expand((p) => [p.valueA, p.valueB])
+        .fold<double>(0, (a, b) => a < b ? a : b);
     final maxY = maxValue <= 0 ? 1.0 : maxValue * 1.2;
+    final minY = minValue >= 0 ? 0.0 : minValue * 1.2;
 
     return SizedBox(
       height: 150,
       child: LineChart(
         LineChartData(
-          minY: 0,
+          minY: minY,
           maxY: maxY,
           gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
@@ -246,7 +253,7 @@ class _ComparisonChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 42,
-                interval: maxY / 2,
+                interval: (maxY - minY) / 2,
                 getTitlesWidget: (value, meta) {
                   if (value == meta.max) return const SizedBox.shrink();
                   return SideTitleWidget(

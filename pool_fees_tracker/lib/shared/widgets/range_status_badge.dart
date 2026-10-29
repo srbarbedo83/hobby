@@ -70,7 +70,15 @@ class RangeHealthBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final statusColor = health.status.colorFor(palette);
-    final clamped = health.positionFraction.clamp(0.0, 1.0);
+    // Pedido do utilizador: fora do range, a bolinha fica colada à
+    // margem (perde-se "quanto" está fora) — passa a poder sair da
+    // barra colorida, até uma margem reservada de cada lado, comprimindo
+    // o excesso em vez de cortá-lo de repente.
+    const overflowFraction = 0.25;
+    final dotFraction = rangeDotPositionFraction(
+      health.positionFraction,
+      overflowFraction: overflowFraction,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -85,36 +93,60 @@ class RangeHealthBar extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        Stack(
-          children: [
-            Container(
-              height: 8,
-              decoration: BoxDecoration(
-                color: palette.surfaceAlt,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final dotX = (constraints.maxWidth - 10) * clamped;
-                return Padding(
-                  padding: EdgeInsets.only(
-                    left: dotX.clamp(0, constraints.maxWidth - 10),
-                  ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Margem reservada de cada lado da barra, para a bolinha ter
+            // para onde ir quando está fora do range.
+            final sideMargin = constraints.maxWidth * overflowFraction;
+            final trackWidth = constraints.maxWidth - sideMargin * 2;
+            return Stack(
+              children: [
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: sideMargin),
                   child: Container(
-                    width: 10,
-                    height: 10,
-                    margin: const EdgeInsets.only(top: -1),
+                    height: 8,
                     decoration: BoxDecoration(
-                      color: statusColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: palette.background, width: 2),
+                      // Pedido do utilizador: a barra era uma cor sólida
+                      // — passa a um degradê que também dá contexto:
+                      // tons do negative nas pontas (fora do range) e do
+                      // positive no meio (dentro do range).
+                      gradient: LinearGradient(
+                        colors: [
+                          palette.negative.withValues(alpha: 0.35),
+                          palette.positive.withValues(alpha: 0.35),
+                          palette.negative.withValues(alpha: 0.35),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                );
-              },
-            ),
-          ],
+                ),
+                Builder(
+                  builder: (context) {
+                    final dotX = sideMargin + trackWidth * dotFraction - 5;
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        left: dotX.clamp(0, constraints.maxWidth - 10),
+                      ),
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        margin: const EdgeInsets.only(top: -1),
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: palette.background,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 4),
         Row(
