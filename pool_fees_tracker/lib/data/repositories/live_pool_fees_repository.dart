@@ -1030,6 +1030,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
 
     final mapped = <PoolPosition>[];
     for (final r in ok) {
+      final previousPosition =
+          previousByKey['${chain.name}:v4:${r.raw.tokenId}'];
       final token0 = _resolveV4Token(
         chain,
         r.info.poolKey.currency0,
@@ -1078,6 +1080,14 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       final unclaimedUsd =
           tokenAmountToDouble(owed0, token0.decimals) * token0.priceUsd +
           tokenAmountToDouble(owed1, token1.decimals) * token1.priceUsd;
+      // Ver nota em `preservedV4FeesClaimedUsd`: sem isto, um collect()
+      // feito fora da app fazia o total vitalício desta posição cair a
+      // pique no refresh seguinte (o unclaimed on-chain reseta ao
+      // reclamar, e não há subgraph v4 para saber quanto foi reclamado).
+      final feesClaimedUsd = preservedV4FeesClaimedUsd(
+        previousTotalUsd: previousPosition?.feesTotalUsd ?? 0,
+        currentUnclaimedUsd: unclaimedUsd,
+      );
       final gasCostUsd =
           r.gasCostUsdOverride ??
           (nativeEthPriceUsd == null
@@ -1102,7 +1112,7 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           ..entryTick = (r.info.tickLower + r.info.tickUpper) ~/ 2
           ..liquidityUsd = isClosed ? 0 : currentUsd
           ..initialLiquidityUsd = currentUsd
-          ..feesClaimedUsd = 0
+          ..feesClaimedUsd = feesClaimedUsd
           ..feesUnclaimedUsd = unclaimedUsd
           ..gasCostUsd = gasCostUsd
           ..isClosed = isClosed
