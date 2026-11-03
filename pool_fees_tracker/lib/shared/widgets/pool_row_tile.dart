@@ -6,6 +6,7 @@ import '../../core/format/currency_formatter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/local/chain.dart';
 import '../../data/local/pool_position.dart';
+import 'info_sheet.dart';
 import 'range_status_badge.dart';
 import 'sparkline.dart';
 import 'token_pair_icon.dart';
@@ -21,6 +22,11 @@ class PoolRowTile extends StatelessWidget {
   /// sub-scores (não só o total) para explicar o número ao tocar nele.
   final PoolHealthScore? healthScore;
 
+  /// `true` quando esta posição em concreto ficou com valores antigos no
+  /// último refresh (ver nota em `PoolPosition.lastFetchSucceededAt`) —
+  /// diferente do "Atualizado há Xm" global, que não distingue isto.
+  final bool isStale;
+
   const PoolRowTile({
     super.key,
     required this.position,
@@ -29,6 +35,7 @@ class PoolRowTile extends StatelessWidget {
     required this.formatter,
     this.onTap,
     this.healthScore,
+    this.isStale = false,
   });
 
   @override
@@ -112,6 +119,7 @@ class PoolRowTile extends StatelessWidget {
                       if (healthScore != null)
                         _HealthScoreBadge(health: healthScore!),
                       if (position.isV4) const _V4Badge(),
+                      if (isStale) const _StaleBadge(),
                     ],
                   ),
                 ],
@@ -180,6 +188,59 @@ class _V4Badge extends StatelessWidget {
           fontSize: 10,
           fontWeight: FontWeight.w600,
           color: palette.accent,
+        ),
+      ),
+    );
+  }
+}
+
+/// Pedido do utilizador: "atualizado há 2m" no Dashboard não avisava
+/// quando UMA posição em concreto falhou o refresh (rate limit, timeout)
+/// e ficou com valores antigos, enquanto o resto da wallet atualizava
+/// normalmente — a sensação era de "os números não mudam e não sei
+/// porquê". Este badge só aparece nessa posição.
+class _StaleBadge extends StatelessWidget {
+  const _StaleBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return GestureDetector(
+      onTap: () => showInfoSheet(
+        context,
+        title: 'Dados desta posição desatualizados',
+        body: const InfoSheetText(
+          'O último refresh não conseguiu ler esta posição a tempo '
+          '(normalmente um limite de pedidos do RPC dessa chain, mais '
+          'comum na Arbitrum por ter mais histórico para paginar) — os '
+          'valores mostrados são os últimos conhecidos, não os atuais.\n\n'
+          'O "Atualizado há..." no topo não avisa disto porque mede o '
+          'ciclo de refresh todo, não cada posição — por isso pode '
+          'mostrar "há 2 min" mesmo com esta posição parada há mais '
+          'tempo. Deve resolver-se sozinho no próximo refresh.',
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: palette.warning.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: palette.warning.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.schedule, size: 9, color: palette.warning),
+            const SizedBox(width: 3),
+            Text(
+              'desatualizado',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: palette.warning,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -266,8 +327,7 @@ class _HealthScoreBadge extends StatelessWidget {
             const SizedBox(height: 16),
             _ScoreRow(
               label: 'Dentro do range',
-              detail:
-                  '100 dentro do range, 60 perto da margem, 0 fora',
+              detail: '100 dentro do range, 60 perto da margem, 0 fora',
               score: health.rangeScore,
               palette: palette,
             ),

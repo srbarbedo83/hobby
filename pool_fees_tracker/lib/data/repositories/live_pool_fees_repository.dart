@@ -763,7 +763,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
       ..feesUnclaimedUsd = unclaimedUsd
       ..gasCostUsd = 0
       ..isClosed = raw.isClosed
-      ..closedAt = null;
+      ..closedAt = null
+      ..lastFetchSucceededAt = DateTime.now();
   }
 
   /// Equivalente a [_mapPosition], mas para Uniswap v4 — mapeia TODAS as
@@ -1117,7 +1118,8 @@ class LivePoolFeesRepository implements PoolFeesRepository {
           ..gasCostUsd = gasCostUsd
           ..isClosed = isClosed
           ..closedAt = null
-          ..isV4 = true,
+          ..isV4 = true
+          ..lastFetchSucceededAt = DateTime.now(),
       );
     }
 

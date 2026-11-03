@@ -8,6 +8,7 @@ import '../../core/calc/leaderboard.dart';
 import '../../core/calc/pool_health_score.dart';
 import '../../core/calc/portfolio_heatmap.dart';
 import '../../core/calc/range_health.dart';
+import '../../core/calc/staleness.dart';
 import '../../core/calc/univ3_fee_math.dart';
 import '../../core/calc/weighted_entry_price.dart';
 import '../../core/format/currency_formatter.dart';
@@ -292,6 +293,11 @@ class _PoolsScreenState extends ConsumerState<PoolsScreen> {
                                 initialLiquidityUsd:
                                     position.initialLiquidityUsd,
                               ).lossPct,
+                            ),
+                            isStale: isDataStale(
+                              lastUpdatedAt: position.lastFetchSucceededAt,
+                              refreshIntervalSeconds:
+                                  settings.refreshIntervalSeconds,
                             ),
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(

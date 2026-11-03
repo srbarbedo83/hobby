@@ -101,7 +101,6 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         ref.watch(liquidityProfileProvider(widget.positionKey)).value ??
         const [];
     final formatter = CurrencyFormatter(settings.currencyCode);
-    final lastUpdatedAt = ref.watch(poolFeesRepositoryProvider).lastUpdatedAt;
     final gasCostUsd = ref.watch(gasCostUsdProvider(widget.positionKey)).value;
     final metrics = computePoolMetrics(
       position: position,
@@ -301,8 +300,14 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                         ),
                       ),
                       LiveBadge(
+                        // Pedido do utilizador: usa o timestamp desta
+                        // posição em concreto (não o do repositório
+                        // todo) — uma posição pode ter falhado o
+                        // refresh (rate limit numa chain) enquanto o
+                        // resto da wallet atualizava normalmente, e o
+                        // timestamp global não distinguia isso.
                         isStale: isDataStale(
-                          lastUpdatedAt: lastUpdatedAt,
+                          lastUpdatedAt: position.lastFetchSucceededAt,
                           refreshIntervalSeconds:
                               settings.refreshIntervalSeconds,
                         ),

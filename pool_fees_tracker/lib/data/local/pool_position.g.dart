@@ -80,53 +80,58 @@ const PoolPositionSchema = CollectionSchema(
     ),
     r'isClosed': PropertySchema(id: 12, name: r'isClosed', type: IsarType.bool),
     r'isV4': PropertySchema(id: 13, name: r'isV4', type: IsarType.bool),
-    r'liquidityUsd': PropertySchema(
+    r'lastFetchSucceededAt': PropertySchema(
       id: 14,
+      name: r'lastFetchSucceededAt',
+      type: IsarType.dateTime,
+    ),
+    r'liquidityUsd': PropertySchema(
+      id: 15,
       name: r'liquidityUsd',
       type: IsarType.double,
     ),
     r'positionKey': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'positionKey',
       type: IsarType.string,
     ),
     r'tickLower': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'tickLower',
       type: IsarType.long,
     ),
     r'tickUpper': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'tickUpper',
       type: IsarType.long,
     ),
     r'token0Decimals': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'token0Decimals',
       type: IsarType.long,
     ),
     r'token0Symbol': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'token0Symbol',
       type: IsarType.string,
     ),
     r'token1Decimals': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'token1Decimals',
       type: IsarType.long,
     ),
     r'token1Symbol': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'token1Symbol',
       type: IsarType.string,
     ),
     r'tokenIdOnChain': PropertySchema(
-      id: 22,
+      id: 23,
       name: r'tokenIdOnChain',
       type: IsarType.string,
     ),
     r'walletAddress': PropertySchema(
-      id: 23,
+      id: 24,
       name: r'walletAddress',
       type: IsarType.string,
     ),
@@ -209,16 +214,17 @@ void _poolPositionSerialize(
   writer.writeDouble(offsets[11], object.initialLiquidityUsd);
   writer.writeBool(offsets[12], object.isClosed);
   writer.writeBool(offsets[13], object.isV4);
-  writer.writeDouble(offsets[14], object.liquidityUsd);
-  writer.writeString(offsets[15], object.positionKey);
-  writer.writeLong(offsets[16], object.tickLower);
-  writer.writeLong(offsets[17], object.tickUpper);
-  writer.writeLong(offsets[18], object.token0Decimals);
-  writer.writeString(offsets[19], object.token0Symbol);
-  writer.writeLong(offsets[20], object.token1Decimals);
-  writer.writeString(offsets[21], object.token1Symbol);
-  writer.writeString(offsets[22], object.tokenIdOnChain);
-  writer.writeString(offsets[23], object.walletAddress);
+  writer.writeDateTime(offsets[14], object.lastFetchSucceededAt);
+  writer.writeDouble(offsets[15], object.liquidityUsd);
+  writer.writeString(offsets[16], object.positionKey);
+  writer.writeLong(offsets[17], object.tickLower);
+  writer.writeLong(offsets[18], object.tickUpper);
+  writer.writeLong(offsets[19], object.token0Decimals);
+  writer.writeString(offsets[20], object.token0Symbol);
+  writer.writeLong(offsets[21], object.token1Decimals);
+  writer.writeString(offsets[22], object.token1Symbol);
+  writer.writeString(offsets[23], object.tokenIdOnChain);
+  writer.writeString(offsets[24], object.walletAddress);
 }
 
 PoolPosition _poolPositionDeserialize(
@@ -243,16 +249,17 @@ PoolPosition _poolPositionDeserialize(
   object.initialLiquidityUsd = reader.readDouble(offsets[11]);
   object.isClosed = reader.readBool(offsets[12]);
   object.isV4 = reader.readBool(offsets[13]);
-  object.liquidityUsd = reader.readDouble(offsets[14]);
-  object.positionKey = reader.readString(offsets[15]);
-  object.tickLower = reader.readLong(offsets[16]);
-  object.tickUpper = reader.readLong(offsets[17]);
-  object.token0Decimals = reader.readLong(offsets[18]);
-  object.token0Symbol = reader.readString(offsets[19]);
-  object.token1Decimals = reader.readLong(offsets[20]);
-  object.token1Symbol = reader.readString(offsets[21]);
-  object.tokenIdOnChain = reader.readString(offsets[22]);
-  object.walletAddress = reader.readString(offsets[23]);
+  object.lastFetchSucceededAt = reader.readDateTimeOrNull(offsets[14]);
+  object.liquidityUsd = reader.readDouble(offsets[15]);
+  object.positionKey = reader.readString(offsets[16]);
+  object.tickLower = reader.readLong(offsets[17]);
+  object.tickUpper = reader.readLong(offsets[18]);
+  object.token0Decimals = reader.readLong(offsets[19]);
+  object.token0Symbol = reader.readString(offsets[20]);
+  object.token1Decimals = reader.readLong(offsets[21]);
+  object.token1Symbol = reader.readString(offsets[22]);
+  object.tokenIdOnChain = reader.readString(offsets[23]);
+  object.walletAddress = reader.readString(offsets[24]);
   return object;
 }
 
@@ -294,24 +301,26 @@ P _poolPositionDeserializeProp<P>(
     case 13:
       return (reader.readBool(offset)) as P;
     case 14:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 15:
-      return (reader.readString(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 16:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 17:
       return (reader.readLong(offset)) as P;
     case 18:
       return (reader.readLong(offset)) as P;
     case 19:
-      return (reader.readString(offset)) as P;
-    case 20:
       return (reader.readLong(offset)) as P;
-    case 21:
+    case 20:
       return (reader.readString(offset)) as P;
+    case 21:
+      return (reader.readLong(offset)) as P;
     case 22:
       return (reader.readString(offset)) as P;
     case 23:
+      return (reader.readString(offset)) as P;
+    case 24:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1571,6 +1580,82 @@ extension PoolPositionQueryFilter
   }
 
   QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  lastFetchSucceededAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'lastFetchSucceededAt'),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  lastFetchSucceededAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'lastFetchSucceededAt'),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  lastFetchSucceededAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'lastFetchSucceededAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  lastFetchSucceededAtGreaterThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'lastFetchSucceededAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  lastFetchSucceededAtLessThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'lastFetchSucceededAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
+  lastFetchSucceededAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'lastFetchSucceededAt',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterFilterCondition>
   liquidityUsdEqualTo(double value, {double epsilon = Query.epsilon}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -2758,6 +2843,20 @@ extension PoolPositionQuerySortBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  sortByLastFetchSucceededAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastFetchSucceededAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  sortByLastFetchSucceededAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastFetchSucceededAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> sortByLiquidityUsd() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'liquidityUsd', Sort.asc);
@@ -3083,6 +3182,20 @@ extension PoolPositionQuerySortThenBy
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  thenByLastFetchSucceededAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastFetchSucceededAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy>
+  thenByLastFetchSucceededAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastFetchSucceededAt', Sort.desc);
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QAfterSortBy> thenByLiquidityUsd() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'liquidityUsd', Sort.asc);
@@ -3306,6 +3419,13 @@ extension PoolPositionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<PoolPosition, PoolPosition, QDistinct>
+  distinctByLastFetchSucceededAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastFetchSucceededAt');
+    });
+  }
+
   QueryBuilder<PoolPosition, PoolPosition, QDistinct> distinctByLiquidityUsd() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'liquidityUsd');
@@ -3477,6 +3597,13 @@ extension PoolPositionQueryProperty
   QueryBuilder<PoolPosition, bool, QQueryOperations> isV4Property() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isV4');
+    });
+  }
+
+  QueryBuilder<PoolPosition, DateTime?, QQueryOperations>
+  lastFetchSucceededAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastFetchSucceededAt');
     });
   }
 

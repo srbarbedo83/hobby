@@ -83,6 +83,18 @@ class PoolPosition {
   /// `live_pool_fees_repository.dart`); em modo Demo é preenchido.
   DateTime? closedAt;
 
+  /// Quando esta posição foi lida com sucesso on-chain/subgraph por
+  /// última vez — diferente do timestamp global do repositório
+  /// (`PoolFeesRepository.lastUpdatedAt`), que avança sempre que um ciclo
+  /// de refresh TERMINA, mesmo que esta posição em concreto tenha falhado
+  /// a leitura nesse ciclo (rate limit, timeout) e tenha ficado com os
+  /// valores antigos (ver `staleFallbacks` em `_mapV4Positions`). Sem
+  /// isto, "atualizado há 2m" no Dashboard dava uma falsa sensação de
+  /// que TODAS as posições estavam frescas, mesmo quando uma em concreto
+  /// estava parada há horas por falhas repetidas só nessa chain. `null`
+  /// para registos de antes deste campo existir.
+  DateTime? lastFetchSucceededAt;
+
   double get feesTotalUsd => feesClaimedUsd + feesUnclaimedUsd;
 
   double get feeTierPct => feeTierBps / 10000;
